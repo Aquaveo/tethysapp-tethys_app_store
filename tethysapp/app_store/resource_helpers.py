@@ -24,7 +24,14 @@ CACHE_KEY = ""
 
 
 def clear_cache(data, channel_layer):
-    cache.delete(CACHE_KEY)
+    available_stores_data_dict = get_available_stores_values("all")
+    for store in available_stores_data_dict:
+        store_name = store['conda_channel']
+        for conda_label in store['conda_labels']:
+            cache_key = f'{store_name}_{conda_label}_app_resources'
+            cache.delete(cache_key)
+            
+    return
 
 
 def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, stores='all'):
@@ -260,7 +267,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,con
 
 
 def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp", conda_label="main" , cache_key=None):
-    
+
     # breakpoint()
     CHANNEL_NAME = conda_package
 
