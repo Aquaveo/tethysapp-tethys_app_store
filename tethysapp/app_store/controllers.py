@@ -34,8 +34,6 @@ def home(request,app_workspace):
     # with open(available_stores_json_path) as available_stores_json_file:
     #     available_stores_data_dict = json.load(available_stores_json_file)['stores']
     
-    print(available_stores_data_dict)
-    
     context = {
         'storesData':available_stores_data_dict,
         'show_stores': True if len(available_stores_data_dict) > 0 else False

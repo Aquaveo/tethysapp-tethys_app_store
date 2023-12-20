@@ -15,6 +15,7 @@ import yaml
 import subprocess
 from .utilities import get_available_stores_values
 from .helpers import add_if_exists, check_if_app_installed,add_if_exists_keys, logger
+from conda.cli.python_api import run_command as conda_run, Commands
 
 CACHE_KEY = ""
 # CACHE_KEY = "warehouse_app_resources"
@@ -268,16 +269,19 @@ def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp",
     
     CACHE_KEY = cache_key
 
-    cache.get(CACHE_KEY)
     if (cache.get(CACHE_KEY) is None) or refresh:
 
         # Look for packages:
         logger.info("Refreshing list of apps cache")
+        
+        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", CHANNEL_NAME, "--override-channels", "-i",  "--json"])
 
-        conda_search_result = subprocess.run(['conda', 'search', "-c", CHANNEL_NAME, "--override-channels",
-                                              "-i", "--json"], stdout=subprocess.PIPE)
-
-        conda_search_result = json.loads(conda_search_result.stdout)
+        if code != 0:
+            # In here maybe we just try re running the install
+            raise(
+                f"ERROR: Couldn't search packages in the {CHANNEL_NAME} channel")
+        
+        conda_search_result = json.loads(resp)
 
         resource_metadata = []
         logger.info("Total Apps Found:" + str(len(conda_search_result)))
