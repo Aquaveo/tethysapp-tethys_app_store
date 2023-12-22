@@ -53,7 +53,6 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
 
     # paths = list()
     # paths = list(filter(lambda x: app_name in x, store_pkg.__path__))
-    # breakpoint()
     paths = list(filter(lambda x: app_name in x, tethysapp.__path__))
 
 
@@ -69,7 +68,7 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
 
     if os.path.exists(pip_install_script_path):
         logger.info("PIP dependencies found. Running Pip install script")
-        # breakpoint()
+
         notification_method("Running PIP install....", channel_layer)
         p = subprocess.Popen(['sh', pip_install_script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         while True:
@@ -123,7 +122,6 @@ def conda_install(app_metadata, app_channel,app_label,app_version, channel_layer
 
     # Running the conda install as a subprocess to get more visibility into the running process
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    # breakpoint()
     script_path = os.path.join(dir_path, "scripts", "conda_install.sh")
 
     app_name = app_metadata['name'] + "=" + app_version
@@ -171,7 +169,6 @@ def conda_install(app_metadata, app_channel,app_label,app_version, channel_layer
 def begin_install(installData, channel_layer, app_workspace):
 
     # resource = get_resource(installData["name"], app_workspace)
-    # breakpoint()
 
     resource = get_resource_new(installData["name"],installData['channel'],installData['label'], app_workspace)
     

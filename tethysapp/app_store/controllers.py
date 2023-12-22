@@ -48,7 +48,7 @@ def home(request,app_workspace):
     app_workspace=True,
 )
 def get_available_stores(request,app_workspace):
-    # breakpoint()
+
     available_stores_data_dict = app.get_custom_setting("stores_settings")
     encryption_key = app.get_custom_setting("encryption_key")
     for store in available_stores_data_dict['stores']:
@@ -85,7 +85,7 @@ def generate_empty_multi_store_apps_object(app_list):
     return return_obj
 
 def populate_multi_store_apps_object(stores, multi_store_apps_object):
-    # breakpoint()
+
     for store in stores:
         for app in store:
             for key in app:
@@ -102,7 +102,7 @@ def object_to_list(request_obj):
 
 def get_multi_store_obj_list(stores):
     app_list = []
-    # breakpoint()
+
     app_list = find_apps_in_stores(stores, app_list)
     multi_store_apps_object = generate_empty_multi_store_apps_object(app_list)
     multi_store_apps_object = populate_multi_store_apps_object(stores, multi_store_apps_object)
@@ -112,7 +112,7 @@ def get_multi_store_obj_list(stores):
 
 def make_single_name(multi_store_apps_object):
     for key in multi_store_apps_object:
-        # breakpoint()
+
         for store_name in multi_store_apps_object[key]['name']:
             multi_store_apps_object[key]['name'] = multi_store_apps_object[key]['name'][store_name]
             break
@@ -129,7 +129,7 @@ def preprocess_single_store(conda_packages,require_refresh,app_workspace):
     for conda_package in conda_packages:
         cache_key = f'{conda_package}_app_resources'
         resources_single_store = get_resources_single_store(app_workspace, require_refresh, conda_package,cache_key)
-        # breakpoint()
+
         pre_processing_dict['availableApps'].append(resources_single_store['availableApps'])
         pre_processing_dict['installedApps'].append(resources_single_store['installedApps'])
         pre_processing_dict['incompatibleApps'].append(resources_single_store['incompatibleApps'])
@@ -148,7 +148,7 @@ def get_resources_multiple_stores(request, app_workspace):
     stores_active = request.GET.get('active_store')
     require_refresh = request.GET.get('refresh', '') == "true"
     object_stores_formatted_by_label_and_channel = get_stores_reformatted(app_workspace, refresh=False, stores=stores_active)
-    # breakpoint()
+
     tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
     object_stores_formatted_by_label_and_channel['tethysVersion'] = tethys_version_regex
     
@@ -160,7 +160,7 @@ def get_resources_multiple_stores(request, app_workspace):
     #     'incompatibleApps': [],
     #     'tethysVersion': [],
     # }
-    # # breakpoint()
+
     # return_object['availableApps'] = get_multi_store_obj_list(pre_processing_dict['availableApps'])
     # return_object['installedApps'] = get_multi_store_obj_list(pre_processing_dict['installedApps'])
     # return_object['incompatibleApps'] = get_multi_store_obj_list(pre_processing_dict['incompatibleApps'])
@@ -181,7 +181,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,cac
         else:
             # tethys_version_regex = '4.0.0'
             tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
-            # breakpoint()
+
             add_compatible = False
             add_incompatible = False
             new_compatible_app = copy.deepcopy(resource)
@@ -225,7 +225,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,cac
     app_workspace=True,
 )
 def get_resources(request, app_workspace):
-    # breakpoint()
+
     conda_package = request.GET.get('conda_channel')
     require_refresh = request.GET.get('refresh', '') == "true"
     # Always require refresh
@@ -237,14 +237,13 @@ def get_resources(request, app_workspace):
     available_apps = []
     incompatible_apps = []
 
-    # breakpoint()
     for resource in all_resources:
         if resource["installed"]:
             installed_apps.append(resource)
         else:
             # tethys_version_regex = '4.0.0'
             tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
-            # breakpoint()
+
             add_compatible = False
             add_incompatible = False
             new_compatible_app = copy.deepcopy(resource)
@@ -269,7 +268,7 @@ def get_resources(request, app_workspace):
 
     # Get any apps installed via GitHub install process
     github_apps = get_github_install_metadata(app_workspace)
-    # breakpoint()
+
     context = {
         'availableApps': available_apps,
         'installedApps': installed_apps + github_apps,
