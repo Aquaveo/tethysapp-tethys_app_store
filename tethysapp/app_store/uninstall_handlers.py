@@ -75,11 +75,7 @@ def uninstall_app(data, channel_layer, app_workspace):
 
         # Running the conda install as a subprocess to get more visibility into the running process
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        # breakpoint()
         script_path = os.path.join(dir_path, "scripts", "mamba_uninstall.sh")
-
-        
-        # breakpoint()
 
         uninstall_command = [script_path, app_name]
 
@@ -90,7 +86,6 @@ def uninstall_app(data, channel_layer, app_workspace):
         while should_not_stop:
             output = p.stdout.readline()
             if output.decode('utf-8')== 'Mamba Remove Complete\n':
-                # breakpoint()
                 break
             if output:
                 # Checkpoints for the output

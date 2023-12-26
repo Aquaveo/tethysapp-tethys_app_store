@@ -470,7 +470,6 @@ def pull_git_repo(github_url,active_store, channel_layer, app_workspace):
 
 def apply_setup_template(template_path,setup_path, setup_data):
     #reading from file1 and writing to file2
-    # breakpoint()
     # open the file using read only mode
     handle = open(template_path, "r")
 
@@ -525,7 +524,6 @@ def process_branch(install_data, channel_layer):
 
     # 1 select the git repo with the path github_dir
 
-    # breakpoint()
     ### get the version from the install.yml
     # install_yml = os.path.join(install_data['github_dir'], 'install.yml')
     current_tag_name = ''
@@ -547,7 +545,6 @@ def process_branch(install_data, channel_layer):
     today = time.strftime("%Y_%m_%d")
 
     setup_py_data = parse_setup_py(filename)
-    # breakpoint()
     current_version = setup_py_data["version"]
     
     # current_tag_name = "v" + str(current_version) + "_" + today
@@ -579,8 +576,6 @@ def process_branch(install_data, channel_layer):
     #     # tethysapp_remote.pull()
     #     repo.git.merge(install_data['branch'])
 
-    # breakpoint()
-
     repo.git.checkout('tethysapp_warehouse_release')
 
 
@@ -601,7 +596,6 @@ def process_branch(install_data, channel_layer):
     if os.path.exists(recipe_path):
         shutil.rmtree(recipe_path)
 
-    # breakpoint()
     os.makedirs(recipe_path)
 
     # 7 copy the getChannels.py from the source to the destination, if does not exits
@@ -612,7 +606,6 @@ def process_branch(install_data, channel_layer):
 
     if not os.path.exists(destination):
         files_changed = True
-        # breakpoint()
         shutil.copyfile(source, destination)
 
     source = os.path.join(source_files_path, 'meta_template.yaml')
@@ -667,7 +660,6 @@ def process_branch(install_data, channel_layer):
         setup_py_data['app_package'] = install_yml_file.get('name')
         metadata_dict = {**setup_py_data, "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),"dev_url": f'{install_data["dev_url"]}' }
 
-    # breakpoint()
     template_data = {
         'metadataObj': json.dumps(metadata_dict).replace('"', "'")
     }
@@ -677,7 +669,6 @@ def process_branch(install_data, channel_layer):
 
     if not os.path.exists(destination):
         files_changed = True
-        # breakpoint()
         shutil.copyfile(source, destination)
 
 
@@ -766,9 +757,6 @@ def process_branch(install_data, channel_layer):
         logger.info("Completed Local Debug Processing for Git Repo")
         return
 
-
-
-    # breakpoint()
     # Merge the new branch with the release branch
     # tethys_release_branch = repo.branches['tethysapp_warehouse_release']
     # base = repo.merge_base(new_release_branch, tethys_release_branch)
@@ -791,7 +779,6 @@ def process_branch(install_data, channel_layer):
     remote_url = ''
     if repo_exists(repo_name, organization):
         # Delete the repo
-        # breakpoint()
         # to_delete_repo = organization.get_repo(repo_name)
         # to_delete_repo.delete()
 
@@ -843,7 +830,6 @@ def process_branch(install_data, channel_layer):
         repo.git.commit(m=f'tag version {current_tag_name}')
 
     # repo.config_writer().set_value('push', 'followTags', 'true').release()
-    # breakpoint()
     # update the tethys release branch in remote
     tethysapp_remote.push('tethysapp_warehouse_release', force=True)
 
@@ -918,7 +904,7 @@ def process_branch(install_data, channel_layer):
     except AttributeError:
         logger.info("Unable to obtain Workflow Run")
         job_url = None
-    # breakpoint()
+
     get_data_json = {
         "data": {
             "githubURL": tethysapp_repo.git_url.replace("git:", "https:"),
@@ -940,7 +926,6 @@ def add_and_commit_if_files_changed(repo,files_changed,current_tag_name):
         repo.git.commit(m=f'tag version {current_tag_name}')
 
     # repo.config_writer().set_value('push', 'followTags', 'true').release()
-    # breakpoint()
     # update the tethys release branch in remote
     tethysapp_remote.push('tethysapp_warehouse_release', force=True)
 
@@ -1015,7 +1000,6 @@ def get_workflow_job_url(tethysapp_repo,github_organization,key):
     except AttributeError:
         logger.info("Unable to obtain Workflow Run")
         job_url = None
-    # breakpoint()
     get_data_json = {
         "data": {
             "githubURL": tethysapp_repo.git_url.replace("git:", "https:"),

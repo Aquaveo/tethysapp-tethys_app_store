@@ -15,6 +15,7 @@ import yaml
 import subprocess
 from .utilities import get_available_stores_values
 from .helpers import add_if_exists, check_if_app_installed,add_if_exists_keys, logger
+from conda.cli.python_api import run_command as conda_run, Commands
 
 CACHE_KEY = ""
 # CACHE_KEY = "warehouse_app_resources"
@@ -23,7 +24,14 @@ CACHE_KEY = ""
 
 
 def clear_cache(data, channel_layer):
-    cache.delete(CACHE_KEY)
+    available_stores_data_dict = get_available_stores_values("all")
+    for store in available_stores_data_dict:
+        store_name = store['conda_channel']
+        for conda_label in store['conda_labels']:
+            cache_key = f'{store_name}_{conda_label}_app_resources'
+            cache.delete(cache_key)
+            
+    return
 
 
 def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, stores='all'):
@@ -36,7 +44,7 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, stores='
         for conda_label in store['conda_labels']:
             cache_key = f'{store_name}_{conda_label}_app_resources'
             object_stores[store_name][conda_label] = get_resources_single_store(app_workspace, refresh, store_name,conda_label, cache_key=cache_key)
-            # breakpoint()
+
     return object_stores
 
 def get_new_stores_reformated_by_labels(object_stores):
@@ -46,18 +54,17 @@ def get_new_stores_reformated_by_labels(object_stores):
         list_labels_store = list(object_stores[store].keys())
         list_type_apps = list(object_stores[store][list_labels_store[0]].keys())
         for type_app  in list_type_apps:
-            # breakpoint()
             if type_app != 'tethysVersion':
                 new_store_reformatted[store][type_app] = merge_labels_single_store(object_stores[store],store,type_app)
     return new_store_reformatted
 
 def get_stores_reformatted(app_workspace, refresh=False, stores='all'):
-    # breakpoint()
+
     object_stores_raw = create_pre_multiple_stores_labels_obj(app_workspace, refresh,stores)
     object_stores_formatted_by_label = get_new_stores_reformated_by_labels(object_stores_raw)
     ## reformat for stores now
     object_stores_formatted_by_channel = get_stores_reformated_by_channel(object_stores_formatted_by_label)
-    # breakpoint()
+
     list_stores_formatted_by_channel = reduce_level_obj(object_stores_formatted_by_channel)
     return list_stores_formatted_by_channel
 
@@ -115,7 +122,7 @@ def get_app_channel_for_stores(stores):
     return app_channel_obj
 
 def get_app_level_for_store(store,type_apps):
-    # breakpoint()
+
     apps_levels = {}
     levels = list(store.keys())
     for level in levels:
@@ -136,7 +143,7 @@ def merge_levels_for_app_in_store(apps_channels,store,channel,type_apps):
         for label in store:
 
             if label not in apps_channels[app]:
-                # breakpoint()
+
                 continue
             for key in store[label][type_apps][app]:
                 if key != 'name':
@@ -148,7 +155,6 @@ def merge_levels_for_app_in_store(apps_channels,store,channel,type_apps):
                     for label_app in store[label][type_apps][app][key][channel]:
                         new_store_label_obj[app][key][channel][label_app] = store[label][type_apps][app][key][channel][label_app]
                     # except TypeError:
-                    #     breakpoint()
                     #     x  = "hi error"
     return new_store_label_obj
 
@@ -172,10 +178,7 @@ def merge_labels_for_app_in_store(apps_label,store,channel,type_apps):
         if app not in new_store_label_obj:
             new_store_label_obj[app] = {}
         for label in store:
-            # if len(apps_label[app]) > 1:
-            #     breakpoint()
             if label not in apps_label[app]:
-                # breakpoint()
                 continue
             for key in store[label][type_apps][app]:
                 if key != 'name':
@@ -189,12 +192,11 @@ def merge_labels_for_app_in_store(apps_label,store,channel,type_apps):
                 else:
                     new_store_label_obj[app][key] = store[label][type_apps][app][key]
                     # except TypeError:
-                    #     breakpoint()
                     #     x  = "hi error"
     return new_store_label_obj
 
 def merge_labels_single_store(store,channel,type_apps):
-    # breakpoint()
+
     apps_labels = get_app_label_obj_for_store(store,type_apps)
     merged_label_store = merge_labels_for_app_in_store(apps_labels,store,channel,type_apps)
     return merged_label_store
@@ -212,7 +214,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,con
         # else:
         # tethys_version_regex = '4.0.0'
         tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
-        # breakpoint()
+
         add_compatible = False
         add_incompatible = False
         new_compatible_app = copy.deepcopy(resource)
@@ -221,7 +223,6 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,con
         for version in resource['versions'][conda_package][conda_label]:
             # debugging
             # if resource['name'] == 'test1app' and conda_label == 'dev':
-            #     breakpoint()
             #     x = 'hola'
 
             # Assume if not found, that it is compatible with Tethys Platform 3.4.4
@@ -238,7 +239,6 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,con
         if add_compatible:
             available_apps[resource['name']] = new_compatible_app
         if add_incompatible:
-            # breakpoint()
             incompatible_apps[resource['name']] = new_incompatible_app
 
     # Get any apps installed via GitHub install process
@@ -259,8 +259,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_package,con
 
 
 def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp", conda_label="main" , cache_key=None):
-    
-    # breakpoint()
+
     CHANNEL_NAME = conda_package
 
     if conda_label != 'main':
@@ -268,16 +267,19 @@ def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp",
     
     CACHE_KEY = cache_key
 
-    cache.get(CACHE_KEY)
     if (cache.get(CACHE_KEY) is None) or refresh:
 
         # Look for packages:
         logger.info("Refreshing list of apps cache")
+        
+        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", CHANNEL_NAME, "--override-channels", "-i",  "--json"])
 
-        conda_search_result = subprocess.run(['conda', 'search', "-c", CHANNEL_NAME, "--override-channels",
-                                              "-i", "--json"], stdout=subprocess.PIPE)
-
-        conda_search_result = json.loads(conda_search_result.stdout)
+        if code != 0:
+            # In here maybe we just try re running the install
+            raise(
+                f"ERROR: Couldn't search packages in the {CHANNEL_NAME} channel")
+        
+        conda_search_result = json.loads(resp)
 
         resource_metadata = []
         logger.info("Total Apps Found:" + str(len(conda_search_result)))
@@ -336,7 +338,7 @@ def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp",
                 }
                 
             }
-            # breakpoint()
+
             if "license" in conda_search_result[app_package][-1]:
                 newPackage["license"][conda_package][conda_label] = conda_search_result[app_package][-1]["license"]
 
@@ -352,13 +354,10 @@ def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp",
                 newPackage.get("versionURLs").get(f"{conda_package}").get(f"{conda_label}").append(conda_version.get('url'))
                 newPackage.get("licenses").get(f"{conda_package}").get(f"{conda_label}").append(conda_version.get('license'))
 
-                # breakpoint()
-
                 if "license" in conda_version:
                     try:
                         license_json = json.loads(conda_version['license'].replace("', '", '", "').replace("': '", '": "').replace("'}", '"}').replace("{'", '{"'))
                         if 'tethys_version' in license_json:
-                            # breakpoint()
                             newPackage["compatibility"][conda_package][conda_label][conda_version.get('version')] = license_json.get('tethys_version')
                             # newPackage.get("compatibility").get(f"{conda_package}").get(f"{conda_label}").append(conda_version.get('license'))
                     except (ValueError, TypeError):
@@ -368,7 +367,7 @@ def fetch_resources_new(app_workspace, refresh=False, conda_package="tethysapp",
 
         
         resource_metadata = process_resources_new(resource_metadata, app_workspace, conda_package, conda_label)
-        # breakpoint()
+
         cache.set(CACHE_KEY, resource_metadata)
         return resource_metadata
     else:
@@ -437,7 +436,6 @@ def fetch_resources(app_workspace, refresh=False, conda_package="tethysapp", cac
 
 
 def process_resources_new(resources, app_workspace,conda_channel, conda_label):
-    # breakpoint()
     for app in resources:
         workspace_folder = os.path.join(app_workspace.path, 'apps')
         if not os.path.exists(workspace_folder):
@@ -450,7 +448,7 @@ def process_resources_new(resources, app_workspace,conda_channel, conda_label):
         }
         app["latestVersion"][conda_channel][conda_label] = app.get("versions").get(f"{conda_channel}").get(f"{conda_label}")[-1]
 
-        # breakpoint()
+
         # Check if latest version is compatible. If not, append an asterisk
         license = app.get("license").get(f"{conda_channel}").get(f"{conda_label}")
         comp_dict = None
@@ -473,13 +471,10 @@ def process_resources_new(resources, app_workspace,conda_channel, conda_label):
         # FOR Debugging only. @TODO: Remove
         if(app['installed']):
             # app["updateAvailable"][conda_channel][conda_label] = True
-            # breakpoint()
             # if app['name'] == 'test1app':
-                # breakpoint()
                 # print("hola")
 
             if 'installedVersion' in app:
-                # breakpoint()
                 if(app["latestVersion"][conda_channel][conda_label].find("*") == False):
                     if parse_version(app["latestVersion"][conda_channel][conda_label]) > parse_version(app["installedVersion"][conda_channel][conda_label]):
                         app["updateAvailable"] = {
@@ -532,7 +527,6 @@ def process_resources_new(resources, app_workspace,conda_channel, conda_label):
                 }
                 app['dev_url'][conda_channel][conda_label] = ''
             # if "tethys_version" in license_metadata:
-            #     # breakpoint()
             #     app.get("compatibility").get(f"{conda_channel}").get(f"{conda_label}")[license_metadata['version']] = license_metadata['tethys_version']  # noqa: E501
 
         except (ValueError, TypeError):
