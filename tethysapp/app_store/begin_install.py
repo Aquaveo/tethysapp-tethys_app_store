@@ -8,7 +8,7 @@ from django.core.cache import cache
 from subprocess import call
 
 from .helpers import check_all_present, get_app_instance_from_path, logger, send_notification
-from .resource_helpers import get_resource_new
+from .resource_helpers import get_resource
 
 
 def handle_property_not_present(prop):
@@ -167,9 +167,7 @@ def conda_install(app_metadata, app_channel, app_label, app_version, channel_lay
 
 def begin_install(installData, channel_layer, app_workspace):
 
-    # resource = get_resource(installData["name"], app_workspace)
-
-    resource = get_resource_new(installData["name"], installData['channel'], installData['label'], app_workspace)
+    resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
 
     send_notification("Starting installation of app: " + resource['name'] + " from store " + installData['channel'] +
                       " with label " + installData['label'], channel_layer)

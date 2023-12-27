@@ -1,12 +1,11 @@
 import sys
+
 sys.path.append('/home/gio/tethysdev/tethys/tethys_portal')
 
-from tethys_portal.settings import *
-
-# DATABASES = { 
+# DATABASES = {
 #     "default": {
 #         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": "memory", 
+#         "NAME": "memory",
 #     }
 # }
 

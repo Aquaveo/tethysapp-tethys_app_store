@@ -1,1 +1,1 @@
-print("geoglows_hydroviewer installed in dev mode")
+print("dam_inventory installed in dev mode")

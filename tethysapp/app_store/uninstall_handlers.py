@@ -1,4 +1,3 @@
-from conda.cli.python_api import run_command as conda_run, Commands
 from conda.exceptions import PackagesNotFoundError
 from tethys_cli.cli_helpers import get_manage_path
 from tethys_apps.exceptions import TethysAppSettingNotAssigned
@@ -67,12 +66,6 @@ def uninstall_app(data, channel_layer, app_workspace):
         'Tethys App Uninstalled. Running Conda/GitHub Cleanup...', channel_layer)
 
     try:
-        # [resp, err, code] = conda_run(Commands.REMOVE, ["--force", "-c", "tethysplatform",
-        #                                                 "--override-channels", data['name']])
-        # logger.info(resp)
-        # if err:
-        #     logger.error(err)
-
         # Running the conda install as a subprocess to get more visibility into the running process
         dir_path = os.path.dirname(os.path.realpath(__file__))
         script_path = os.path.join(dir_path, "scripts", "mamba_uninstall.sh")
@@ -80,19 +73,18 @@ def uninstall_app(data, channel_layer, app_workspace):
         uninstall_command = [script_path, app_name]
 
         # Running this sub process, in case the library isn't installed, triggers a restart.
-
         p = subprocess.Popen(uninstall_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         should_not_stop = True
         while should_not_stop:
             output = p.stdout.readline()
-            if output.decode('utf-8')== 'Mamba Remove Complete\n':
+            if output.decode('utf-8') == 'Mamba Remove Complete\n':
                 break
             if output:
                 # Checkpoints for the output
                 str_output = output.decode('utf-8')
 
                 send_uninstall_messages(str_output, channel_layer)
-                logger.info(str_output)                                                                                           
+                logger.info(str_output)
 
     except PackagesNotFoundError:
         # This was installed using GitHub. Try to clean out
@@ -104,6 +96,4 @@ def uninstall_app(data, channel_layer, app_workspace):
 
         clear_github_cache_list()
 
-
-    send_uninstall_messages(
-        'Uninstall completed. Restarting server...', channel_layer)
+    send_uninstall_messages('Uninstall completed. Restarting server...', channel_layer)

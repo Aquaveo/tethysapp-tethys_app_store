@@ -103,7 +103,7 @@ def scaffold_command(request, app_workspace):
     """
 
     override_key = get_override_key()
-    if(request.GET.get('custom_key') != override_key):
+    if (request.GET.get('custom_key') != override_key):
         return HttpResponse('Unauthorized', status=401)
 
     # Set ScaffoldRunning file to prevent auto restart from the filewatchers
@@ -213,7 +213,7 @@ def scaffold_command(request, app_workspace):
             return JsonResponse({'status': 'false', 'message': error_msg}, status=400)
 
     # Walk the template directory, creating the templates and directories in the new project as we go
-    for curr_template_root, dirs, template_files in os.walk(template_root):
+    for curr_template_root, _dirs, template_files in os.walk(template_root):
         curr_project_root = curr_template_root.replace(template_root, project_root)
         curr_project_root = render_path(curr_project_root, context)
 

@@ -395,10 +395,10 @@ def process_production_apps(apps):
             # Run the app install command with new params
             tempNS = Namespace()
 
-            setattr(tempNS, 'file', os.path.join(dir_path, 'install.yml'))
-            setattr(tempNS, 'services_file', service_file_path)
-            setattr(tempNS, 'portal_file', None)
-            setattr(tempNS, 'exit', False)
+            tempNS.file = os.path.join(dir_path, 'install.yml')
+            tempNS.services_file = service_file_path
+            tempNS.portal_file = None
+            tempNS.exit = False
 
             init_command(tempNS)
 
@@ -445,7 +445,7 @@ def process_portal_settings(settings):
 
         for new_setting in settings:
             portal_setting_obj = Setting.objects.get(name=new_setting)
-            setattr(portal_setting_obj, 'content', settings[new_setting])
+            portal_setting_obj.content = settings[new_setting]
             portal_setting_obj.save()
 
     except Exception as e:
@@ -485,10 +485,10 @@ def run_production_install(file_path, service_models):
     # Run the app install command with new params
     tempNS = Namespace()
 
-    setattr(tempNS, 'app', ['all'])
-    setattr(tempNS, 'refresh', None)
-    setattr(tempNS, 'firsttime', None)
-    setattr(tempNS, 'database', None)
+    tempNS.app = ['all']
+    tempNS.refresh = None
+    tempNS.firsttime = None
+    tempNS.database = None
 
     syncstores_command(tempNS)
 
