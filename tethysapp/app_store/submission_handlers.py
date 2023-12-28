@@ -10,6 +10,7 @@ import time
 import requests
 import ast
 from requests.exceptions import HTTPError
+from github.GithubException import UnknownObjectException
 
 from pathlib import Path
 
@@ -19,14 +20,21 @@ LOCAL_DEBUG_MODE = False
 CHANNEL_NAME = 'tethysapp'
 
 
-def update_dependencies(github_dir, recipe_path, source_files_path, keywords=None, email=""):
-    if not keywords:
-        keywords = []
+def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, keywords=None, email=""):
+    """Updates the anaconda package dependencies for the submitted github application. This file will be used in the
+    github actions to build the anaconda package for the application.
+
+    Args:
+        github_dir (str): The directory path that contains the cloned github repository
+        recipe_path (str): The directory path that contains necessary files for building the anaconda package
+        source_files_path (str): The directory path that contains additional templates needed for anaconda recipes
+        keywords (list, optional): Keywords in the extra section of the anaconda packages meta yaml. Defaults to None.
+        email (str, optional): Author email in the extra section of the anaconda packages meta yaml. Defaults to "".
+    """
     install_yml = os.path.join(github_dir, 'install.yml')
+    app_files_dir = os.path.join(github_dir, 'tethysapp')
     meta_yaml = os.path.join(source_files_path, 'meta_reqs.yaml')
     meta_extras = os.path.join(source_files_path, 'meta_extras.yaml')
-
-    app_files_dir = os.path.join(recipe_path, '../tethysapp')
 
     app_folders = next(os.walk(app_files_dir))[1]
     app_scripts_path = os.path.join(app_files_dir, app_folders[0], 'scripts')
@@ -41,14 +49,16 @@ def update_dependencies(github_dir, recipe_path, source_files_path, keywords=Non
 
     with open(meta_extras) as f:
         meta_extras_file = yaml.safe_load(f)
+        
+    if not keywords:
+        keywords = []
 
     meta_extras_file['extra']['author_email'] = email
     meta_extras_file['extra']['keywords'] = keywords
 
     meta_yaml_file['requirements']['run'] = install_yml_file['requirements']['conda']['packages']
 
-    # Check if any pip dependencies are present
-
+    # Dynamically create an bash install script for pip install dependency
     if ("pip" in install_yml_file['requirements']):
         pip_deps = install_yml_file['requirements']["pip"]
         if pip_deps is not None:
@@ -61,89 +71,33 @@ def update_dependencies(github_dir, recipe_path, source_files_path, keywords=Non
             st = os.stat(pre_link)
             os.chmod(pre_link, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+    # Add additional package metadata to meta.yml for anaconda packaging
     with open(os.path.join(recipe_path, 'meta.yaml'), 'a') as f:
         yaml.safe_dump(meta_extras_file, f, default_flow_style=False)
         f.write("\n")
         yaml.safe_dump(meta_yaml_file, f, default_flow_style=False)
 
 
-def repo_exists(repo_name, organization):
+def github_repo_exists(repo_name, organization):
+    """Checks to see if a repo exists in a given organization
 
+    Args:
+        repo_name (str): Name of the github repository to check
+        organization (github.Github.Organization): github organization that hosts the repositories
+
+    Returns:
+        bool: True if the repository exists. False if the repository does not exist
+    """
     try:
         organization.get_repo(repo_name)
         logger.info("Repo Exists. Will have to delete")
         return True
-    except Exception:
-        logger.info("Repo doesn't exist")
+    except UnknownObjectException as e:
+        logger.info(f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}")
         return False
 
 
-# def validate_git_repo(install_data, channel_layer):
-
-#     github_url = install_data.get("url")
-#     repo_name = github_url.split("/")[-1].replace(".git", "")
-#     user = github_url.split("/")[-2]
-
-#     # Here check if it a fork :P
-#     get_data_json = validation_is_a_fork(user, repo_name, json_response)
-#     if bool(get_data_json):
-#         send_notification(get_data_json, channel_layer)
-
-#     # validate if it is a valid setup.py
-#     branch = "main"
-#     get_data_json = validation_is_setup_complete(user, repo_name, branch, json_response)
-#     if bool(get_data_json):
-#         send_notification(get_data_json, channel_layer)
-
-#     # get the app_package_name and version from the setup.py
-#     app_package_name, version_setup = get_app_name_and_version(user, repo_name, branch)
-
-#     json_response = {}
-#     mssge_string = ''
-#     json_response['submission_github_url'] = github_url
-
-#     conda_search_result = subprocess.run(['conda', 'search', "-c", CHANNEL_NAME, "--override-channels", "-i", "--json"],  # noqa: E501
-#                                          stdout=subprocess.PIPE)
-
-#     conda_search_result = json.loads(conda_search_result.stdout)
-#     json_response["isNewApplication"] = True
-
-#     for conda_package in conda_search_result:
-#         if app_package_name in conda_package:
-#             json_response["isNewApplication"] = False
-#             if "license" in conda_search_result[conda_package][-1]:
-
-#                 conda_search_result_package = conda_search_result[conda_package]
-
-#                 # Check if it is a new version
-#                 get_data_json = validation_is_new_version(conda_search_result_package, version_setup, json_response)
-
-#                 if bool(get_data_json):
-#                     send_notification(get_data_json, channel_layer)
-
-#                 # Check if if it the app_package name is already in the conda channel.
-#                 # check if the submission url is the same as the dev url
-#                 # check if the app_package name is the same as an already submitted application.
-#                 # This mean they are different apps with the same package name
-#                 get_data_json = validation_is_new_app(github_url, app_package_name, json_response, channel_layer)
-#                 send_notification(get_data_json, channel_layer)
-
-#         json_response['next_move'] = True
-#         mssge_string = f'<p>The application {repo_name} is a new application, the version {version_setup} will be ' \
-#                        'submitted to the app store'
-#         get_data_json = {
-#             "data": {
-#                 "mssge_string": mssge_string,
-#                 "metadata": json_response
-#             },
-#             "jsHelperFunction": "validationResults",
-#             "helper": "addModalHelper"
-#         }
-#         send_notification(get_data_json, channel_layer)
-
-
 def pull_git_repo_all(install_data, channel_layer, app_workspace):
-
     github_url = install_data.get("url")
     active_stores = install_data.get("stores")
     for store_name in active_stores:
@@ -510,10 +464,10 @@ def apply_main_yml_template(source_files_path, workflows_path, rel_package, inst
 
 
 def check_repo_exists_remote(repo_name, organization):
-    if repo_exists(repo_name, organization):
+    if github_repo_exists(repo_name, organization):
         tethysapp_repo = organization.get_repo(repo_name)
 
-    if not repo_exists(repo_name, organization):
+    if not github_repo_exists(repo_name, organization):
         # Create the required repo:
         tethysapp_repo = organization.create_repo(
             repo_name,
@@ -705,7 +659,7 @@ def process_branch(install_data, channel_layer):
     rel_package = fix_setup(filename)
 
     # 12. Update the dependencies of the package
-    update_dependencies(install_data['github_dir'], recipe_path, source_files_path, keywords, email)
+    update_anaconda_dependencies(install_data['github_dir'], recipe_path, source_files_path, keywords, email)
 
     # 13. apply data to the main.yml for the github action
     apply_main_yml_template(source_files_path, workflows_path, rel_package, install_data)

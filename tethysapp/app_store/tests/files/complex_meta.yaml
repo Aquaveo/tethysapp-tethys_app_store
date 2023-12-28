@@ -1,0 +1,32 @@
+{% set data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+{% set name = data.get('name')|replace("tethysapp-", "")|lower %}
+
+package:
+  name: {{ name }}
+  version: {{ data.get('version') }}
+
+about:
+  author: {{ data.get('author')}}
+  description: {{ data.get('description')}}
+  license: "$metadataObj"
+  dev_url: {{ data.get('dev_url') }}
+
+outputs:
+  - name: {{ name }}
+extra:
+  author_email: ''
+  keywords: []
+  recipe-maintainers:
+  - TethysAppWarehouse
+
+build:
+  noarch: python
+  preserve_egg_dir: true
+  script: python setup.py install --record=record.txt
+requirements:
+  build:
+  - python
+  run:
+  - numpy
+source:
+  path: ..
