@@ -54,7 +54,7 @@ def check_if_app_installed(app_name):
     return_obj = {}
     try:
         [resp, err, code] = conda_run(
-            Commands.LIST, ["-f",  "--json", app_name])
+            Commands.LIST, ["-f", "--json", app_name])
         if code != 0:
             # In here maybe we just try re running the install
             logger.error(

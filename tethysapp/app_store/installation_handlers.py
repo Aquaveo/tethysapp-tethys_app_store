@@ -59,7 +59,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
         # Run SyncStores
         logger.info("Running Syncstores for app: " + data["name"])
         send_notification("Running Syncstores for app: " + data["name"], channel_layer)
-        intermediate_process = ['python', manage_path, 'syncstores', data["name"],  '-f']
+        intermediate_process = ['python', manage_path, 'syncstores', data["name"], '-f']
         run_process(intermediate_process)
 
     if 'runserver' in sys.argv:
@@ -81,7 +81,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
             intermediate_process = ['python', manage_path, 'collectstatic', '--noinput']
             run_process(intermediate_process)
             # Run collectworkspaces command
-            intermediate_process = ['python', manage_path, 'collectworkspaces',  '--force']
+            intermediate_process = ['python', manage_path, 'collectworkspaces', '--force']
             run_process(intermediate_process)
 
         try:

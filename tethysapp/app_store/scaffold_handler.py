@@ -36,7 +36,7 @@ def install_app(app_path):
     intermediate_process = ['python', manage_path, 'collectstatic', '--noinput']
     run_process(intermediate_process)
     # Run collectworkspaces command
-    intermediate_process = ['python', manage_path, 'collectworkspaces',  '--force']
+    intermediate_process = ['python', manage_path, 'collectworkspaces', '--force']
     run_process(intermediate_process)
 
 

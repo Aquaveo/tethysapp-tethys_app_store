@@ -169,9 +169,8 @@ def begin_install(installData, channel_layer, app_workspace):
 
     resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
 
-    send_notification("Starting installation of app: " + resource['name'] + " from store " + installData['channel'] +
-                      " with label " + installData['label'], channel_layer)
-    send_notification("Installing Version: " + installData["version"], channel_layer)
+    send_notification(f"Starting installation of app: {resource['name']} from store {installData['channel']} with label {installData['label']}", channel_layer)  # noqa: E501
+    send_notification(f"Installing Version: {installData['version']}", channel_layer)
 
     try:
         conda_install(resource, installData['channel'], installData['label'], installData["version"], channel_layer)

@@ -49,7 +49,7 @@ def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, key
 
     with open(meta_extras) as f:
         meta_extras_file = yaml.safe_load(f)
-        
+
     if not keywords:
         keywords = []
 
@@ -79,20 +79,21 @@ def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, key
 
 
 def get_github_repo(repo_name, organization):
-    """Checks to see if a repo exists in a given organization
+    """Retrieve the github repository. If the repository exists, use the existing repository, otherwise create a new one
 
     Args:
         repo_name (str): Name of the github repository to check
         organization (github.Github.Organization): github organization that hosts the repositories
 
     Returns:
-        bool: True if the repository exists. False if the repository does not exist
+        tethysapp_repo (github.Github.Repository): returns a repository object, whether an existing repo or a newly
+        created one
     """
     try:
-        repository = organization.get_repo(repo_name)
+        tethysapp_repo = organization.get_repo(repo_name)
         logger.info(f"{organization.login}/{repo_name} Exists. Will have to delete")
-        return repository
-    
+        return tethysapp_repo
+
     except UnknownObjectException as e:
         logger.info(f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}")
         logger.info(f"Creating a new repository at {organization.login}/{repo_name}")
@@ -198,12 +199,12 @@ def get_app_name_and_version(user, repo_name, branch):
 
     left0 = 'version'
     right0 = 'description'
-    susbstring0 = setup_content[setup_content.index(left0)+len(left0):setup_content.index(right0)]
+    susbstring0 = setup_content[setup_content.index(left0) + len(left0):setup_content.index(right0)]
     version_setup = susbstring0.strip().replace("'", "").replace(",", "").split('=')[1]
 
     left = 'app_package'
     right = 'release_package'
-    susbstring = setup_content[setup_content.index(left)+len(left):setup_content.index(right)]
+    susbstring = setup_content[setup_content.index(left) + len(left):setup_content.index(right)]
     app_package_name = susbstring.strip().replace("'", "").split('=')[1].strip(' ')
 
     return app_package_name, version_setup
@@ -285,9 +286,9 @@ def validation_is_new_app(github_url, app_package_name, json_response):
     else:
         mssge_string = f'<p>The app_package name <b>{app_package_name}</b> of the submitted <a ' \
                        f'href="{github_url.replace(".git","")}">GitHub url</a> was found at an already submitted ' \
-                        'application.</p> <ul><li>If the application is the same, please open a pull ' \
-                        'request</li><li>If the application is not the same, please change the name of the ' \
-                        'app_package found at the setup.py, app.py and other files</li></ul>'
+                       'application.</p> <ul><li>If the application is the same, please open a pull ' \
+                       'request</li><li>If the application is not the same, please change the name of the ' \
+                       'app_package found at the setup.py, app.py and other files</li></ul>'
         json_response['next_move'] = False
         get_data_json = {
             "data": {
@@ -319,7 +320,7 @@ def validation_is_new_version(conda_search_result_package, version_setup, json_r
     if version_setup in json_response["versions"]:
         mssge_string = f'<p>The current version of your application is {version_setup}, and it was already ' \
                        f'submitted.</p><p>Current versions of your application are: {string_versions}</p> ' \
-                        '<p>Please use a new version in the <b>setup.py</b> and <b>install.yml</b> files</p>'
+                       '<p>Please use a new version in the <b>setup.py</b> and <b>install.yml</b> files</p>'
         json_response['next_move'] = False
 
         get_data_json = {

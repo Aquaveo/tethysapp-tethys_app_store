@@ -262,7 +262,7 @@ def fetch_resources(app_workspace, refresh=False, conda_package="tethysapp", con
         # Look for packages:
         logger.info("Refreshing list of apps cache")
 
-        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", CHANNEL_NAME, "--override-channels", "-i",  "--json"])
+        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", CHANNEL_NAME, "--override-channels", "-i", "--json"])
 
         if code != 0:
             # In here maybe we just try re running the install
