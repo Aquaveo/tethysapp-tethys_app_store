@@ -1,9 +1,14 @@
 import pytest
+from pathlib import Path
+import shutil
 import filecmp
 from unittest import mock
 from github.GithubException import UnknownObjectException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
-                                                     initialize_local_repo_for_active_stores, initialize_local_repo)
+                                                     initialize_local_repo_for_active_stores, initialize_local_repo,
+                                                     generate_label_strings, create_tethysapp_warehouse_release,
+                                                     generate_current_version, reset_folder, copy_files_for_recipe,
+                                                     create_upload_command, drop_keywords)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -175,3 +180,97 @@ def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
     }
 
     mock_ws.called_with([expected_data_json, channel_layer])
+
+
+@pytest.mark.parametrize(
+    "conda_labels, expected_label_string", [
+        (["dev", "main"], "dev --label main"),
+        (["main"], "main")])
+def test_generate_label_strings(conda_labels, expected_label_string):
+    label_string = generate_label_strings(conda_labels)
+
+    assert label_string == expected_label_string
+
+
+def test_create_tethysapp_warehouse_release_app_store_branch_not_exists():
+    mock_repo = mock.MagicMock(heads=['main'])
+    branch = "test_branch"
+    create_tethysapp_warehouse_release(mock_repo, branch)
+
+    mock_repo.create_head.assert_called_with('tethysapp_warehouse_release')
+    mock_repo.git.checkout.assert_not_called()
+    mock_repo.git.merge.assert_not_called()
+
+
+def test_create_tethysapp_warehouse_release_app_store_branch_exists():
+    mock_repo = mock.MagicMock(heads=['tethysapp_warehouse_release'])
+    branch = "test_branch"
+    create_tethysapp_warehouse_release(mock_repo, branch)
+
+    mock_repo.create_head.assert_not_called()
+    mock_repo.git.checkout.assert_called_with('tethysapp_warehouse_release')
+    mock_repo.git.merge.assert_called_with(branch)
+
+
+def test_generate_current_version():
+    mock_repo = mock.MagicMock(heads=['tethysapp_warehouse_release'])
+    branch = "test_branch"
+    create_tethysapp_warehouse_release(mock_repo, branch)
+
+    mock_repo.create_head.assert_not_called()
+    mock_repo.git.checkout.assert_called_with('tethysapp_warehouse_release')
+    mock_repo.git.merge.assert_called_with(branch)
+
+
+def test_generate_current_version():
+    setup_py_data = {
+        "version": "1.0" 
+    }
+    version = generate_current_version(setup_py_data)
+    
+    assert version == setup_py_data['version']
+
+
+def test_reset_folder(tmp_path):
+    test_path = tmp_path / "test_dir"
+    test_path.mkdir()
+    test2_path = test_path / "test2_dir"
+    test2_path.mkdir()
+    
+    reset_folder(test_path)
+    
+    assert not test2_path.is_dir()
+
+
+def test_copy_files_for_recipe(tmp_path, app_files_dir):
+    file = "main_template.yaml"
+    files_changed = False
+    src = app_files_dir / file
+    dest = tmp_path / file
+    
+    files_changed = copy_files_for_recipe(src, dest, files_changed)
+    
+    assert files_changed
+    assert dest.is_file()
+    
+    # Rerun to test functionality for exising file
+    files_changed = False
+    files_changed = copy_files_for_recipe(src, dest, files_changed)
+    
+    assert not files_changed
+    assert dest.is_file()
+
+
+def test_create_upload_command(tmp_path, app_files_dir):
+    labels_string = "main --label dev"
+    create_upload_command(labels_string, app_files_dir, tmp_path)
+    
+    upload_command_file = tmp_path / "upload_command.txt"
+    assert "anaconda upload --force --label main --label dev noarch/*.tar.bz2" == upload_command_file.read_text()
+    
+    # Rerun to test functionality for exising file
+    labels_string = "main"
+    create_upload_command(labels_string, app_files_dir, tmp_path)
+    
+    upload_command_file = tmp_path / "upload_command.txt"
+    assert "anaconda upload --force --label main noarch/*.tar.bz2" == upload_command_file.read_text()

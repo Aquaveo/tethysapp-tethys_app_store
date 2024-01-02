@@ -9,6 +9,7 @@ import json
 import time
 import requests
 import ast
+import subprocess
 from requests.exceptions import HTTPError
 from github.GithubException import UnknownObjectException
 
@@ -169,6 +170,70 @@ def initialize_local_repo(github_url, active_store, channel_layer, app_workspace
         "helper": "addModalHelper"
     }
     send_notification(get_data_json, channel_layer)
+
+
+def validate_git_repo(install_data, channel_layer):
+
+    github_url = install_data.get("url")
+    repo_name = github_url.split("/")[-1].replace(".git", "")
+    user = github_url.split("/")[-2]
+    json_response = {}
+
+    # Here check if it a fork :P
+    get_data_json = validation_is_a_fork(user, repo_name, json_response)
+    if bool(get_data_json):
+        send_notification(get_data_json, channel_layer)
+
+    # validate if it is a valid setup.py
+    branch = "main"
+    get_data_json = validation_is_setup_complete(user, repo_name, branch, json_response)
+    if bool(get_data_json):
+        send_notification(get_data_json, channel_layer)
+
+    # get the app_package_name and version from the setup.py
+    app_package_name, version_setup = get_app_name_and_version(user, repo_name, branch)
+
+    json_response = {}
+    mssge_string = ''
+    json_response['submission_github_url'] = github_url
+
+    conda_search_result = subprocess.run(['conda', 'search', "-c", CHANNEL_NAME, "--override-channels", "-i", "--json"],
+                                         stdout=subprocess.PIPE)
+
+    conda_search_result = json.loads(conda_search_result.stdout)
+    json_response["isNewApplication"] = True
+
+    for conda_package in conda_search_result:
+        if app_package_name in conda_package:
+            json_response["isNewApplication"] = False
+            if "license" in conda_search_result[conda_package][-1]:
+                conda_search_result_package = conda_search_result[conda_package]
+
+                # Check if it is a new version
+                get_data_json = validation_is_new_version(conda_search_result_package, version_setup, json_response)
+
+                if bool(get_data_json):
+                    send_notification(get_data_json, channel_layer)
+
+                # Check if if it the app_package name is already in the conda channel.
+                # check if the submission url is the same as the dev url
+                # check if the app_package name is the same as an already submitted application.
+                # This mean they are different apps with the same package name
+                get_data_json = validation_is_new_app(github_url, app_package_name, json_response, channel_layer)
+                send_notification(get_data_json, channel_layer)
+
+        json_response['next_move'] = True
+        mssge_string = f'<p>The application {repo_name} is a new application, the version {version_setup} will be ' \
+                       'submitted to the app store'
+        get_data_json = {
+            "data": {
+                "mssge_string": mssge_string,
+                "metadata": json_response
+            },
+            "jsHelperFunction": "validationResults",
+            "helper": "addModalHelper"
+        }
+        send_notification(get_data_json, channel_layer)
 
 
 def apply_setup_template(template_path, setup_path, setup_data):
@@ -338,18 +403,33 @@ def validation_is_new_version(conda_search_result_package, version_setup, json_r
     return get_data_json
 
 
-# some ideas of how to refactor the code here for testing
 def generate_label_strings(conda_labels):
+    """Creates a string of labels for the anaconda upload
+
+    Args:
+        conda_labels (list): List of conda labels for the package
+
+    Returns:
+        labels_string (str): A string of the conda label with additional labels and a --label prefix. i.e 
+            'main --label dev'
+    """
     labels_string = ''
     for i in range(len(conda_labels)):
         if i < 1:
             labels_string += conda_labels[i]
         else:
             labels_string += f' --label {conda_labels[i]}'
+            
     return labels_string
 
 
 def create_tethysapp_warehouse_release(repo, branch):
+    """Uses the github repository class to create a new branch or merge existing branch for tethysapp_warehouse_release
+
+    Args:
+        repo (github.Github.Repository): github repository class for the organization
+        branch (str): name of the existing local branch
+    """
     if 'tethysapp_warehouse_release' not in repo.heads:
         repo.create_head('tethysapp_warehouse_release')
     else:
@@ -358,11 +438,25 @@ def create_tethysapp_warehouse_release(repo, branch):
 
 
 def generate_current_version(setup_py_data):
+    """Get the app version from the setup.py data
+
+    Args:
+        setup_py_data (dict): App metadata from setup.py
+
+    Returns:
+        current_version (str): App version from the setup.py data
+    """
     current_version = setup_py_data["version"]
+    
     return current_version
 
 
 def reset_folder(file_path):
+    """Deletes a folder and recreates it
+
+    Args:
+        file_path (str): path that will be recreated
+    """
     if os.path.exists(file_path):
         shutil.rmtree(file_path)
 
@@ -370,13 +464,31 @@ def reset_folder(file_path):
 
 
 def copy_files_for_recipe(source, destination, files_changed):
+    """Copy files to a location and return a boolen if files were moved
+
+    Args:
+        source (str): Path for the source file
+        destination (str): Path for the destination file
+        files_changed (bool): _description_
+
+    Returns:
+        boolean: True if files were moved. False if files were not moved
+    """
     if not os.path.exists(destination):
         files_changed = True
         shutil.copyfile(source, destination)
+        
     return files_changed
 
 
 def create_upload_command(labels_string, source_files_path, recipe_path):
+    """Copy the conda upload file and use it as a template with the passed data
+
+    Args:
+        labels_string (str): A string of labels to be used. i.e. "main --label dev" or "main"
+        source_files_path (str): Path to the source files in the app store repo
+        recipe_path (str): Path to the conda recipes in the cloned application
+    """
     label = {'label_string': labels_string}
     if os.path.exists(os.path.join(recipe_path, 'upload_command.txt')):
         os.remove(os.path.join(recipe_path, 'upload_command.txt'))
@@ -389,7 +501,14 @@ def create_upload_command(labels_string, source_files_path, recipe_path):
 
 
 def drop_keywords(setup_py_data):
-    # setup_py_data = parse_setup_py(filename)
+    """_summary_
+
+    Args:
+        setup_py_data (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     keywords = []
     email = ""
     try:
