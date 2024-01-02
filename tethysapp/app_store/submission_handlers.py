@@ -78,7 +78,7 @@ def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, key
         yaml.safe_dump(meta_yaml_file, f, default_flow_style=False)
 
 
-def github_repo_exists(repo_name, organization):
+def get_github_repo(repo_name, organization):
     """Checks to see if a repo exists in a given organization
 
     Args:
@@ -89,12 +89,24 @@ def github_repo_exists(repo_name, organization):
         bool: True if the repository exists. False if the repository does not exist
     """
     try:
-        organization.get_repo(repo_name)
-        logger.info("Repo Exists. Will have to delete")
-        return True
+        repository = organization.get_repo(repo_name)
+        logger.info(f"{organization.login}/{repo_name} Exists. Will have to delete")
+        return repository
+    
     except UnknownObjectException as e:
         logger.info(f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}")
-        return False
+        logger.info(f"Creating a new repository at {organization.login}/{repo_name}")
+        tethysapp_repo = organization.create_repo(
+            repo_name,
+            allow_rebase_merge=True,
+            auto_init=False,
+            description="For Tethys App Store Purposes",
+            has_issues=False,
+            has_projects=False,
+            has_wiki=False,
+            private=False,
+        )
+        return tethysapp_repo
 
 
 def pull_git_repo_all(install_data, channel_layer, app_workspace):
@@ -463,25 +475,6 @@ def apply_main_yml_template(source_files_path, workflows_path, rel_package, inst
     apply_template(source, template_data, destination)
 
 
-def check_repo_exists_remote(repo_name, organization):
-    if github_repo_exists(repo_name, organization):
-        tethysapp_repo = organization.get_repo(repo_name)
-
-    if not github_repo_exists(repo_name, organization):
-        # Create the required repo:
-        tethysapp_repo = organization.create_repo(
-            repo_name,
-            allow_rebase_merge=True,
-            auto_init=False,
-            description="For Tethys App Store Purposes",
-            has_issues=False,
-            has_projects=False,
-            has_wiki=False,
-            private=False,
-        )
-    return tethysapp_repo
-
-
 def get_head_names(repo):
     heads_names_list = []
 
@@ -674,7 +667,7 @@ def process_branch(install_data, channel_layer):
     # 15. Check if this repo already exists on our remote:
     repo_name = install_data['github_dir'].split('/')[-1]
     organization = g.get_organization(github_organization)
-    tethysapp_repo = check_repo_exists_remote(repo_name, organization)
+    tethysapp_repo = get_github_repo(repo_name, organization)
 
     heads_names_list = get_head_names(repo)
     current_tag_name = create_current_tag_version(current_version, heads_names_list)

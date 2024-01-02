@@ -15,6 +15,7 @@ tethysapp/app_store/workspaces/app_workspace/gitsubmission/
 tethysapp/app_store/workspaces/app_workspace/install_status/
 tethysapp/app_store/workspaces/app_workspace/logs/
 tethysapp/app_store/workspaces/app_workspace/develop/
+tethysapp/app_store/model.py
 
 docs/_build
 .vscode/
