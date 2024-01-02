@@ -25,34 +25,36 @@ def store():
             conda_labels = ['main']
 
         return {
-            id: {
-                'default': default,
-                'conda_labels': conda_labels,
-                'github_token': f'fake_token_{id}',
-                'conda_channel': f'conda_channel_{id}',
-                'github_organization': f'org_{id}',
-                'conda_style': 'blue',
-                'active': active
-            }
+            'default': default,
+            'conda_labels': conda_labels,
+            'github_token': f'fake_token_{id}',
+            'conda_channel': f'conda_channel_{id}',
+            'github_organization': f'org_{id}',
+            'conda_style': 'blue',
+            'active': active
         }
     return _store
 
 
 @pytest.fixture
-def active_default_store(store):
-    return store("active_default")
+def all_active_stores(store):
+    return {
+        "active_default": store("active_default"),
+        "active_not_default": store("active_not_default", default=False)
+    }
 
 
 @pytest.fixture
-def active_not_default_store(store):
-    return store("active_not_default", default=False)
+def mix_active_inactive_stores(store):
+    return {
+        "active_default": store("active_default"),
+        "inactive_not_default": store("inactive_not_default", default=False, active=False)
+    }
 
 
 @pytest.fixture
-def inactive_default_store(store):
-    return store("inactive_default", active=False)
-
-
-@pytest.fixture
-def inactive_not_default_store(store):
-    return store("inactive_not_default", default=False, active=False)
+def all_inactive_stores(store):
+    return {
+        "inactive_default": store("inactive_default", active=False),
+        "inactive_not_default": store("inactive_not_default", default=False, active=False)
+    }

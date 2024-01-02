@@ -110,49 +110,52 @@ def get_github_repo(repo_name, organization):
         return tethysapp_repo
 
 
-def pull_git_repo_all(install_data, channel_layer, app_workspace):
+def initialize_local_repo_for_active_stores(install_data, channel_layer, app_workspace):
+    """Loop through all stores and initialize a local github repo for each active store within the app workspace
+
+    Args:
+        install_data (dict): Dictionary containing installation information such as the github url and a list of stores
+            and associated metadata
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     github_url = install_data.get("url")
-    active_stores = install_data.get("stores")
-    for store_name in active_stores:
-        if (active_stores[store_name]['active']):
-            pull_git_repo(github_url, active_stores[store_name], channel_layer, app_workspace)
+    stores = install_data.get("stores")
+    for store_name in stores:
+        if (stores[store_name]['active']):
+            initialize_local_repo(github_url, stores[store_name], channel_layer, app_workspace)
 
 
-def pull_git_repo(github_url, active_store, channel_layer, app_workspace):
+def initialize_local_repo(github_url, active_store, channel_layer, app_workspace):
+    """Create and initialize a local github repo with a path for a specific conda channel. Once a repo is initialized,
+    get a list of branches and send back the information to the application submission modal.
 
-    # This function does the following:
-    # 1 Check if the the directory is a current repository or initialize, and then select or create the remote origin
-    # 2 Fetch the data from the origin remote
-    # 3 Checkout the master/main branch depending on the repository
-    # 4 Pull the changes if any
-    # 5 Get the references to get the branches
-
-    # github_url = install_data.get("url")
+    Args:
+        github_url (str): Url for the github repo that will be submitted to the app store
+        active_store (str): Name of the store that will be used for creating github files and app submission
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
+    # Create/Refresh github directories within the app workspace for the given channel
     app_name = github_url.split("/")[-1].replace(".git", "")
     github_dir = os.path.join(app_workspace.path, 'gitsubmission', active_store['conda_channel'])
+    app_github_dir = os.path.join(github_dir, app_name)
 
-    # create if github Dir does not exist
     if not os.path.exists(github_dir):
         os.makedirs(github_dir)
 
-    app_github_dir = os.path.join(github_dir, app_name)
-
-    # 1 Check if the the directory is a current repository or initialize, and then select or create the remote origin
     if os.path.exists(app_github_dir):
         shutil.rmtree(app_github_dir)
 
+    # Initialize the github repo and fetch
     repo = git.Repo.init(app_github_dir)
     origin = repo.create_remote('origin', github_url)
-
-    # 2 Fetch the data from the origin remote
     origin.fetch()
 
-    # 3 Get the references to get the branches
-    remote_refs = repo.remote().refs
-    branches = []
-    for refs in remote_refs:
-        branches.append(refs.name.replace("origin/", ""))
+    # Get remote branches and get list of branch names
+    branches = [refs.name.replace("origin/", "") for refs in repo.remote().refs]
 
+    # Send notification back to websocket about available branches and other store information
     get_data_json = {
         "data": {
             "branches": branches,

@@ -420,7 +420,7 @@ const getRepoForAdd = () => {
                     url: githubURL,
                     stores: active_stores
                 },
-                type: `pull_git_repo_all`
+                type: `initialize_local_repo_for_active_stores`
             })
         )
     } else {

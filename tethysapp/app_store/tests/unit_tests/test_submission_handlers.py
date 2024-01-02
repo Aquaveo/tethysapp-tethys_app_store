@@ -1,8 +1,9 @@
+import pytest
 import filecmp
 from unittest import mock
 from github.GithubException import UnknownObjectException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
-                                                     pull_git_repo_all)
+                                                     initialize_local_repo_for_active_stores, initialize_local_repo)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -73,3 +74,104 @@ def test_repo_does_not_exist(mocker, caplog):
 
     logger_message = f"Creating a new repository at {organization_login}/{repo_name}"
     assert logger_message in caplog.messages
+
+
+@pytest.mark.parametrize(
+    "stores, expected_call_count", [
+        (pytest.lazy_fixture("all_active_stores"), 2),
+        (pytest.lazy_fixture("mix_active_inactive_stores"), 1),
+        (pytest.lazy_fixture("all_inactive_stores"), 0)])
+def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mocker):
+    install_data = {
+        "url": "https://github.com/notrealorg/fakeapp",
+        "stores": stores
+    }
+
+    channel_layer = mock.MagicMock()
+    app_workspace = "fake_path"
+    mock_initialize_local_repo = mocker.patch('tethysapp.app_store.submission_handlers.initialize_local_repo')
+
+    initialize_local_repo_for_active_stores(install_data, channel_layer, app_workspace)
+
+    assert mock_initialize_local_repo.call_count == expected_call_count
+
+
+def test_initialize_local_repo_fresh(store, tmp_path, mocker):
+    github_url = "https://github.com/notrealorg/fakeapp"
+    active_store = store("active_default")
+    channel_layer = mock.MagicMock()
+    app_workspace = mock.MagicMock(path=tmp_path)
+
+    mock_repo = mock.MagicMock()
+    mock_branch1 = mock.MagicMock()
+    mock_branch1.name = 'origin/commit1'
+    mock_branch2 = mock.MagicMock()
+    mock_branch2.name = 'origin/commit2'
+    mock_git = mocker.patch('git.Repo.init', side_effect=[mock_repo])
+    mock_ws = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    mock_repo.remote().refs = [mock_branch1, mock_branch2]
+    initialize_local_repo(github_url, active_store, channel_layer, app_workspace)
+
+    expected_github_dur = tmp_path / "gitsubmission" / active_store['conda_channel']
+    expected_app_github_dur = expected_github_dur / "fakeapp"
+    assert expected_github_dur.is_dir()
+
+    mock_git.create_remote.called_with(['origin', github_url])
+    mock_git.create_remote().fetch.called_once()
+
+    expected_data_json = {
+        "data": {
+            "branches": ["commit1", "commit2"],
+            "github_dir": expected_app_github_dur,
+            "conda_channel": active_store['conda_channel'],
+            "github_token": active_store['github_token'],
+            "conda_labels": active_store['conda_labels'],
+            "github_organization": active_store['github_organization']
+        },
+        "jsHelperFunction": "showBranches",
+        "helper": "addModalHelper"
+    }
+
+    mock_ws.called_with([expected_data_json, channel_layer])
+
+
+def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
+    github_url = "https://github.com/notrealorg/fakeapp"
+    active_store = store("active_default")
+    channel_layer = mock.MagicMock()
+    app_workspace = mock.MagicMock(path=tmp_path)
+    expected_github_dur = tmp_path / "gitsubmission" / active_store['conda_channel']
+    expected_app_github_dur = expected_github_dur / "fakeapp"
+    expected_app_github_dur.mkdir(parents=True)
+
+    mock_repo = mock.MagicMock()
+    mock_branch1 = mock.MagicMock()
+    mock_branch1.name = 'origin/commit1'
+    mock_branch2 = mock.MagicMock()
+    mock_branch2.name = 'origin/commit2'
+    mock_git = mocker.patch('git.Repo.init', side_effect=[mock_repo])
+    mock_ws = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    mock_repo.remote().refs = [mock_branch1, mock_branch2]
+    initialize_local_repo(github_url, active_store, channel_layer, app_workspace)
+
+    assert expected_github_dur.is_dir()
+
+    mock_git.create_remote.called_with(['origin', github_url])
+    mock_git.create_remote().fetch.called_once()
+
+    expected_data_json = {
+        "data": {
+            "branches": ["commit1", "commit2"],
+            "github_dir": expected_app_github_dur,
+            "conda_channel": active_store['conda_channel'],
+            "github_token": active_store['github_token'],
+            "conda_labels": active_store['conda_labels'],
+            "github_organization": active_store['github_organization']
+        },
+        "jsHelperFunction": "showBranches",
+        "helper": "addModalHelper"
+    }
+
+    mock_ws.called_with([expected_data_json, channel_layer])
