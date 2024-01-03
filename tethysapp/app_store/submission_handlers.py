@@ -571,7 +571,7 @@ def fix_setup(setup_py):
                 print(line, end='')
 
             elif ("app_package = " in line):
-                rel_package = re.findall("app_package = '(.*)'", line)[0]
+                rel_package = re.findall("app_package = ['\"](.*)['\"]", line)[0]
                 print("namespace = 'tethysapp'")
                 print(line, end='')
 
@@ -625,85 +625,116 @@ def apply_main_yml_template(source_files_path, workflows_path, rel_package, inst
     apply_template(source, template_data, destination)
 
 
-def get_head_names(repo):
-    heads_names_list = []
+def get_head_and_tag_names(repo):
+    """Use the github repository object to get a list of tags, heads, and remote references
 
-    for ref in repo.references:
-        heads_names_list.append(ref.name)
-    return heads_names_list
+    Args:
+        repo (github.Github.Repository): github repository class for the organization
+
+    Returns:
+        list: list of tags, heads, and remote references for the repository
+    """
+    return [ref.name for ref in repo.references]
 
 
 def create_current_tag_version(current_version, heads_names_list):
-    current_tag_name = ''
+    """Creates a new tag to use based on app version, date, and tag creation attempt
+
+    Args:
+        current_version (str): Version of the submitted application
+        heads_names_list (list): List of the existing tags and heads for the repository
+
+    Returns:
+        str: The new tag name to use for the git push
+    """
     today = time.strftime("%Y_%m_%d")
+    valid_tag = False
     dev_attempt = 0
-    current_tag_name = "v" + str(current_version) + "_" + str(dev_attempt) + "_" + today
+    while not valid_tag:
+        current_tag_name = "v" + str(current_version) + "_" + str(dev_attempt) + "_" + today
 
-    if current_tag_name in heads_names_list:
-        dev_attempt += 1
+        if [head for head in heads_names_list if current_tag_name in head]:
+            dev_attempt += 1
+        else:
+            valid_tag = True
 
-    current_tag_name = "v" + str(current_version) + "_" + str(dev_attempt) + "_" + today
     return current_tag_name
 
 
 def check_if_organization_in_remote(repo, github_organization, remote_url):
+    """Check if the organization is in the repo remotes
 
-    # if 'tethysapp' in repo.remotes:
+    Args:
+        repo (git.Github.Repository): git repository class for the local application
+        github_organization (str): Name of the organization
+        remote_url (str): Url for the github repository
+
+    Returns:
+        git.Github.Repository: local github repository class for the specified organization
+    """
     if github_organization in repo.remotes:
         logger.info("Remote already exists")
         tethysapp_remote = repo.remotes[github_organization]
-        # tethysapp_remote = repo.remotes.tethysapp
         tethysapp_remote.set_url(remote_url)
     else:
-        # tethysapp_remote = repo.create_remote('tethysapp', remote_url)
         tethysapp_remote = repo.create_remote(github_organization, remote_url)
+
     return tethysapp_remote
 
 
-def add_and_commit_if_files_changed(repo, files_changed, current_tag_name):
+def push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_name, files_changed):
+    """Perform an add and commit on the local repo if files change
+
+    Args:
+        repo (git.Github.Repository): git repository class for the local application
+        tethysapp_remote (git.Github.Repository): git repository class for the remote repo
+        current_tag_name (str): tag name to use for the git commit
+        files_changed (bool): True if files have changes since last commit/clone
+    """
     if files_changed:
         repo.git.add(A=True)
         repo.git.commit(m=f'tag version {current_tag_name}')
-
-
-def push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_name, files_changed):
-    add_and_commit_if_files_changed(repo, files_changed, current_tag_name)
-    tethysapp_remote.push('tethysapp_warehouse_release')
+        tethysapp_remote.push('tethysapp_warehouse_release')
 
 
 def create_head_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote):
+    """Push the current code to the remote repo
+
+    Args:
+        repo (git.Github.Repository): git repository class for the local application
+        current_tag_name (str): tag name to use for the git commit
+        heads_names_list (list): List of the existing tags and heads for the repository
+        tethysapp_remote (git.Github.Repository): git repository class for the remote repo
+    """
     if current_tag_name not in heads_names_list:
-        new_release_branch = repo.create_head(current_tag_name)
-        repo.git.checkout(current_tag_name)
-        # push the new branch in remote
-        tethysapp_remote.push(new_release_branch)
+        release_branch = repo.create_head(current_tag_name)
     else:
-        repo.git.checkout(current_tag_name)
-        # push the new branch in remote
-        tethysapp_remote.push(current_tag_name)
+        release_branch = current_tag_name
+
+    repo.git.checkout(current_tag_name)
+    tethysapp_remote.push(release_branch)
 
 
 def create_tags_for_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote):
+    """Create/Replace tags for the release
+
+    Args:
+        repo (git.Github.Repository): git repository class for the local application
+        current_tag_name (str): tag name to use for the git commit
+        heads_names_list (list): List of the existing tags and heads for the repository
+        tethysapp_remote (git.Github.Repository): git repository class for the remote repo
+    """
     tag_name = current_tag_name + "_release"
-    if tag_name not in heads_names_list:
-
-        # Create tag
-        new_tag = repo.create_tag(
-            tag_name,
-            ref=repo.heads["tethysapp_warehouse_release"],
-            message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}',  # noqa: E501
-        )
-        tethysapp_remote.push(new_tag)
-
-    else:
+    if tag_name in heads_names_list:
         repo.git.tag('-d', tag_name)  # remove locally
-        tethysapp_remote.push(refspec=(':%s' % (tag_name)))  # remove from remote
-        new_tag = repo.create_tag(
-            tag_name,
-            ref=repo.heads["tethysapp_warehouse_release"],
-            message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}',  # noqa: E501
-        )
-        tethysapp_remote.push(new_tag)
+        tethysapp_remote.push(refspec=(f':{tag_name}'))  # remove from remote
+
+    new_tag = repo.create_tag(
+        tag_name,
+        ref=repo.heads["tethysapp_warehouse_release"],
+        message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}',  # noqa: E501
+    )
+    tethysapp_remote.push(new_tag)
 
 
 def get_workflow_job_url(tethysapp_repo, github_organization, key):
@@ -819,7 +850,7 @@ def process_branch(install_data, channel_layer):
     organization = g.get_organization(github_organization)
     tethysapp_repo = get_github_repo(repo_name, organization)
 
-    heads_names_list = get_head_names(repo)
+    heads_names_list = get_head_and_tag_names(repo)
     current_tag_name = create_current_tag_version(current_version, heads_names_list)
     remote_url = tethysapp_repo.git_url.replace("git://", "https://" + key + ":x-oauth-basic@")
     tethysapp_remote = check_if_organization_in_remote(repo, github_organization, remote_url)

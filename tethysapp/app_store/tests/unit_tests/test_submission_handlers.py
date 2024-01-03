@@ -3,6 +3,7 @@ import shutil
 import os
 import filecmp
 from unittest import mock
+from unittest.mock import call
 from github.GithubException import UnknownObjectException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
@@ -10,7 +11,11 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      generate_current_version, reset_folder, copy_files_for_recipe,
                                                      create_upload_command, get_keywords_and_email,
                                                      create_template_data_for_install, fix_setup, remove_init_file,
-                                                     apply_main_yml_template)
+                                                     apply_main_yml_template, get_head_and_tag_names,
+                                                     create_current_tag_version, check_if_organization_in_remote,
+                                                     push_to_warehouse_release_remote_branch,
+                                                     create_head_current_version, create_tags_for_current_version,
+                                                     get_workflow_job_url)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -326,7 +331,7 @@ def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
     install_data = {"email": "test@email.com"}
     mock_apply_template = mocker.patch('tethysapp.app_store.submission_handlers.apply_template')
     apply_main_yml_template(app_files_dir, tmp_path, rel_package, install_data)
-    
+
     source = os.path.join(app_files_dir, 'main_template.yaml')
     template_data = {
         'subject': "Tethys App Store: Build complete for " + rel_package,
@@ -339,3 +344,128 @@ def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
     }
     destination = os.path.join(tmp_path, 'main.yaml')
     mock_apply_template.assert_called_with(source, template_data, destination)
+
+
+def test_get_head_and_tag_names():
+    tag1 = mock.MagicMock()
+    tag1.name = "tag1"
+    tag2 = mock.MagicMock()
+    tag2.name = "tag2"
+    mock_repo = mock.MagicMock(references=[tag1, tag2])
+
+    heads = get_head_and_tag_names(mock_repo)
+
+    assert heads == ["tag1", "tag2"]
+
+
+def test_create_current_tag_version(mocker):
+    current_version = "1.0"
+    head_names_list = [f"v{current_version}_0_2024_1_1", f"v{current_version}_1_2024_1_1"]
+    mock_time = mocker.patch('tethysapp.app_store.submission_handlers.time')
+    mock_time.strftime.return_value = "2024_1_1"
+
+    tag = create_current_tag_version(current_version, head_names_list)
+
+    expected_tag = f"v{current_version}_2_2024_1_1"
+    assert tag == expected_tag
+
+
+def test_check_if_organization_in_remote_exists():
+    mock_remote = mock.MagicMock()
+    github_organization = "test_org"
+    mock_repo = mock.MagicMock(remotes={github_organization: mock_remote})
+    remote_url = "https://github.com/notrealorg/fakeapp"
+
+    tethysapp_remote = check_if_organization_in_remote(mock_repo, github_organization, remote_url)
+
+    assert mock_remote == tethysapp_remote
+    mock_remote.set_url.assert_called_with(remote_url)
+    mock_repo.create_remote.assert_not_called()
+
+
+def test_check_if_organization_in_remote_dne():
+    mock_remote = mock.MagicMock()
+    github_organization = "test_org"
+    mock_repo = mock.MagicMock(remotes={})
+    mock_repo.create_remote.side_effect = [mock_remote]
+    remote_url = "https://github.com/notrealorg/fakeapp"
+
+    tethysapp_remote = check_if_organization_in_remote(mock_repo, github_organization, remote_url)
+
+    assert mock_remote == tethysapp_remote
+    mock_remote.set_url.assert_not_called()
+    mock_repo.create_remote.assert_called_with(github_organization, remote_url)
+
+
+def test_push_to_warehouse_release_remote_branch():
+    mock_repo = mock.MagicMock()
+    mock_remote = mock.MagicMock()
+    file_changed = True
+    current_tag_name = "test_tag"
+
+    push_to_warehouse_release_remote_branch(mock_repo, mock_remote, current_tag_name, file_changed)
+
+    mock_repo.git.add.assert_called_with(A=True)
+    mock_repo.git.commit.assert_called_with(m=f"tag version {current_tag_name}")
+    mock_remote.push.assert_called_with('tethysapp_warehouse_release')
+
+
+def test_create_head_current_version():
+    mock_repo = mock.MagicMock()
+    mock_branch = mock.MagicMock()
+    current_tag_name = "v1.0_2_2024_1_1"
+    head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1"]
+    mock_remote = mock.MagicMock()
+    mock_repo.create_head.side_effect = [mock_branch]
+
+    create_head_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
+
+    mock_repo.git.checkout.assert_called_with(current_tag_name)
+    mock_remote.push.assert_called_with(mock_branch)
+
+
+def test_create_head_current_version_new_tag():
+    mock_repo = mock.MagicMock()
+    current_tag_name = "v1.0_1_2024_1_1"
+    head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1"]
+    mock_remote = mock.MagicMock()
+
+    create_head_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
+
+    mock_repo.git.checkout.assert_called_with(current_tag_name)
+    mock_remote.push.assert_called_with(current_tag_name)
+
+
+def test_create_tags_for_current_version_dne():
+    current_tag_name = "v1.0_2_2024_1_1"
+    head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1"]
+    mock_repo = mock.MagicMock(heads={"tethysapp_warehouse_release": "ref"})
+    mock_remote = mock.MagicMock()
+    mock_tag = mock.MagicMock()
+    mock_repo.create_tag.side_effect = [mock_tag]
+
+    create_tags_for_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
+
+    mock_repo.create_tag.assert_called_with(
+        f"{current_tag_name}_release",
+        ref="ref",
+        message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}')  # noqa: E501
+    mock_remote.push.assert_called_with(mock_tag)
+
+
+def test_create_tags_for_current_version_exists():
+    current_tag_name = "v1.0_1_2024_1_1"
+    head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1_release"]
+    mock_repo = mock.MagicMock(heads={"tethysapp_warehouse_release": "ref"})
+    mock_remote = mock.MagicMock()
+    mock_tag = mock.MagicMock()
+    mock_repo.create_tag.side_effect = [mock_tag]
+
+    create_tags_for_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
+
+    mock_repo.git.tag.assert_called_with('-d', f"{current_tag_name}_release")
+    mock_repo.create_tag.assert_called_with(
+        f"{current_tag_name}_release",
+        ref="ref",
+        message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}')  # noqa: E501
+    mock_remote.push.assert_has_calls([call(refspec=f":{current_tag_name}_release"), call(mock_tag)])
