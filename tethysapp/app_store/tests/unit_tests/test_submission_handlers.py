@@ -1,6 +1,4 @@
 import pytest
-from pathlib import Path
-import shutil
 import filecmp
 from unittest import mock
 from github.GithubException import UnknownObjectException
@@ -8,7 +6,7 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
                                                      generate_label_strings, create_tethysapp_warehouse_release,
                                                      generate_current_version, reset_folder, copy_files_for_recipe,
-                                                     create_upload_command, drop_keywords)
+                                                     create_upload_command, get_keywords_and_email)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -274,3 +272,16 @@ def test_create_upload_command(tmp_path, app_files_dir):
     
     upload_command_file = tmp_path / "upload_command.txt"
     assert "anaconda upload --force --label main noarch/*.tar.bz2" == upload_command_file.read_text()
+
+@pytest.mark.parametrize(
+    "setup_py_data, expected_keywords, expected_email", [
+        ({"keywords": "example, test", "author_email": "tester@email.com"}, ["example", "test"], "tester@email.com"),
+        ({"keywords": "example", "author_email": "tester@email.com"}, ["example"], "tester@email.com"),
+        ({"keywords": "", "author_email": ""}, [], ""),
+        ({}, [], "")])
+def test_get_keywords_and_email(setup_py_data, expected_keywords, expected_email):
+    
+    keywords, email = get_keywords_and_email(setup_py_data)
+    
+    assert keywords == expected_keywords
+    assert email == expected_email

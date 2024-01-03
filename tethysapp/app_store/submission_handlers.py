@@ -500,30 +500,26 @@ def create_upload_command(labels_string, source_files_path, recipe_path):
                    label, os.path.join(recipe_path, 'upload_command.txt'))
 
 
-def drop_keywords(setup_py_data):
-    """_summary_
+def get_keywords_and_email(setup_py_data):
+    """Parses the setup.py dictionary to extract the keywords and the email
 
     Args:
-        setup_py_data (_type_): _description_
+        setup_py_data (dict): Application metadata derived from setup.py
 
     Returns:
-        _type_: _description_
+        [keywords(list), email(str)]: A list of keywords and the author email 
     """
-    keywords = []
-    email = ""
-    try:
-        keywords = setup_py_data.pop('keywords', None)
-        email = setup_py_data["author_email"]
-
-        # Clean up keywords
-        keywords = keywords.replace('"', '').replace("'", '')
-        if ',' in keywords:
-            keywords = keywords.split(',')
-        keywords = list(map(lambda x: x.strip(), keywords))
-
-    except Exception as err:
-        logger.error("Error ocurred while formatting keywords from setup.py")
-        logger.error(err)
+    keywords = setup_py_data.get("keywords")
+    if keywords:
+        keywords = keywords.replace(' ', '').replace('"', '').replace("'", '').split(',')
+    else:
+        keywords = []
+        logger.warning("No keywords found in setup.py")
+        
+    email = setup_py_data.get("author_email", "")
+    if not email:
+        logger.warning("No author email found in setup.py")
+        
     return keywords, email
 
 
@@ -759,7 +755,7 @@ def process_branch(install_data, channel_layer):
     create_upload_command(labels_string, source_files_path, recipe_path)
 
     # 8. Drop keywords from setup.py
-    keywords, email = drop_keywords(setup_py_data)
+    keywords, email = get_keywords_and_email(setup_py_data)
 
     # 9 get the data from the install.yml and create a metadata dict
     template_data = create_template_data_for_install(install_data, setup_py_data)

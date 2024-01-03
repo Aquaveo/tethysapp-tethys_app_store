@@ -171,6 +171,14 @@ def apply_template(template_location, data, output_location):
 
 
 def parse_setup_py(file_location):
+    """Parses a setup.py file to get the app metadata
+
+    Args:
+        file_location (str): Path to the setup.py file to parse
+
+    Returns:
+        dict: A dictionary of key value pairs of application metadata
+    """
     params = {}
     found_setup = False
     with open(file_location, "r") as f:
