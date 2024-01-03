@@ -1,4 +1,6 @@
 import pytest
+import shutil
+import os
 import filecmp
 from unittest import mock
 from github.GithubException import UnknownObjectException
@@ -6,8 +8,9 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
                                                      generate_label_strings, create_tethysapp_warehouse_release,
                                                      generate_current_version, reset_folder, copy_files_for_recipe,
-                                                     create_upload_command, get_keywords_and_email, 
-                                                     create_template_data_for_install)
+                                                     create_upload_command, get_keywords_and_email,
+                                                     create_template_data_for_install, fix_setup, remove_init_file,
+                                                     apply_main_yml_template)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -295,3 +298,44 @@ def test_create_template_data_for_install(complex_tethysapp):
         "'tethys_version': '>=4.0', 'dev_url': 'https://github.com/notrealorg/fakeapp'}"
     }
     assert template_data == expected_template_data
+
+
+def test_fix_setup(test_files_dir, tmp_path):
+    bad_setup = test_files_dir / "bad_setup.py"
+    good_setup = test_files_dir / "setup.py"
+    tmp_setup = tmp_path / "setup2.py"
+    shutil.copyfile(bad_setup, tmp_setup)
+
+    app_package = fix_setup(tmp_setup)
+
+    assert app_package == "test_app"
+    assert filecmp.cmp(tmp_setup, good_setup, shallow=False)
+
+
+def test_remove_init_file(tethysapp_base_with_application_files):
+    install_data = {"github_dir": tethysapp_base_with_application_files}
+
+    remove_init_file(install_data)
+
+    init_file = tethysapp_base_with_application_files / "__init__.py"
+    init_file.is_file()
+
+
+def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
+    rel_package = "test_app"
+    install_data = {"email": "test@email.com"}
+    mock_apply_template = mocker.patch('tethysapp.app_store.submission_handlers.apply_template')
+    apply_main_yml_template(app_files_dir, tmp_path, rel_package, install_data)
+    
+    source = os.path.join(app_files_dir, 'main_template.yaml')
+    template_data = {
+        'subject': "Tethys App Store: Build complete for " + rel_package,
+        'email': install_data['email'],
+        'buildMsg': """
+        Your Tethys App has been successfully built and is now available on the Tethys App Store.
+        This is an auto-generated email and this email is not monitored for replies.
+        Please send any queries to gromero@aquaveo.com
+        """
+    }
+    destination = os.path.join(tmp_path, 'main.yaml')
+    mock_apply_template.assert_called_with(source, template_data, destination)

@@ -10,6 +10,7 @@ import time
 import requests
 import ast
 import subprocess
+import re
 from requests.exceptions import HTTPError
 from github.GithubException import UnknownObjectException
 
@@ -545,42 +546,55 @@ def create_template_data_for_install(install_data, setup_py_data):
     return template_data
 
 
-def fix_setup(filename):
+def fix_setup(setup_py):
+    """Update the setup.py file and fix any old/bad code that won't work with the app store
+
+    Args:
+        setup_py (str): Path to the setup.py file
+
+    Returns:
+        str: Name of the app package in setup.py
+    """
     rel_package = ""
-    with fileinput.FileInput(filename, inplace=True) as f:
+    with fileinput.FileInput(setup_py, inplace=True) as f:
         for line in f:
             # logger.info(line)
 
             if "import find_all_resource_files" in line or "import find_resource_files" in line:
                 print("from setup_helper import find_all_resource_files", end='\n')
 
+            elif "namespace =" in line:
+                new_replace_line = line.replace("TethysAppBase.package_namespace", "namespace")
+                print(new_replace_line, end='')
+
             elif ("setup(" in line):
                 print(line, end='')
-            elif "namespace =" in line:
-                print('', end='\n')
+
             elif ("app_package = " in line):
-                rel_package = line
+                rel_package = re.findall("app_package = '(.*)'", line)[0]
                 print("namespace = 'tethysapp'")
                 print(line, end='')
 
             elif "from tethys_apps.base.app_base import TethysAppBase" in line:
-                print('', end='\n')
-
-            elif "TethysAppBase.package_namespace" in line:
-                new_replace_line = line.replace("TethysAppBase.package_namespace", "namespace")
-                print(new_replace_line, end='\n')
+                print('', end='')
 
             elif "resource_files = find_resource_files" in line:
                 print("resource_files = find_all_resource_files(app_package, namespace)", end='\n')
 
             elif "resource_files += find_resource_files" in line:
-                print('', end='\n')
+                print('', end='')
+
             else:
                 print(line, end='')
     return rel_package
 
 
 def remove_init_file(install_data):
+    """Deletes the init file from the local github repository
+
+    Args:
+        install_data (dict): Data from the application submission form by the user
+    """
     init_path = os.path.join(install_data['github_dir'], '__init__.py')
 
     if os.path.exists(init_path):
@@ -588,6 +602,14 @@ def remove_init_file(install_data):
 
 
 def apply_main_yml_template(source_files_path, workflows_path, rel_package, install_data):
+    """Creates a new main.yaml from the main_template.yaml and install data information
+
+    Args:
+        source_files_path (str): The directory path that contains additional templates needed for anaconda recipes
+        workflows_path (str): The directory path that contains necessary files for github workflows
+        rel_package (str): The name of the application packge
+        install_data (dict): Data from the application submission form by the user
+    """
     source = os.path.join(source_files_path, 'main_template.yaml')
     destination = os.path.join(workflows_path, 'main.yaml')
     app_name = rel_package.replace("app_package", '').replace("=", '').replace("'", "").strip()
@@ -726,7 +748,7 @@ def process_branch(install_data, channel_layer):
     key = install_data["github_token"]
     g = github.Github(key)
     repo = git.Repo(install_data['github_dir'])
-    filename = os.path.join(install_data['github_dir'], 'setup.py')
+    setup_py = os.path.join(install_data['github_dir'], 'setup.py')
     conda_labels = install_data["conda_labels"]
     labels_string = generate_label_strings(conda_labels)
     files_changed = False
@@ -735,7 +757,7 @@ def process_branch(install_data, channel_layer):
     origin = repo.remote(name='origin')
     repo.git.checkout(install_data['branch'])
     origin.pull()
-    setup_py_data = parse_setup_py(filename)
+    setup_py_data = parse_setup_py(setup_py)
     current_version = generate_current_version(setup_py_data)
 
     # 3. create head tethysapp_warehouse_release and checkout the head
@@ -777,7 +799,7 @@ def process_branch(install_data, channel_layer):
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
     # 11. Fix setup.py file to remove dependency on tethys
-    rel_package = fix_setup(filename)
+    rel_package = fix_setup(setup_py)
 
     # 12. Update the dependencies of the package
     update_anaconda_dependencies(install_data['github_dir'], recipe_path, source_files_path, keywords, email)
