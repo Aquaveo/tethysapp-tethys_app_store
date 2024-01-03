@@ -410,7 +410,7 @@ def generate_label_strings(conda_labels):
         conda_labels (list): List of conda labels for the package
 
     Returns:
-        labels_string (str): A string of the conda label with additional labels and a --label prefix. i.e 
+        labels_string (str): A string of the conda label with additional labels and a --label prefix. i.e
             'main --label dev'
     """
     labels_string = ''
@@ -419,7 +419,7 @@ def generate_label_strings(conda_labels):
             labels_string += conda_labels[i]
         else:
             labels_string += f' --label {conda_labels[i]}'
-            
+
     return labels_string
 
 
@@ -447,7 +447,7 @@ def generate_current_version(setup_py_data):
         current_version (str): App version from the setup.py data
     """
     current_version = setup_py_data["version"]
-    
+
     return current_version
 
 
@@ -477,7 +477,7 @@ def copy_files_for_recipe(source, destination, files_changed):
     if not os.path.exists(destination):
         files_changed = True
         shutil.copyfile(source, destination)
-        
+
     return files_changed
 
 
@@ -507,7 +507,7 @@ def get_keywords_and_email(setup_py_data):
         setup_py_data (dict): Application metadata derived from setup.py
 
     Returns:
-        [keywords(list), email(str)]: A list of keywords and the author email 
+        [keywords(list), email(str)]: A list of keywords and the author email
     """
     keywords = setup_py_data.get("keywords")
     if keywords:
@@ -515,15 +515,24 @@ def get_keywords_and_email(setup_py_data):
     else:
         keywords = []
         logger.warning("No keywords found in setup.py")
-        
+
     email = setup_py_data.get("author_email", "")
     if not email:
         logger.warning("No author email found in setup.py")
-        
+
     return keywords, email
 
 
 def create_template_data_for_install(install_data, setup_py_data):
+    """Join the install_data information with the setup_py information to create template data for conda install
+
+    Args:
+        install_data (dict): Data from the application submission form by the user
+        setup_py_data (dict): Application metadata from the cloned repository's setup.py
+
+    Returns:
+        dict: master dictionary use for templates, specifically for conda install
+    """
     install_yml = os.path.join(install_data['github_dir'], 'install.yml')
     with open(install_yml) as f:
         install_yml_file = yaml.safe_load(f)

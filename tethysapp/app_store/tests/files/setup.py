@@ -13,7 +13,6 @@ dependencies = []
 resource_files = find_all_resource_files(app_package, namespace)
 
 
-
 setup(
     False,
     name=release_package,

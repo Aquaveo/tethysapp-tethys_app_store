@@ -1,5 +1,6 @@
 # This file should be committed to your app code.
 version: 1.0
+tethys_version: ">=4.0"
 # This should match the app - package name in your setup.py
 name: test_app
 
