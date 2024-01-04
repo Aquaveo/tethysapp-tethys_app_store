@@ -2,6 +2,8 @@ import os
 import time
 import importlib
 import subprocess
+import tethysapp
+import site
 
 from django.core.cache import cache
 
@@ -12,70 +14,67 @@ from .resource_helpers import get_resource
 
 
 def handle_property_not_present(prop):
+    """Handles any issues if certain properties/metadata are not present
+
+    Args:
+        prop (dict): application metadata
+    """
     # TODO: Generate an error message that metadata is incorrect for this application
     pass
 
 
-def process_post_install_scripts(path):
-    # Check if scripts directory exists
-    scripts_dir = os.path.join(path, 'scripts')
+def process_post_install_scripts(scripts_dir):
+    """Process any post installation scripts from the installed application
+
+    Args:
+        path (str): Path to the application base directory
+    """
     if os.path.exists(scripts_dir):
-        logger.info("TODO: Process scripts dir.")
         # Currently only processing the pip install script, but need to add ability to process post scripts as well
+        pass
 
 
 def detect_app_dependencies(app_name, channel_layer, notification_method=send_notification):
-    """
-    Method goes through the app.py and determines the following:
-    1.) Any services required
-    2.) Thredds?
-    3.) Geoserver Requirement?
-    4.) Custom Settings required for installation?
+    """Check the application for pip (via a pip_install.sh) and custom setting dependencies
+
+    Args:
+        app_name (str): Name of the application being installed
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        notification_method (Object, optional): Method of how to send notifications. Defaults to send_notification
+            which is a WebSocket.
     """
 
-    # Get Conda Packages location
-    # Tried using conda_prefix from env as well as conda_info but both of them are not reliable
-    # Best method is to import the module and try and get the location from that path
-    # @TODO : Ensure that this works through multiple runs
-    import tethysapp
-    # store_pkg = importlib.import_module(app_channel)
-
+    logger.info("Running a DB sync")
     call(['tethys', 'db', 'sync'])
     cache.clear()
-    # clear_url_caches()
+
     # After install we need to update the sys.path variable so we can see the new apps that are installed.
     # We need to do a reload here of the sys.path and then reload the tethysapp
     # https://stackoverflow.com/questions/25384922/how-to-refresh-sys-path
-    import site
     importlib.reload(site)
     importlib.reload(tethysapp)
-    # importlib.reload(store_pkg)
 
-    # paths = list()
-    # paths = list(filter(lambda x: app_name in x, store_pkg.__path__))
-    paths = list(filter(lambda x: app_name in x, tethysapp.__path__))
+    installed_app_paths = [path for path in tethysapp.__path__ if app_name in path]
 
-    if len(paths) < 1:
+    if len(installed_app_paths) < 1:
         logger.error("Can't find the installed app location.")
         return
 
-    # Check for any pre install script to install pip dependencies
-
-    app_folders = next(os.walk(paths[0]))[1]
-    app_scripts_path = os.path.join(paths[0], app_folders[0], 'scripts')
+    installed_app_path = installed_app_paths[0]
+    app_folders = next(os.walk(installed_app_path))[1]
+    app_scripts_path = os.path.join(installed_app_path, app_folders[0], 'scripts')
     pip_install_script_path = os.path.join(app_scripts_path, 'install_pip.sh')
 
     if os.path.exists(pip_install_script_path):
         logger.info("PIP dependencies found. Running Pip install script")
 
         notification_method("Running PIP install....", channel_layer)
-        p = subprocess.Popen(['sh', pip_install_script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(['sh', pip_install_script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         while True:
-            output = p.stdout.readline()
+            output = process.stdout.readline()
             if output == '':
                 break
             if output:
-                # Checkpoints for the output
                 str_output = str(output.strip())
                 logger.info(str_output)
                 if (check_all_present(str_output, ['PIP Install Complete'])):
@@ -84,8 +83,9 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
         notification_method("PIP install completed", channel_layer)
 
     # @TODO: Add support for post installation scripts as well.
+    process_post_install_scripts(app_scripts_path)
 
-    app_instance = get_app_instance_from_path(paths)
+    app_instance = get_app_instance_from_path(installed_app_paths)
     custom_settings_json = []
     custom_settings = app_instance.custom_settings()
 
@@ -102,7 +102,7 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
         "data": custom_settings_json,
         "returnMethod": "set_custom_settings",
         "jsHelperFunction": "processCustomSettings",
-        "app_py_path": str(paths[0])
+        "app_py_path": str(installed_app_path)
     }
     notification_method(get_data_json, channel_layer)
 

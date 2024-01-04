@@ -21,26 +21,25 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
 
     recipe_path = basic_tethysapp / "conda.recipes"
+    test_install_pip = basic_tethysapp / "tethysapp" / "test_app" / "scripts" / "install_pip.sh"
+    test_install_pip.unlink()
 
     update_anaconda_dependencies(basic_tethysapp, recipe_path, app_files_dir)
 
     test_app_meta_yaml = recipe_path / "meta.yaml"
     assert filecmp.cmp(test_app_meta_yaml, basic_meta_yaml, shallow=False)
-
-    test_install_pip = basic_tethysapp / "tethysapp" / "test_app" / "scripts" / "install_pip.sh"
     assert not test_install_pip.is_file()
 
 
 def test_update_anaconda_dependencies_with_pip(complex_tethysapp, app_files_dir, complex_meta_yaml, install_pip_bash):
 
     recipe_path = complex_tethysapp / "conda.recipes"
+    test_install_pip = complex_tethysapp / "tethysapp" / "test_app" / "scripts" / "install_pip.sh"
 
     update_anaconda_dependencies(complex_tethysapp, recipe_path, app_files_dir)
 
     test_app_meta_yaml = recipe_path / "meta.yaml"
     assert filecmp.cmp(test_app_meta_yaml, complex_meta_yaml, shallow=False)
-
-    test_install_pip = complex_tethysapp / "tethysapp" / "test_app" / "scripts" / "install_pip.sh"
     assert filecmp.cmp(test_install_pip, install_pip_bash, shallow=False)
 
 

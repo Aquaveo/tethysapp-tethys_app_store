@@ -38,6 +38,12 @@ def tethysapp_base_with_application_files(tethysapp_base, app_files_dir, test_fi
     tethysapp_setup_helper = tethysapp_base / "setup.py"
     shutil.copy(setup_helper, tethysapp_setup_helper)
 
+    setup_helper = test_files_dir / "install_pip.sh"
+    tethysapp_scripts = tethysapp_base / "tethysapp" / "test_app" / "scripts"
+    tethysapp_scripts.mkdir(parents=True)
+    tethysapp_setup_helper = tethysapp_scripts / "install_pip.sh"
+    shutil.copy(setup_helper, tethysapp_setup_helper)
+
     setup_helper = app_files_dir / "__init__.py"
     tethysapp_setup_helper = tethysapp_base / "__init__.py"
     shutil.copy(setup_helper, tethysapp_setup_helper)
