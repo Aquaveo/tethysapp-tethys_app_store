@@ -58,3 +58,22 @@ def all_inactive_stores(store):
         "inactive_default": store("inactive_default", active=False),
         "inactive_not_default": store("inactive_not_default", default=False, active=False)
     }
+
+
+@pytest.fixture
+def resource():
+    def _resource(app_name, conda_channel, conda_label):
+        return {
+            'name': app_name,
+            'installed': {conda_channel: {conda_label: False}},
+            'installedVersion': {conda_channel: {conda_label: "1.0"}},
+            'latestVersion': {conda_channel: {conda_label: "1.0"}},
+            'versions': {conda_channel: {conda_label: []}},
+            'versionURLs': {conda_channel: {conda_label: []}},
+            'channels_and_labels': {conda_channel: {conda_label: []}},
+            'timestamp': {conda_channel: {conda_label: "timestamp"}},
+            'compatibility': {conda_channel: {conda_label: {}}},
+            'license': {conda_channel: {conda_label: None}},
+            'licenses': {conda_channel: {conda_label: []}}
+        }
+    return _resource

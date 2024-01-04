@@ -1,7 +1,7 @@
 from unittest import mock
 from unittest.mock import call
 from tethysapp.app_store.begin_install import (handle_property_not_present, process_post_install_scripts,
-                                               detect_app_dependencies)
+                                               detect_app_dependencies, conda_install)
 
 
 def test_handle_property_not_present():
@@ -126,3 +126,24 @@ def test_detect_app_dependencies_no_app_path(mocker, caplog):
 
     mock_ws.assert_not_called()
     assert "Can't find the installed app location." in caplog.messages
+
+
+def test_conda_install(resource, mocker):
+    app_channel = "test_channel"
+    app_label = "dev"
+    app_version = ""
+    app_resource = resource("test_app", app_channel, app_label)
+    mock_channel = mock.MagicMock()
+    mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
+    mock_sp = mocker.patch('tethysapp.app_store.begin_install.subprocess')
+    mock_time = mocker.patch('tethysapp.app_store.begin_install.time')
+    mock_time.time.side_effect = [10,20]
+    mock_sp.Popen().stdout.readline.side_effect = [""]
+
+    conda_install(app_resource, app_channel, app_label, app_version, mock_channel)
+    
+    mock_ws.assert_has_calls([
+        call("Mamba install may take a couple minutes to complete depending on how complicated the "
+                      "environment is. Please wait....", mock_channel),
+        call("Mamba install completed in 10.00 seconds.", mock_channel)
+    ])

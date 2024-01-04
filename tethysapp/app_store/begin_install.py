@@ -110,7 +110,15 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
 
 
 def conda_install(app_metadata, app_channel, app_label, app_version, channel_layer):
+    """Run a conda install with a application using the anaconda package
 
+    Args:
+        app_metadata (dict): Dictionary representing an app and its conda metadata
+        app_channel (str): Conda channel to use for the app install
+        app_label (str): Conda label to use for the app install
+        app_version (str): App version to use for app install
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
     start_time = time.time()
     send_notification("Mamba install may take a couple minutes to complete depending on how complicated the "
                       "environment is. Please wait....", channel_layer)
@@ -133,7 +141,6 @@ def conda_install(app_metadata, app_channel, app_label, app_version, channel_lay
     install_command = [script_path, app_name, label_channel]
 
     # Running this sub process, in case the library isn't installed, triggers a restart.
-
     p = subprocess.Popen(install_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     while True:
