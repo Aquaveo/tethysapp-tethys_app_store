@@ -17,7 +17,7 @@ def tethysapp_base(tmp_path):
 
 
 @pytest.fixture()
-def tethysapp_base_with_application_files(tethysapp_base, app_files_dir):
+def tethysapp_base_with_application_files(tethysapp_base, app_files_dir, test_files_dir):
 
     conda_recipes_dir = tethysapp_base / "conda.recipes"
     conda_recipes_dir.mkdir()
@@ -32,6 +32,10 @@ def tethysapp_base_with_application_files(tethysapp_base, app_files_dir):
 
     setup_helper = app_files_dir / "setup_helper.py"
     tethysapp_setup_helper = tethysapp_base / "setup_helper.py"
+    shutil.copy(setup_helper, tethysapp_setup_helper)
+
+    setup_helper = test_files_dir / "setup.py"
+    tethysapp_setup_helper = tethysapp_base / "setup.py"
     shutil.copy(setup_helper, tethysapp_setup_helper)
 
     setup_helper = app_files_dir / "__init__.py"

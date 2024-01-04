@@ -15,7 +15,7 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      create_current_tag_version, check_if_organization_in_remote,
                                                      push_to_warehouse_release_remote_branch,
                                                      create_head_current_version, create_tags_for_current_version,
-                                                     get_workflow_job_url)
+                                                     get_workflow_job_url, process_branch)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -504,3 +504,37 @@ def test_get_workflow_job_url_not_found(mocker):
     job_url = get_workflow_job_url(mock_repo, mock_remote_repo, current_tag_name)
 
     assert job_url is None
+
+
+def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
+    dev_url = "https://github.com/notrealorg/fakeapp"
+    install_data = {
+        "github_organization": "fake_org",
+        "github_token": "fake_token",
+        "github_dir": str(basic_tethysapp),
+        "stores": mix_active_inactive_stores,
+        "dev_url": dev_url,
+        "email": "test@email.com",
+        "conda_labels": ["main", "dev"],
+        "conda_channel": "test_channel",
+        "branch": "test_branch"
+    }
+    mock_channel = mock.MagicMock()
+    mock_github = mocker.patch('tethysapp.app_store.submission_handlers.github')
+    mock_github.Github().get_organization().get_repo().git_url.replace.return_value = dev_url
+    mocker.patch('tethysapp.app_store.submission_handlers.git')
+    mocker.patch('tethysapp.app_store.submission_handlers.get_workflow_job_url', return_value="job_url")
+    mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    process_branch(install_data, mock_channel)
+
+    expected_data_json = {
+        "data": {
+            "githubURL": dev_url,
+            "job_url": "job_url",
+            "conda_channel": "test_channel"
+        },
+        "jsHelperFunction": "addComplete",
+        "helper": "addModalHelper"
+    }
+    mock_send_notification.assert_called_with(expected_data_json, mock_channel)
