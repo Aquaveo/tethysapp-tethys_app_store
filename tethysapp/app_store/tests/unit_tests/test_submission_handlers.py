@@ -250,7 +250,7 @@ def test_copy_files_for_recipe(tmp_path, app_files_dir):
     assert files_changed
     assert dest.is_file()
 
-    # Rerun to test functionality for exising file
+    # Rerun to test functionality for existing file
     files_changed = False
     files_changed = copy_files_for_recipe(src, dest, files_changed)
 
@@ -265,7 +265,7 @@ def test_create_upload_command(tmp_path, app_files_dir):
     upload_command_file = tmp_path / "upload_command.txt"
     assert "anaconda upload --force --label main --label dev noarch/*.tar.bz2" == upload_command_file.read_text()
 
-    # Rerun to test functionality for exising file
+    # Rerun to test functionality for existing file
     labels_string = "main"
     create_upload_command(labels_string, app_files_dir, tmp_path)
 
@@ -347,11 +347,10 @@ def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
 
 
 def test_get_head_and_tag_names():
-    tag1 = mock.MagicMock()
-    tag1.name = "tag1"
-    tag2 = mock.MagicMock()
-    tag2.name = "tag2"
-    mock_repo = mock.MagicMock(references=[tag1, tag2])
+    tag1 = mock.MagicMock(ref="tag1")
+    tag2 = mock.MagicMock(ref="tag2")
+    mock_repo = mock.MagicMock()
+    mock_repo.get_git_refs.return_value = [tag1, tag2]
 
     heads = get_head_and_tag_names(mock_repo)
 
@@ -407,7 +406,7 @@ def test_push_to_warehouse_release_remote_branch():
 
     mock_repo.git.add.assert_called_with(A=True)
     mock_repo.git.commit.assert_called_with(m=f"tag version {current_tag_name}")
-    mock_remote.push.assert_called_with('tethysapp_warehouse_release')
+    mock_remote.push.assert_called_with('tethysapp_warehouse_release', force=True)
 
 
 def test_create_head_current_version():
@@ -469,3 +468,39 @@ def test_create_tags_for_current_version_exists():
         ref="ref",
         message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}')  # noqa: E501
     mock_remote.push.assert_has_calls([call(refspec=f":{current_tag_name}_release"), call(mock_tag)])
+
+
+def test_get_workflow_job_url(mocker):
+    current_tag_name = "v1.0_1_2024_1_1"
+    hex = "abc123"
+    mocker.patch('tethysapp.app_store.submission_handlers.time')
+
+    mock_repo = mock.MagicMock()
+    mock_repo.head.object.hexsha = hex
+    mock_remote_repo = mock.MagicMock()
+    mock_job = mock.MagicMock(head_sha=hex, html_url="job_url")
+    mock_workflow = mock.MagicMock(display_title="tag version v1.0_1_2024_1_1")
+    mock_workflow.jobs.return_value = [mock_job]
+    mock_remote_repo.get_workflow_runs.return_value = [mock_workflow]
+
+    job_url = get_workflow_job_url(mock_repo, mock_remote_repo, current_tag_name)
+
+    assert job_url == "job_url"
+
+
+def test_get_workflow_job_url_not_found(mocker):
+    current_tag_name = "v1.0_1_2024_1_1"
+    hex = "abc123"
+    mocker.patch('tethysapp.app_store.submission_handlers.time')
+
+    mock_repo = mock.MagicMock()
+    mock_repo.head.object.hexsha = hex
+    mock_remote_repo = mock.MagicMock()
+    mock_job = mock.MagicMock(head_sha="123abc", html_url="job_url")
+    mock_workflow = mock.MagicMock(display_title="tag version v1.0_1_2024_1_1")
+    mock_workflow.jobs.return_value = [mock_job]
+    mock_remote_repo.get_workflow_runs.return_value = [mock_workflow]
+
+    job_url = get_workflow_job_url(mock_repo, mock_remote_repo, current_tag_name)
+
+    assert job_url is None

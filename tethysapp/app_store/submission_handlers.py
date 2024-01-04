@@ -7,11 +7,9 @@ import yaml
 import stat
 import json
 import time
-import requests
 import ast
 import subprocess
 import re
-from requests.exceptions import HTTPError
 from github.GithubException import UnknownObjectException
 
 from pathlib import Path
@@ -625,7 +623,7 @@ def apply_main_yml_template(source_files_path, workflows_path, rel_package, inst
     apply_template(source, template_data, destination)
 
 
-def get_head_and_tag_names(repo):
+def get_head_and_tag_names(tethysapp_remote):
     """Use the github repository object to get a list of tags, heads, and remote references
 
     Args:
@@ -634,7 +632,7 @@ def get_head_and_tag_names(repo):
     Returns:
         list: list of tags, heads, and remote references for the repository
     """
-    return [ref.name for ref in repo.references]
+    return [ref.ref for ref in tethysapp_remote.get_git_refs()]
 
 
 def create_current_tag_version(current_version, heads_names_list):
@@ -694,7 +692,7 @@ def push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_
     if files_changed:
         repo.git.add(A=True)
         repo.git.commit(m=f'tag version {current_tag_name}')
-        tethysapp_remote.push('tethysapp_warehouse_release')
+        tethysapp_remote.push('tethysapp_warehouse_release', force=True)
 
 
 def create_head_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote):
@@ -737,38 +735,43 @@ def create_tags_for_current_version(repo, current_tag_name, heads_names_list, te
     tethysapp_remote.push(new_tag)
 
 
-def get_workflow_job_url(tethysapp_repo, github_organization, key):
-    workflowFound = False
+def get_workflow_job_url(repo, tethysapp_repo, current_tag_name):
+    """Uses information from the local code repository and the remote github repository to get the workflow job from
+    the tethysapp_warehouse_release push
 
-    # Sometimes due to weird conda versioning issues the get_workflow_runs is not found
-    # In that case return no value for the job_url and handle it in JS
-    try:
-        while not workflowFound:
-            time.sleep(4)
-            if tethysapp_repo.get_workflow_runs().totalCount > 0:
-                logger.info("Obtained Workflow for Submission. Getting Job URL")
+    Args:
+        repo (git.Github.Repository): git repository class for the local application
+        tethysapp_remote (git.Github.Repository): git repository class for the remote repo
+        current_tag_name (str): tag name to use for the git commit
 
-                try:
-                    # response = requests.get(tethysapp_repo.get_workflow_runs()[0].jobs_url, auth=('tethysapp', key))
-                    response = requests.get(tethysapp_repo.get_workflow_runs()[0].jobs_url,
-                                            auth=(github_organization, key))
+    Returns:
+        str: HTML url for the workflow job from the tethysapp_warehouse_release push
+    """
+    job_found = False
+    job_url = None
+    elapsed_time = 0
+    timeout = 60
+    latest_head_sha = repo.head.object.hexsha
 
-                    response.raise_for_status()
-                    jsonResponse = response.json()
-                    workflowFound = jsonResponse["total_count"] > 0
+    while not job_found and elapsed_time <= timeout:
+        time.sleep(4)
+        elapsed_time += 4
 
-                except HTTPError as http_err:
-                    logger.error(f'HTTP error occurred while getting Jobs from GITHUB API: {http_err}')
-                except Exception as err:
-                    logger.error(f'Other error occurred while getting jobs from GITHUB API: {err}')
+        workflow_runs = tethysapp_repo.get_workflow_runs()
+        workflow = [workflow for workflow in workflow_runs if current_tag_name in workflow.display_title]
+        if workflow:
+            workflow = workflow[0]
+            logger.info("Obtained Workflow for Submission. Getting Job URL")
 
-            if workflowFound:
-                job_url = jsonResponse["jobs"][0]["html_url"]
+            job = [job for job in workflow.jobs() if job.head_sha == latest_head_sha]
+            job_found = True if job else False
 
-        logger.info("Obtained Job URL: " + job_url)
-    except AttributeError:
-        logger.info("Unable to obtain Workflow Run")
-        job_url = None
+        if job_found:
+            job_url = job[0].html_url
+            logger.info("Obtained Job URL: " + job_url)
+
+    if not job_found:
+        logger.error(f"Failed to get the job url within {timeout} seconds")
 
     return job_url
 
@@ -776,8 +779,8 @@ def get_workflow_job_url(tethysapp_repo, github_organization, key):
 def process_branch(install_data, channel_layer):
     # 1. Get Variables
     github_organization = install_data["github_organization"]
-    key = install_data["github_token"]
-    g = github.Github(key)
+    github_token = install_data["github_token"]
+    g = github.Github(github_token)
     repo = git.Repo(install_data['github_dir'])
     setup_py = os.path.join(install_data['github_dir'], 'setup.py')
     conda_labels = install_data["conda_labels"]
@@ -850,9 +853,9 @@ def process_branch(install_data, channel_layer):
     organization = g.get_organization(github_organization)
     tethysapp_repo = get_github_repo(repo_name, organization)
 
-    heads_names_list = get_head_and_tag_names(repo)
+    heads_names_list = get_head_and_tag_names(tethysapp_repo)
     current_tag_name = create_current_tag_version(current_version, heads_names_list)
-    remote_url = tethysapp_repo.git_url.replace("git://", "https://" + key + ":x-oauth-basic@")
+    remote_url = tethysapp_repo.git_url.replace("git://", "https://" + github_token + ":x-oauth-basic@")
     tethysapp_remote = check_if_organization_in_remote(repo, github_organization, remote_url)
 
     # 16. add, commit, and push to the tethysapp_warehouse_release remote branch
@@ -865,7 +868,7 @@ def process_branch(install_data, channel_layer):
     create_tags_for_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote)
 
     # 19. return workflow job url
-    job_url = get_workflow_job_url(tethysapp_repo, github_organization, key)
+    job_url = get_workflow_job_url(repo, tethysapp_repo, current_tag_name)
 
     get_data_json = {
         "data": {
