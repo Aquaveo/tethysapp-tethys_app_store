@@ -75,7 +75,12 @@ def resource():
             'timestamp': {conda_channel: {conda_label: "timestamp"}},
             'compatibility': {conda_channel: {conda_label: {}}},
             'license': {conda_channel: {conda_label: None}},
-            'licenses': {conda_channel: {conda_label: []}}
+            'licenses': {conda_channel: {conda_label: []}},
+            'author': {conda_channel: {conda_label: 'author'}},
+            'description': {conda_channel: {conda_label: 'description'}},
+            'author_email': {conda_channel: {conda_label: 'author_email'}},
+            'keywords': {conda_channel: {conda_label: 'keywords'}},
+            'dev_url': {conda_channel: {conda_label: 'dev_url'}}
         }
     return _resource
 
@@ -170,9 +175,20 @@ def install_pip_bash(test_files_dir):
 
 @pytest.fixture()
 def mock_admin_request(rf, admin_user):
-    def _mock_admin_request(url):
-        request = rf.get(url)
+    def _mock_admin_request(url, request_body=None, headers=None):
+        request = rf.get(url, request_body, headers)
         request.user = admin_user
         return request
 
     return _mock_admin_request
+
+
+@pytest.fixture()
+def mock_no_permission_request(rf, django_user_model):
+    def _mock_no_permission_request(url, request_body=None, headers=None):
+        request = rf.get(url, request_body, headers)
+        new_user = django_user_model.objects.create(username="someone", password="something")
+        request.user = new_user
+        return request
+
+    return _mock_no_permission_request

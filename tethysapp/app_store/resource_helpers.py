@@ -12,15 +12,14 @@ import urllib
 import shutil
 from pkg_resources import parse_version
 import yaml
-from .utilities import get_available_stores_values
-from .helpers import check_if_app_installed, add_if_exists_keys, logger
+from .helpers import check_if_app_installed, add_if_exists_keys, logger, get_conda_stores
 from conda.cli.python_api import run_command as conda_run, Commands
 
 CACHE_KEY = ""
 
 
 def clear_cache(data, channel_layer):
-    available_stores_data_dict = get_available_stores_values("all")
+    available_stores_data_dict = get_conda_stores()
     for store in available_stores_data_dict:
         store_name = store['conda_channel']
         for conda_label in store['conda_labels']:
@@ -30,18 +29,28 @@ def clear_cache(data, channel_layer):
     return
 
 
-def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, stores='all'):
-    available_stores_data_dict = get_available_stores_values(stores)
+def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_channels='all'):
+    """Creates a dictionary of resources based on conda channels and conda labels
+
+    Args:
+        app_workspace (str): Path pointing to the app workspace within the app store
+        refresh (bool, optional): Indicates whether resources should be refreshed or use a cache. Defaults to False.
+        conda_channels (str/list, optional): Name of the conda channel to use for app discovery. Defaults to 'all'.
+
+    Returns:
+        _type_: _description_
+    """
+    available_stores_data_dict = get_conda_stores(channel_names=conda_channels)
     object_stores = {}
     # fetch resources for each store and label
     for store in available_stores_data_dict:
-        store_name = store['conda_channel']
-        object_stores[store_name] = {}
+        conda_channel = store['conda_channel']
+        object_stores[conda_channel] = {}
         for conda_label in store['conda_labels']:
-            cache_key = f'{store_name}_{conda_label}_app_resources'
-            object_stores[store_name][conda_label] = get_resources_single_store(app_workspace, refresh,
-                                                                                store_name, conda_label,
-                                                                                cache_key=cache_key)
+            cache_key = f'{conda_channel}_{conda_label}_app_resources'
+            object_stores[conda_channel][conda_label] = get_resources_single_store(app_workspace, refresh,
+                                                                                   conda_channel, conda_label,
+                                                                                   cache_key=cache_key)
 
     return object_stores
 
@@ -58,9 +67,9 @@ def get_new_stores_reformated_by_labels(object_stores):
     return new_store_reformatted
 
 
-def get_stores_reformatted(app_workspace, refresh=False, stores='all'):
+def get_stores_reformatted(app_workspace, refresh=False, conda_channels='all'):
 
-    object_stores_raw = create_pre_multiple_stores_labels_obj(app_workspace, refresh, stores)
+    object_stores_raw = create_pre_multiple_stores_labels_obj(app_workspace, refresh, conda_channels)
     object_stores_formatted_by_label = get_new_stores_reformated_by_labels(object_stores_raw)
     object_stores_formatted_by_channel = get_stores_reformated_by_channel(object_stores_formatted_by_label)
 
@@ -203,34 +212,47 @@ def merge_labels_single_store(store, channel, type_apps):
     return merged_label_store
 
 
-def get_resources_single_store(app_workspace, require_refresh, conda_package, conda_label, cache_key):
+def get_resources_single_store(app_workspace, require_refresh, conda_channel, conda_label, cache_key):
+    """Get all the resources for a specific conda channel and conda label. Once resources have been retreived, check
+    each resource if it is installed. Once that is checked loop through each version in the metadata. For each version
+    we are checking the compatibility map to see if the compatible tethys version will work with this portal setup.
+
+    Args:
+        app_workspace (str): Path pointing to the app workspace within the app store
+        require_refresh (bool): Indicates whether resources should be refreshed or use a cache
+        conda_channel (str): Name of the conda channel to use for app discovery
+        conda_label (str): Name of the conda label to use for app discovery
+        cache_key (str): Key to be used for caching strategy
+
+    Returns:
+        Dict: A dictionary that contains resource info for availableApps, installedApps, incompatibleApps, and
+        current tethysVersion
+    """
     installed_apps = {}
     available_apps = {}
     incompatible_apps = {}
-    all_resources = fetch_resources(app_workspace, require_refresh, conda_package, conda_label, cache_key)
+    all_resources = fetch_resources(app_workspace, require_refresh, conda_channel, conda_label, cache_key)
     tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
     for resource in all_resources:
-        if resource["installed"][conda_package][conda_label]:
+        if resource["installed"][conda_channel][conda_label]:
             installed_apps[resource['name']] = resource
-
-        tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
 
         add_compatible = False
         add_incompatible = False
         new_compatible_app = copy.deepcopy(resource)
-        new_compatible_app['versions'][conda_package][conda_label] = []
+        new_compatible_app['versions'][conda_channel][conda_label] = []
         new_incompatible_app = copy.deepcopy(new_compatible_app)
-        for version in resource['versions'][conda_package][conda_label]:
+        for version in resource['versions'][conda_channel][conda_label]:
             # Assume if not found, that it is compatible with Tethys Platform 3.4.4
             compatible_tethys_version = "<=3.4.4"
-            if version in resource['compatibility'][conda_package][conda_label]:
-                compatible_tethys_version = resource['compatibility'][conda_package][conda_label][version]
+            if version in resource['compatibility'][conda_channel][conda_label]:
+                compatible_tethys_version = resource['compatibility'][conda_channel][conda_label][version]
             if semver.match(tethys_version_regex, compatible_tethys_version):
                 add_compatible = True
-                new_compatible_app['versions'][conda_package][conda_label].append(version)
+                new_compatible_app['versions'][conda_channel][conda_label].append(version)
             else:
                 add_incompatible = True
-                new_incompatible_app['versions'][conda_package][conda_label].append(version)
+                new_incompatible_app['versions'][conda_channel][conda_label].append(version)
 
         if add_compatible:
             available_apps[resource['name']] = new_compatible_app

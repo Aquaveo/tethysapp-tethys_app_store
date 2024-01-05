@@ -17,6 +17,8 @@ from asgiref.sync import async_to_sync
 from conda.cli.python_api import run_command as conda_run, Commands
 from string import Template
 from subprocess import run
+from .utilities import decrypt
+from .app import AppStore as app
 
 logger = logging.getLogger('tethys.apps.app_store')
 # Ensure that this logger is putting everything out.
@@ -287,3 +289,21 @@ def get_github_installed_apps():
     # print(possible_apps)
 
     return ""
+
+
+def get_conda_stores(active_only=False, channel_names="all"):
+    available_stores = app.get_custom_setting("stores_settings")['stores']
+    encryption_key = app.get_custom_setting("encryption_key")
+
+    if active_only:
+        available_stores = [store for store in available_stores if store['active']]
+
+    if channel_names != "all":
+        if isinstance(channel_names, str):
+            channel_names = channel_names.split(",")
+        available_stores = [store for store in available_stores if store['conda_channel'] in channel_names]
+
+    for store in available_stores:
+        store['github_token'] = decrypt(store['github_token'], encryption_key)
+
+    return available_stores
