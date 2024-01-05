@@ -109,7 +109,7 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
     return
 
 
-def conda_install(app_metadata, app_channel, app_label, app_version, channel_layer):
+def mamba_install(app_metadata, app_channel, app_label, app_version, channel_layer):
     """Run a conda install with a application using the anaconda package
 
     Args:
@@ -129,7 +129,7 @@ def conda_install(app_metadata, app_channel, app_label, app_version, channel_lay
 
     # Running the conda install as a subprocess to get more visibility into the running process
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    script_path = os.path.join(dir_path, "scripts", "conda_install.sh")
+    script_path = os.path.join(dir_path, "scripts", "mamba_install.sh")
 
     app_name = app_metadata['name'] + "=" + app_version
 
@@ -142,7 +142,7 @@ def conda_install(app_metadata, app_channel, app_label, app_version, channel_lay
 
     # Running this sub process, in case the library isn't installed, triggers a restart.
     p = subprocess.Popen(install_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
+    success = True
     while True:
         output = p.stdout.readline()
         if output == '':
@@ -160,30 +160,36 @@ def conda_install(app_metadata, app_channel, app_label, app_version, channel_lay
             if (check_all_present(str_output, ['All requested packages already installed.'])):
                 send_notification("Application package is already installed in this conda environment.",
                                   channel_layer)
+            if (check_all_present(str_output, ['libmamba Could not solve for environment specs', 'critical'])):
+                success = False
+                send_notification("Failed to resolve environment specs when installing.",
+                                  channel_layer)
+            if (check_all_present(str_output, ['Found conflicts!'])):
+                success = False
+                send_notification("Mamba install found conflicts. "
+                                  "Please try running the following command in your terminal's "
+                                  "conda environment to attempt a manual installation : "
+                                  f"mamba install -c {label_channel} {app_name}",
+                                  channel_layer)
             if (check_all_present(str_output, ['Mamba Install Complete'])):
                 break
-            if (check_all_present(str_output, ['Found conflicts!'])):
-                send_notification("Mamba install found conflicts."
-                                  "Please try running the following command in your terminal's"
-                                  "conda environment to attempt a manual installation : "
-                                  "mamba install -c " + label_channel + " " + app_name,
-                                  channel_layer)
 
     send_notification("Mamba install completed in %.2f seconds." % (time.time() - start_time), channel_layer)
+
+    return success
 
 
 def begin_install(installData, channel_layer, app_workspace):
 
     resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
 
-    send_notification(f"Starting installation of app: {resource['name']} from store {installData['channel']} with label {installData['label']}", channel_layer)  # noqa: E501
+    send_notification(f"Starting installation of app: {resource['name']} from store {installData['channel']} "
+                      f"with label {installData['label']}", channel_layer)
     send_notification(f"Installing Version: {installData['version']}", channel_layer)
 
-    try:
-        conda_install(resource, installData['channel'], installData['label'], installData["version"], channel_layer)
-    except Exception as e:
-        logger.error("Error while running conda install")
-        logger.error(e)
+    successful_install = mamba_install(resource, installData['channel'], installData['label'], installData["version"],
+                                       channel_layer)
+    if not successful_install:
         send_notification("Error while Installing Conda package. Please check logs for details", channel_layer)
         return
 
