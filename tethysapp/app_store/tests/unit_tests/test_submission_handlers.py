@@ -2,8 +2,7 @@ import pytest
 import shutil
 import os
 import filecmp
-from unittest import mock
-from unittest.mock import call
+from unittest.mock import call, MagicMock
 from github.GithubException import UnknownObjectException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
@@ -48,7 +47,7 @@ def test_repo_exists(mocker, caplog):
     repo_name = "test_app"
     mock_organization = mocker.patch('github.Organization.Organization')
     mock_organization.login = organization_login
-    mock_repository = mock.MagicMock(full_name="github-org/test_app")
+    mock_repository = MagicMock(full_name="github-org/test_app")
     mock_organization.get_repo.return_value = mock_repository
 
     tethysapp_repo = get_github_repo(repo_name, mock_organization)
@@ -70,7 +69,7 @@ def test_repo_does_not_exist(mocker, caplog):
     mock_organization = mocker.patch('github.Organization.Organization')
     mock_organization.login = organization_login
     mock_organization.get_repo.side_effect = UnknownObjectException(error_status, message=error_message)
-    mock_repository = mock.MagicMock(full_name="github-org/test_app")
+    mock_repository = MagicMock(full_name="github-org/test_app")
     mock_organization.create_repo.return_value = mock_repository
 
     tethysapp_repo = get_github_repo(repo_name, mock_organization)
@@ -98,7 +97,7 @@ def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mo
         "stores": stores
     }
 
-    channel_layer = mock.MagicMock()
+    channel_layer = MagicMock()
     app_workspace = "fake_path"
     mock_initialize_local_repo = mocker.patch('tethysapp.app_store.submission_handlers.initialize_local_repo')
 
@@ -110,13 +109,13 @@ def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mo
 def test_initialize_local_repo_fresh(store, tmp_path, mocker):
     github_url = "https://github.com/notrealorg/fakeapp"
     active_store = store("active_default")
-    channel_layer = mock.MagicMock()
-    app_workspace = mock.MagicMock(path=tmp_path)
+    channel_layer = MagicMock()
+    app_workspace = MagicMock(path=tmp_path)
 
-    mock_repo = mock.MagicMock()
-    mock_branch1 = mock.MagicMock()
+    mock_repo = MagicMock()
+    mock_branch1 = MagicMock()
     mock_branch1.name = 'origin/commit1'
-    mock_branch2 = mock.MagicMock()
+    mock_branch2 = MagicMock()
     mock_branch2.name = 'origin/commit2'
     mock_git = mocker.patch('git.Repo.init', side_effect=[mock_repo])
     mock_ws = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
@@ -150,16 +149,16 @@ def test_initialize_local_repo_fresh(store, tmp_path, mocker):
 def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
     github_url = "https://github.com/notrealorg/fakeapp"
     active_store = store("active_default")
-    channel_layer = mock.MagicMock()
-    app_workspace = mock.MagicMock(path=tmp_path)
+    channel_layer = MagicMock()
+    app_workspace = MagicMock(path=tmp_path)
     expected_github_dur = tmp_path / "gitsubmission" / active_store['conda_channel']
     expected_app_github_dur = expected_github_dur / "fakeapp"
     expected_app_github_dur.mkdir(parents=True)
 
-    mock_repo = mock.MagicMock()
-    mock_branch1 = mock.MagicMock()
+    mock_repo = MagicMock()
+    mock_branch1 = MagicMock()
     mock_branch1.name = 'origin/commit1'
-    mock_branch2 = mock.MagicMock()
+    mock_branch2 = MagicMock()
     mock_branch2.name = 'origin/commit2'
     mock_git = mocker.patch('git.Repo.init', side_effect=[mock_repo])
     mock_ws = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
@@ -199,7 +198,7 @@ def test_generate_label_strings(conda_labels, expected_label_string):
 
 
 def test_create_tethysapp_warehouse_release_app_store_branch_not_exists():
-    mock_repo = mock.MagicMock(heads=['main'])
+    mock_repo = MagicMock(heads=['main'])
     branch = "test_branch"
     create_tethysapp_warehouse_release(mock_repo, branch)
 
@@ -209,7 +208,7 @@ def test_create_tethysapp_warehouse_release_app_store_branch_not_exists():
 
 
 def test_create_tethysapp_warehouse_release_app_store_branch_exists():
-    mock_repo = mock.MagicMock(heads=['tethysapp_warehouse_release'])
+    mock_repo = MagicMock(heads=['tethysapp_warehouse_release'])
     branch = "test_branch"
     create_tethysapp_warehouse_release(mock_repo, branch)
 
@@ -346,9 +345,9 @@ def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
 
 
 def test_get_head_and_tag_names():
-    tag1 = mock.MagicMock(ref="tag1")
-    tag2 = mock.MagicMock(ref="tag2")
-    mock_repo = mock.MagicMock()
+    tag1 = MagicMock(ref="tag1")
+    tag2 = MagicMock(ref="tag2")
+    mock_repo = MagicMock()
     mock_repo.get_git_refs.return_value = [tag1, tag2]
 
     heads = get_head_and_tag_names(mock_repo)
@@ -369,9 +368,9 @@ def test_create_current_tag_version(mocker):
 
 
 def test_check_if_organization_in_remote_exists():
-    mock_remote = mock.MagicMock()
+    mock_remote = MagicMock()
     github_organization = "test_org"
-    mock_repo = mock.MagicMock(remotes={github_organization: mock_remote})
+    mock_repo = MagicMock(remotes={github_organization: mock_remote})
     remote_url = "https://github.com/notrealorg/fakeapp"
 
     tethysapp_remote = check_if_organization_in_remote(mock_repo, github_organization, remote_url)
@@ -382,9 +381,9 @@ def test_check_if_organization_in_remote_exists():
 
 
 def test_check_if_organization_in_remote_dne():
-    mock_remote = mock.MagicMock()
+    mock_remote = MagicMock()
     github_organization = "test_org"
-    mock_repo = mock.MagicMock(remotes={})
+    mock_repo = MagicMock(remotes={})
     mock_repo.create_remote.side_effect = [mock_remote]
     remote_url = "https://github.com/notrealorg/fakeapp"
 
@@ -396,8 +395,8 @@ def test_check_if_organization_in_remote_dne():
 
 
 def test_push_to_warehouse_release_remote_branch():
-    mock_repo = mock.MagicMock()
-    mock_remote = mock.MagicMock()
+    mock_repo = MagicMock()
+    mock_remote = MagicMock()
     file_changed = True
     current_tag_name = "test_tag"
 
@@ -409,11 +408,11 @@ def test_push_to_warehouse_release_remote_branch():
 
 
 def test_create_head_current_version():
-    mock_repo = mock.MagicMock()
-    mock_branch = mock.MagicMock()
+    mock_repo = MagicMock()
+    mock_branch = MagicMock()
     current_tag_name = "v1.0_2_2024_1_1"
     head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1"]
-    mock_remote = mock.MagicMock()
+    mock_remote = MagicMock()
     mock_repo.create_head.side_effect = [mock_branch]
 
     create_head_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
@@ -423,10 +422,10 @@ def test_create_head_current_version():
 
 
 def test_create_head_current_version_new_tag():
-    mock_repo = mock.MagicMock()
+    mock_repo = MagicMock()
     current_tag_name = "v1.0_1_2024_1_1"
     head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1"]
-    mock_remote = mock.MagicMock()
+    mock_remote = MagicMock()
 
     create_head_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
 
@@ -437,9 +436,9 @@ def test_create_head_current_version_new_tag():
 def test_create_tags_for_current_version_dne():
     current_tag_name = "v1.0_2_2024_1_1"
     head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1"]
-    mock_repo = mock.MagicMock(heads={"tethysapp_warehouse_release": "ref"})
-    mock_remote = mock.MagicMock()
-    mock_tag = mock.MagicMock()
+    mock_repo = MagicMock(heads={"tethysapp_warehouse_release": "ref"})
+    mock_remote = MagicMock()
+    mock_tag = MagicMock()
     mock_repo.create_tag.side_effect = [mock_tag]
 
     create_tags_for_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
@@ -454,9 +453,9 @@ def test_create_tags_for_current_version_dne():
 def test_create_tags_for_current_version_exists():
     current_tag_name = "v1.0_1_2024_1_1"
     head_names_list = ["v1.0_0_2024_1_1", "v1.0_1_2024_1_1_release"]
-    mock_repo = mock.MagicMock(heads={"tethysapp_warehouse_release": "ref"})
-    mock_remote = mock.MagicMock()
-    mock_tag = mock.MagicMock()
+    mock_repo = MagicMock(heads={"tethysapp_warehouse_release": "ref"})
+    mock_remote = MagicMock()
+    mock_tag = MagicMock()
     mock_repo.create_tag.side_effect = [mock_tag]
 
     create_tags_for_current_version(mock_repo, current_tag_name, head_names_list, mock_remote)
@@ -474,11 +473,11 @@ def test_get_workflow_job_url(mocker):
     hex = "abc123"
     mocker.patch('tethysapp.app_store.submission_handlers.time')
 
-    mock_repo = mock.MagicMock()
+    mock_repo = MagicMock()
     mock_repo.head.object.hexsha = hex
-    mock_remote_repo = mock.MagicMock()
-    mock_job = mock.MagicMock(head_sha=hex, html_url="job_url")
-    mock_workflow = mock.MagicMock(display_title="tag version v1.0_1_2024_1_1")
+    mock_remote_repo = MagicMock()
+    mock_job = MagicMock(head_sha=hex, html_url="job_url")
+    mock_workflow = MagicMock(display_title="tag version v1.0_1_2024_1_1")
     mock_workflow.jobs.return_value = [mock_job]
     mock_remote_repo.get_workflow_runs.return_value = [mock_workflow]
 
@@ -492,11 +491,11 @@ def test_get_workflow_job_url_not_found(mocker):
     hex = "abc123"
     mocker.patch('tethysapp.app_store.submission_handlers.time')
 
-    mock_repo = mock.MagicMock()
+    mock_repo = MagicMock()
     mock_repo.head.object.hexsha = hex
-    mock_remote_repo = mock.MagicMock()
-    mock_job = mock.MagicMock(head_sha="123abc", html_url="job_url")
-    mock_workflow = mock.MagicMock(display_title="tag version v1.0_1_2024_1_1")
+    mock_remote_repo = MagicMock()
+    mock_job = MagicMock(head_sha="123abc", html_url="job_url")
+    mock_workflow = MagicMock(display_title="tag version v1.0_1_2024_1_1")
     mock_workflow.jobs.return_value = [mock_job]
     mock_remote_repo.get_workflow_runs.return_value = [mock_workflow]
 
@@ -518,7 +517,7 @@ def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
         "conda_channel": "test_channel",
         "branch": "test_branch"
     }
-    mock_channel = mock.MagicMock()
+    mock_channel = MagicMock()
     mock_github = mocker.patch('tethysapp.app_store.submission_handlers.github')
     mock_github.Github().get_organization().get_repo().git_url.replace.return_value = dev_url
     mocker.patch('tethysapp.app_store.submission_handlers.git')

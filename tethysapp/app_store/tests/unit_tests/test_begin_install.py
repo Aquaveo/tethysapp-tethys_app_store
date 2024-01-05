@@ -1,5 +1,4 @@
-from unittest import mock
-from unittest.mock import call
+from unittest.mock import call, MagicMock
 from tethysapp.app_store.begin_install import (handle_property_not_present, process_post_install_scripts,
                                                detect_app_dependencies, mamba_install, begin_install)
 
@@ -17,15 +16,15 @@ def test_process_post_install_scripts(tmp_path):
 
 def test_detect_app_dependencies_pip_no_settings(mocker, tethysapp_base_with_application_files):
     app_name = "test_app"
-    channel_layer = mock.MagicMock()
-    mock_ws = mock.MagicMock()
+    channel_layer = MagicMock()
+    mock_ws = MagicMock()
     mocker.patch('tethysapp.app_store.begin_install.call')
     mocker.patch('tethysapp.app_store.begin_install.cache')
     mocker.patch('tethysapp.app_store.begin_install.importlib')
     mock_subprocess = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_subprocess.Popen().stdout.readline.side_effect = ["still_running", "PIP Install Complete"]
     mock_tethysapp = mocker.patch('tethysapp.app_store.begin_install.tethysapp')
-    mock_app = mock.MagicMock()
+    mock_app = MagicMock()
     mock_app.custom_settings.return_value = []
     mocker.patch('tethysapp.app_store.begin_install.get_app_instance_from_path', return_value=mock_app)
 
@@ -49,16 +48,16 @@ def test_detect_app_dependencies_pip_no_settings(mocker, tethysapp_base_with_app
 
 def test_detect_app_dependencies_pip_settings(mocker, tethysapp_base_with_application_files):
     app_name = "test_app"
-    channel_layer = mock.MagicMock()
-    mock_ws = mock.MagicMock()
+    channel_layer = MagicMock()
+    mock_ws = MagicMock()
     mocker.patch('tethysapp.app_store.begin_install.call')
     mocker.patch('tethysapp.app_store.begin_install.cache')
     mocker.patch('tethysapp.app_store.begin_install.importlib')
     mock_subprocess = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_subprocess.Popen().stdout.readline.side_effect = [""]
     mock_tethysapp = mocker.patch('tethysapp.app_store.begin_install.tethysapp')
-    mock_app = mock.MagicMock()
-    mock_setting = mock.MagicMock(default=True, description="description")
+    mock_app = MagicMock()
+    mock_setting = MagicMock(default=True, description="description")
     mock_setting.name = "name"
     mock_app.custom_settings.return_value = [mock_setting]
     mocker.patch('tethysapp.app_store.begin_install.get_app_instance_from_path', return_value=mock_app)
@@ -86,14 +85,14 @@ def test_detect_app_dependencies_no_pip_no_settings(mocker, tethysapp_base_with_
     test_install_pip = tethysapp_base_with_application_files / "tethysapp" / "test_app" / "scripts" / "install_pip.sh"
     test_install_pip.unlink()
     app_name = "test_app"
-    channel_layer = mock.MagicMock()
-    mock_ws = mock.MagicMock()
+    channel_layer = MagicMock()
+    mock_ws = MagicMock()
     mocker.patch('tethysapp.app_store.begin_install.call')
     mocker.patch('tethysapp.app_store.begin_install.cache')
     mocker.patch('tethysapp.app_store.begin_install.importlib')
     mock_subprocess = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_tethysapp = mocker.patch('tethysapp.app_store.begin_install.tethysapp')
-    mock_app = mock.MagicMock()
+    mock_app = MagicMock()
     mock_app.custom_settings.return_value = []
     mocker.patch('tethysapp.app_store.begin_install.get_app_instance_from_path', return_value=mock_app)
 
@@ -113,8 +112,8 @@ def test_detect_app_dependencies_no_pip_no_settings(mocker, tethysapp_base_with_
 
 def test_detect_app_dependencies_no_app_path(mocker, caplog):
     app_name = "test_app"
-    channel_layer = mock.MagicMock()
-    mock_ws = mock.MagicMock()
+    channel_layer = MagicMock()
+    mock_ws = MagicMock()
     mocker.patch('tethysapp.app_store.begin_install.call')
     mocker.patch('tethysapp.app_store.begin_install.cache')
     mocker.patch('tethysapp.app_store.begin_install.importlib')
@@ -133,7 +132,7 @@ def test_mamba_install_success(resource, mocker):
     app_label = "dev"
     app_version = ""
     app_resource = resource("test_app", app_channel, app_label)
-    mock_channel = mock.MagicMock()
+    mock_channel = MagicMock()
     mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
     mock_sp = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_time = mocker.patch('tethysapp.app_store.begin_install.time')
@@ -161,7 +160,7 @@ def test_mamba_install_output_failure(resource, mocker):
     app_label = "dev"
     app_version = ""
     app_resource = resource("test_app", app_channel, app_label)
-    mock_channel = mock.MagicMock()
+    mock_channel = MagicMock()
     mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
     mock_sp = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_time = mocker.patch('tethysapp.app_store.begin_install.time')
@@ -186,7 +185,7 @@ def test_mamba_install_output_failure2(resource, mocker):
     app_label = "dev"
     app_resource = resource(app_name, app_channel, app_label)
     app_version = app_resource['latestVersion'][app_channel][app_label]
-    mock_channel = mock.MagicMock()
+    mock_channel = MagicMock()
     mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
     mock_sp = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_time = mocker.patch('tethysapp.app_store.begin_install.time')
@@ -214,7 +213,7 @@ def test_mamba_install_output_failure3(resource, mocker):
     app_label = "main"
     app_resource = resource(app_name, app_channel, app_label)
     app_version = app_resource['latestVersion'][app_channel][app_label]
-    mock_channel = mock.MagicMock()
+    mock_channel = MagicMock()
     mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
     mock_sp = mocker.patch('tethysapp.app_store.begin_install.subprocess')
     mock_time = mocker.patch('tethysapp.app_store.begin_install.time')
@@ -237,8 +236,8 @@ def test_mamba_install_output_failure3(resource, mocker):
 
 
 def test_begin_install(resource, mocker):
-    mock_channel = mock.MagicMock()
-    mock_workspace = mock.MagicMock()
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
     app_name = "test_app"
     app_channel = "test_channel"
     app_label = "main"
@@ -265,8 +264,8 @@ def test_begin_install(resource, mocker):
 
 
 def test_begin_install_failed_install(resource, mocker):
-    mock_channel = mock.MagicMock()
-    mock_workspace = mock.MagicMock()
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
     app_name = "test_app"
     app_channel = "test_channel"
     app_label = "main"
@@ -293,8 +292,8 @@ def test_begin_install_failed_install(resource, mocker):
 
 
 def test_begin_install_failed_dependencies(resource, mocker, caplog):
-    mock_channel = mock.MagicMock()
-    mock_workspace = mock.MagicMock()
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
     app_name = "test_app"
     app_channel = "test_channel"
     app_label = "main"

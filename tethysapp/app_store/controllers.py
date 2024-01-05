@@ -5,7 +5,6 @@ from django.shortcuts import render
 from tethys_sdk.routing import controller
 
 from .resource_helpers import get_stores_reformatted
-
 from .app import AppStore as app
 from .utilities import decrypt
 ALL_RESOURCES = []
@@ -15,10 +14,17 @@ CACHE_KEY = "warehouse_app_resources"
 @controller(
     name='home',
     url='app-store',
-    permissions_required='use_app_store',
-    app_workspace=True,
+    permissions_required='use_app_store'
 )
-def home(request, app_workspace):
+def home(request):
+    """Created the context for the home page of the app store
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+
+    Returns:
+        object: Rendered html Django object
+    """
     available_stores_data_dict = app.get_custom_setting("stores_settings")['stores']
     encryption_key = app.get_custom_setting("encryption_key")
     for store in available_stores_data_dict:

@@ -180,7 +180,14 @@ def mamba_install(app_metadata, app_channel, app_label, app_version, channel_lay
 
 
 def begin_install(installData, channel_layer, app_workspace):
+    """Using the install data, this function will retrieve a specific app resource and install the application as well
+    as update any app dependencies
 
+    Args:
+        installData (dict): User provided information about the application that should be installed
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
 
     send_notification(f"Starting installation of app: {resource['name']} from store {installData['channel']} "
