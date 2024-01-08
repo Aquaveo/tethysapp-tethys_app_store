@@ -15,18 +15,16 @@ import yaml
 from .helpers import check_if_app_installed, add_if_exists_keys, logger, get_conda_stores
 from conda.cli.python_api import run_command as conda_run, Commands
 
-CACHE_KEY = ""
 
-
-def clear_cache(data, channel_layer):
+def clear_conda_channel_cache():
+    """Clears Django cache for all the conda stores
+    """
     available_stores_data_dict = get_conda_stores()
     for store in available_stores_data_dict:
         store_name = store['conda_channel']
         for conda_label in store['conda_labels']:
             cache_key = f'{store_name}_{conda_label}_app_resources'
             cache.delete(cache_key)
-
-    return
 
 
 def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_channels='all'):
@@ -57,7 +55,6 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_ch
     """
     available_stores_data_dict = get_conda_stores(channel_names=conda_channels)
     object_stores = {}
-    # fetch resources for each store and label
     for store in available_stores_data_dict:
         conda_channel = store['conda_channel']
         object_stores[conda_channel] = {}
@@ -107,27 +104,27 @@ def get_new_stores_reformated_by_labels(object_stores):
 
 
 def get_stores_reformatted(app_workspace, refresh=False, conda_channels='all'):
+    """Retrieve a dictionary of app resources and metadata from the conda channels. Reformat the dictionary to
+        provide a list of available apps, installed apps, and incompatible apps
 
+    Args:
+        app_workspace (str): Path pointing to the app workspace within the app store
+        refresh (bool, optional): Indicates whether resources should be refreshed or use a cache. Defaults to False.
+        conda_channels (str/list, optional): Name of the conda channel to use for app discovery. Defaults to 'all'.
+
+    Returns:
+        dict: list of available apps, installed apps, and incompatible apps across all specified channels
+    """
     object_stores_raw = create_pre_multiple_stores_labels_obj(app_workspace, refresh, conda_channels)
     object_stores_formatted_by_label = get_new_stores_reformated_by_labels(object_stores_raw)
     object_stores_formatted_by_channel = get_stores_reformated_by_channel(object_stores_formatted_by_label)
 
-    list_stores_formatted_by_channel = reduce_level_obj(object_stores_formatted_by_channel)
+    list_stores_formatted_by_channel = {
+        'availableApps': [metadata for _, metadata in object_stores_formatted_by_channel['availableApps'].items()],
+        'installedApps': [metadata for _, metadata in object_stores_formatted_by_channel['installedApps'].items()],
+        'incompatibleApps': [metadata for _, metadata in object_stores_formatted_by_channel['incompatibleApps'].items()]
+    }
     return list_stores_formatted_by_channel
-
-
-def object_to_list(obj_con):
-    new_list = []
-    for key in obj_con:
-        new_list.append(obj_con[key])
-    return new_list
-
-
-def reduce_level_obj(complex_obj):
-    for key in complex_obj:
-        if type(complex_obj[key]) is dict:
-            complex_obj[key] = object_to_list(complex_obj[key])
-    return complex_obj
 
 
 def get_stores_reformated_by_channel(stores):
@@ -246,41 +243,21 @@ def get_app_channel_for_stores(stores):
     return app_channel_obj
 
 
-def get_app_level_for_store(store, type_apps):
-
-    apps_levels = {}
-    levels = list(store.keys())
-    for level in levels:
-        apps = list(store[level][type_apps].keys())
-        for app in apps:
-            if app in apps_levels:
-                apps_levels[app].append(level)
-            else:
-                apps_levels[app] = []
-                apps_levels[app].append(level)
-    return apps_levels
-
-
-def merge_levels_for_app_in_store(apps_channels, store, channel, type_apps):
-    new_store_label_obj = {}
-    for app in apps_channels:
-        if app not in new_store_label_obj:
-            new_store_label_obj[app] = {}
-        for label in store:
-            if label not in apps_channels[app]:
-                continue
-            for key in store[label][type_apps][app]:
-                if key != 'name':
-                    if key not in new_store_label_obj[app]:
-                        new_store_label_obj[app][key] = {
-                            channel: {}
-                        }
-                    for label_app in store[label][type_apps][app][key][channel]:
-                        new_store_label_obj[app][key][channel][label_app] = store[label][type_apps][app][key][channel][label_app]  # noqa: E501
-    return new_store_label_obj
-
-
 def get_app_label_obj_for_store(store, type_apps):
+    """Parse the app resources to get a dictionary of all apps and any labels that the app uses
+
+    Args:
+        store (dict): Apps that are found from the conda channel
+        type_apps (str): availableApps, installedApps, or incompatibleApps
+
+    Returns:
+        dict: Dictionary containing all the apps and any labels that the app can be found in. See the example below
+
+        {
+            'app_name': ['main'],
+            'app2_name': ['main', 'dev']
+        }
+    """
     apps_label = {}
     labels = list(store.keys())
     for label in labels:
@@ -291,10 +268,22 @@ def get_app_label_obj_for_store(store, type_apps):
             else:
                 apps_label[app] = []
                 apps_label[app].append(label)
+
     return apps_label
 
 
-def merge_labels_for_app_in_store(apps_label, store, channel, type_apps):
+def merge_labels_for_app_in_store(apps_label, store, conda_channel, type_apps):
+    """Merge labels in the app resource metadata
+
+    Args:
+        apps_label (dict): Dictionary containing all the apps and any labels that the app can be found in
+        store (dict): Apps that are found from the conda channel
+        conda_channel (str): Name of the conda channel to use for app discovery
+        type_apps (str): availableApps, installedApps, or incompatibleApps
+
+    Returns:
+        dict: Merged app resource information for each label in the conda channel
+    """
     new_store_label_obj = {}
     for app in apps_label:
         if app not in new_store_label_obj:
@@ -302,23 +291,34 @@ def merge_labels_for_app_in_store(apps_label, store, channel, type_apps):
         for label in store:
             if label not in apps_label[app]:
                 continue
-            for key in store[label][type_apps][app]:
+            for key in store[label][type_apps].get(app, []):
                 if key != 'name':
                     if key not in new_store_label_obj[app]:
                         new_store_label_obj[app][key] = {
-                            channel: {}
+                            conda_channel: {}
                         }
-                    for label_app in store[label][type_apps][app][key][channel]:
-                        new_store_label_obj[app][key][channel][label_app] = store[label][type_apps][app][key][channel][label_app]  # noqa: E501
+                    for label_app in store[label][type_apps][app][key][conda_channel]:
+                        new_store_label_obj[app][key][conda_channel][label_app] = store[label][type_apps][app][key][conda_channel][label_app]  # noqa: E501
                 else:
                     new_store_label_obj[app][key] = store[label][type_apps][app][key]
+
     return new_store_label_obj
 
 
 def merge_labels_single_store(store, channel, type_apps):
+    """Merges all resources from all the labels for a specific conda channel
 
+    Args:
+        store (dict): Apps that are found from the conda channel
+        conda_channel (str): Name of the conda channel to use for app discovery
+        type_apps (str): availableApps, installedApps, or incompatibleApps
+
+    Returns:
+        dict: Merged resource dictionary for all apps within conda channel
+    """
     apps_labels = get_app_label_obj_for_store(store, type_apps)
     merged_label_store = merge_labels_for_app_in_store(apps_labels, store, channel, type_apps)
+
     return merged_label_store
 
 
@@ -380,7 +380,21 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
 
 
 def fetch_resources(app_workspace, refresh=False, conda_package="tethysapp", conda_label="main", cache_key=None):
+    """_summary_
 
+    Args:
+        app_workspace (_type_): _description_
+        refresh (bool, optional): _description_. Defaults to False.
+        conda_package (str, optional): _description_. Defaults to "tethysapp".
+        conda_label (str, optional): _description_. Defaults to "main".
+        cache_key (_type_, optional): _description_. Defaults to None.
+
+    Raises:
+        Exception: _description_
+
+    Returns:
+        _type_: _description_
+    """
     CHANNEL_NAME = conda_package
 
     if conda_label != 'main':

@@ -1,6 +1,23 @@
+from unittest.mock import call
 from tethysapp.app_store.resource_helpers import (create_pre_multiple_stores_labels_obj, get_resources_single_store,
                                                   get_new_stores_reformated_by_labels, get_stores_reformated_by_channel,
-                                                  get_app_channel_for_stores, merge_channels_of_apps)
+                                                  get_app_channel_for_stores, merge_channels_of_apps, fetch_resources,
+                                                  get_stores_reformatted, clear_conda_channel_cache,
+                                                  merge_labels_single_store, get_app_label_obj_for_store,
+                                                  merge_labels_for_app_in_store, )
+
+
+def test_clear_conda_channel_cache(mocker, store):
+    store_name = 'active_default'
+    conda_labels = ['main', 'dev']
+    active_store = store(store_name, conda_labels=conda_labels)
+    mocker.patch('tethysapp.app_store.resource_helpers.get_conda_stores', return_value=[active_store])
+    mock_cache = mocker.patch('tethysapp.app_store.resource_helpers.cache')
+
+    clear_conda_channel_cache()
+
+    mock_calls = [call(f'{active_store["conda_channel"]}_{conda_label}_app_resources') for conda_label in conda_labels]
+    mock_cache.delete.assert_has_calls(mock_calls)
 
 
 def test_create_pre_multiple_stores_labels_obj(tmp_path, mocker, store, resource):
@@ -245,3 +262,259 @@ def test_merge_channels_of_apps(store_with_resources):
     }
 
     assert merged_channels_app == expected_object_stores
+
+
+def test_merge_channels_of_apps_missing_app(store_with_resources):
+    available_app_name = "available_app_name"
+    installed_app_name = "installed_app_name"
+    incompatible_app_name = "incompatible_app_name"
+    store1, store1_resources = store_with_resources("store_name1", ['main', 'dev'],
+                                                    available_apps_label="main", available_apps_name=available_app_name,
+                                                    installed_apps_label="main", installed_apps_name=installed_app_name,
+                                                    incompatible_apps_label="dev",
+                                                    incompatible_apps_name=incompatible_app_name)
+    store2, store2_resources = store_with_resources("store_name2", ['main'],
+                                                    available_apps_label="dev", available_apps_name=available_app_name,
+                                                    installed_apps_label="main", installed_apps_name=installed_app_name)
+
+    object_stores = {store1['conda_channel']: store1_resources, store2['conda_channel']: store2_resources}
+
+    app_channel_obj = {
+        'availableApps': {},
+        'installedApps': {installed_app_name: [store1['conda_channel'], store2['conda_channel']]},
+        'incompatibleApps': {incompatible_app_name: [store1['conda_channel']]}
+    }
+
+    merged_channels_app = merge_channels_of_apps(app_channel_obj, object_stores)
+
+    expected_object_stores = {
+        'availableApps': {
+            available_app_name: {}
+        },
+        'installedApps': {
+            installed_app_name: {
+                'name': installed_app_name,
+                'installed': {store1['conda_channel']: {'main': False}, store2['conda_channel']: {'main': False}},
+                'installedVersion': {store1['conda_channel']: {'main': "1.0"},
+                                     store2['conda_channel']: {'main': "1.0"}},
+                'latestVersion': {store1['conda_channel']: {'main': "1.0"}, store2['conda_channel']: {'main': "1.0"}},
+                'versions': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'versionURLs': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'channels_and_labels': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'timestamp': {store1['conda_channel']: {'main': "timestamp"},
+                              store2['conda_channel']: {'main': "timestamp"}},
+                'compatibility': {store1['conda_channel']: {'main': {}}, store2['conda_channel']: {'main': {}}},
+                'license': {store1['conda_channel']: {'main': None}, store2['conda_channel']: {'main': None}},
+                'licenses': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'author': {store1['conda_channel']: {'main': 'author'}, store2['conda_channel']: {'main': 'author'}},
+                'description': {store1['conda_channel']: {'main': 'description'},
+                                store2['conda_channel']: {'main': 'description'}},
+                'author_email': {store1['conda_channel']: {'main': 'author_email'},
+                                 store2['conda_channel']: {'main': 'author_email'}},
+                'keywords': {store1['conda_channel']: {'main': 'keywords'},
+                             store2['conda_channel']: {'main': 'keywords'}},
+                'dev_url': {store1['conda_channel']: {'main': 'dev_url'}, store2['conda_channel']: {'main': 'dev_url'}}
+            }
+        },
+        'incompatibleApps': {
+            incompatible_app_name: {
+                'name': incompatible_app_name,
+                'installed': {store1['conda_channel']: {'dev': False}},
+                'installedVersion': {store1['conda_channel']: {'dev': "1.0"}},
+                'latestVersion': {store1['conda_channel']: {'dev': "1.0"}},
+                'versions': {store1['conda_channel']: {'dev': []}},
+                'versionURLs': {store1['conda_channel']: {'dev': []}},
+                'channels_and_labels': {store1['conda_channel']: {'dev': []}},
+                'timestamp': {store1['conda_channel']: {'dev': "timestamp"}},
+                'compatibility': {store1['conda_channel']: {'dev': {}}},
+                'license': {store1['conda_channel']: {'dev': None}},
+                'licenses': {store1['conda_channel']: {'dev': []}},
+                'author': {store1['conda_channel']: {'dev': 'author'}},
+                'description': {store1['conda_channel']: {'dev': 'description'}},
+                'author_email': {store1['conda_channel']: {'dev': 'author_email'}},
+                'keywords': {store1['conda_channel']: {'dev': 'keywords'}},
+                'dev_url': {store1['conda_channel']: {'dev': 'dev_url'}}
+            }
+        }
+    }
+
+    assert merged_channels_app == expected_object_stores
+
+
+def test_reduce_level_obj(store, resource, mocker):
+    active_store = store('active_default', conda_labels=['main', 'dev'])
+    mocker.patch('tethysapp.app_store.resource_helpers.get_conda_stores', return_value=[active_store])
+    app_resource_main = resource("test_app", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource2_main = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource_dev = resource("test_app", active_store['conda_channel'], active_store['conda_labels'][1])
+    main_resources = {
+        'availableApps': {"test_app": app_resource_main},
+        'installedApps': {"test_app": app_resource_main},
+        'incompatibleApps': {"test_app2": app_resource2_main},
+        'tethysVersion': "4.0.0",
+    }
+    dev_resources = {
+        'availableApps': {},
+        'installedApps': {},
+        'incompatibleApps': {"test_app": app_resource_dev},
+        'tethysVersion': "4.0.0",
+    }
+    object_stores = {
+        active_store['conda_channel']: {
+            "main": main_resources,
+            "dev": dev_resources
+        }
+    }
+    mocker.patch('tethysapp.app_store.resource_helpers.create_pre_multiple_stores_labels_obj',
+                 return_value=object_stores)
+
+    list_stores = get_stores_reformatted(object_stores)
+
+    expected_list_stores = {
+        'availableApps': [app_resource_main],
+        'installedApps': [app_resource_main],
+        'incompatibleApps': [app_resource2_main, app_resource_dev]
+    }
+
+    assert list_stores == expected_list_stores
+
+
+def test_merge_labels_single_store(store, resource):
+    active_store = store('active_default', conda_labels=['main', 'dev'])
+    app_resource_main = resource("test_app", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource2_main = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource_dev = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][1])
+    main_resources = {
+        'availableApps': {"test_app": app_resource_main},
+        'installedApps': {"test_app": app_resource_main},
+        'incompatibleApps': {"test_app2": app_resource2_main},
+        'tethysVersion': "4.0.0",
+    }
+    dev_resources = {
+        'availableApps': {},
+        'installedApps': {},
+        'incompatibleApps': {"test_app2": app_resource_dev},
+        'tethysVersion': "4.0.0",
+    }
+    conda_channel = active_store['conda_channel']
+    object_stores = {
+        conda_channel: {
+            "main": main_resources,
+            "dev": dev_resources
+        }
+    }
+
+    ref_object_stores = merge_labels_single_store(object_stores[conda_channel], conda_channel, 'availableApps')
+    expected_object_stores = main_resources['availableApps']
+    assert ref_object_stores == expected_object_stores
+
+    ref_object_stores = merge_labels_single_store(object_stores[conda_channel], conda_channel, 'installedApps')
+    expected_object_stores = main_resources['installedApps']
+    assert ref_object_stores == expected_object_stores
+
+    ref_object_stores = merge_labels_single_store(object_stores[conda_channel], conda_channel, 'incompatibleApps')
+    expected_object_stores = expected_object_stores = {'test_app2': {
+        'name': "test_app2",
+        'installed': {active_store['conda_channel']: {'main': False, 'dev': False}},
+        'installedVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
+        'latestVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
+        'versions': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'versionURLs': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'channels_and_labels': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'timestamp': {active_store['conda_channel']: {'main': "timestamp", 'dev': "timestamp"}},
+        'compatibility': {active_store['conda_channel']: {'main': {}, 'dev': {}}},
+        'license': {active_store['conda_channel']: {'main': None, 'dev': None}},
+        'licenses': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'author': {active_store['conda_channel']: {'main': 'author', 'dev': 'author'}},
+        'description': {active_store['conda_channel']: {'main': 'description', 'dev': 'description'}},
+        'author_email': {active_store['conda_channel']: {'main': 'author_email', 'dev': 'author_email'}},
+        'keywords': {active_store['conda_channel']: {'main': 'keywords', 'dev': 'keywords'}},
+        'dev_url': {active_store['conda_channel']: {'main': 'dev_url', 'dev': 'dev_url'}}
+    }}
+    assert ref_object_stores == expected_object_stores
+
+
+def test_get_app_label_obj_for_store(store, resource):
+    active_store = store('active_default', conda_labels=['main', 'dev'])
+    app_resource_main = resource("test_app", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource2_main = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource_dev = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][1])
+    main_resources = {
+        'availableApps': {"test_app": app_resource_main},
+        'installedApps': {"test_app": app_resource_main},
+        'incompatibleApps': {"test_app2": app_resource2_main},
+        'tethysVersion': "4.0.0",
+    }
+    dev_resources = {
+        'availableApps': {},
+        'installedApps': {},
+        'incompatibleApps': {"test_app2": app_resource_dev},
+        'tethysVersion': "4.0.0",
+    }
+    conda_channel = active_store['conda_channel']
+    object_stores = {
+        conda_channel: {
+            "main": main_resources,
+            "dev": dev_resources
+        }
+    }
+
+    apps_labels = get_app_label_obj_for_store(object_stores[conda_channel], 'availableApps')
+    assert apps_labels == {'test_app': ['main']}
+
+    apps_labels = get_app_label_obj_for_store(object_stores[conda_channel], 'installedApps')
+    assert apps_labels == {'test_app': ['main']}
+
+    apps_labels = get_app_label_obj_for_store(object_stores[conda_channel], 'incompatibleApps')
+    assert apps_labels == {'test_app2': ['main', 'dev']}
+
+
+def test_merge_labels_for_app_in_store(store, resource):
+    active_store = store('active_default', conda_labels=['main', 'dev'])
+    app_resource_main = resource("test_app", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource2_main = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][0])
+    app_resource_dev = resource("test_app2", active_store['conda_channel'], active_store['conda_labels'][1])
+    main_resources = {
+        'availableApps': {"test_app": app_resource_main},
+        'installedApps': {"test_app": app_resource_main},
+        'incompatibleApps': {"test_app2": app_resource2_main},
+        'tethysVersion': "4.0.0",
+    }
+    dev_resources = {
+        'availableApps': {},
+        'installedApps': {},
+        'incompatibleApps': {"test_app2": app_resource_dev},
+        'tethysVersion': "4.0.0",
+    }
+    conda_channel = active_store['conda_channel']
+    object_stores = {
+        conda_channel: {
+            "main": main_resources,
+            "dev": dev_resources
+        }
+    }
+    app_labels = {'test_app2': ['main', 'dev']}
+
+    merged_label_store = merge_labels_for_app_in_store(app_labels, object_stores[conda_channel], conda_channel, 
+                                                       'incompatibleApps')
+
+    expected_object_stores = {'test_app2': {
+        'name': "test_app2",
+        'installed': {active_store['conda_channel']: {'main': False, 'dev': False}},
+        'installedVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
+        'latestVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
+        'versions': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'versionURLs': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'channels_and_labels': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'timestamp': {active_store['conda_channel']: {'main': "timestamp", 'dev': "timestamp"}},
+        'compatibility': {active_store['conda_channel']: {'main': {}, 'dev': {}}},
+        'license': {active_store['conda_channel']: {'main': None, 'dev': None}},
+        'licenses': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'author': {active_store['conda_channel']: {'main': 'author', 'dev': 'author'}},
+        'description': {active_store['conda_channel']: {'main': 'description', 'dev': 'description'}},
+        'author_email': {active_store['conda_channel']: {'main': 'author_email', 'dev': 'author_email'}},
+        'keywords': {active_store['conda_channel']: {'main': 'keywords', 'dev': 'keywords'}},
+        'dev_url': {active_store['conda_channel']: {'main': 'dev_url', 'dev': 'dev_url'}}
+    }}
+
+    assert merged_label_store == expected_object_stores

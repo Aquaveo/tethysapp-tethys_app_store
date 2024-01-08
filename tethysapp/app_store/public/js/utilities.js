@@ -70,7 +70,7 @@ const reloadCacheRefresh = () => {
   notification_ws.send(
     JSON.stringify({
       data: {},
-      type: `clear_cache`
+      type: `clear_conda_channel_cache`
     })
   )
   // Refresh Page
