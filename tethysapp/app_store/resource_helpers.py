@@ -38,7 +38,22 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_ch
         conda_channels (str/list, optional): Name of the conda channel to use for app discovery. Defaults to 'all'.
 
     Returns:
-        _type_: _description_
+        dict: A reformatted app resource dictionary based solely on the conda channel See the example below.
+
+        {
+            'conda_channel1': {
+                'conda_label1': {
+                    'availableApps': {'app1_name': <app1_metadata_dict>},
+                    'installedApps': {'app1_name': <app1_metadata_dict>},
+                    'incompatibleApps': {}
+                },
+                'conda_label2': {
+                    'availableApps': {'app2_name': <app2_metadata_dict>},
+                    'installedApps': {},
+                    'incompatibleApps': {'app3_name': <app3_metadata_dict>}
+                }
+            }
+        }
     """
     available_stores_data_dict = get_conda_stores(channel_names=conda_channels)
     object_stores = {}
@@ -56,14 +71,38 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_ch
 
 
 def get_new_stores_reformated_by_labels(object_stores):
+    """Merge all app resources in a given conda channel into channel based dictionaries of availableApps, installedApps,
+    and incompatibleApps.
+
+    Args:
+        object_stores (dict): A dictionary of app resources based on conda channel and then conda label
+
+    Returns:
+        dict: A reformatted app resource dictionary based solely on the conda channel See the example below.
+
+        {
+            'conda_channel1': {
+                'availableApps': {'app1_name': <app1_metadata_dict>, 'app2_name': <app2_metadata_dict>},
+                'installedApps': {'app1_name': <app1_metadata_dict>},
+                'incompatibleApps': {'app3_name': <app3_metadata_dict>}
+            },
+            'conda_channel2': {
+                'availableApps': {'app4_name': <app1_metadata_dict>,
+                'installedApps': {},
+                'incompatibleApps': {'app5_name': <app3_metadata_dict>}
+            }
+        }
+    """
     new_store_reformatted = {}
-    for store in object_stores:
-        new_store_reformatted[store] = {}
-        list_labels_store = list(object_stores[store].keys())
-        list_type_apps = list(object_stores[store][list_labels_store[0]].keys())
+    for conda_channel in object_stores:
+        new_store_reformatted[conda_channel] = {}
+        list_labels_store = list(object_stores[conda_channel].keys())
+        list_type_apps = list(object_stores[conda_channel][list_labels_store[0]].keys())
         for type_app in list_type_apps:
             if type_app != 'tethysVersion':
-                new_store_reformatted[store][type_app] = merge_labels_single_store(object_stores[store], store, type_app)  # noqa: E501
+                new_store_reformatted[conda_channel][type_app] = merge_labels_single_store(
+                    object_stores[conda_channel], conda_channel, type_app)
+
     return new_store_reformatted
 
 
@@ -92,6 +131,21 @@ def reduce_level_obj(complex_obj):
 
 
 def get_stores_reformated_by_channel(stores):
+    """Reformats a dictionary of conda channel based resources into a status based dictionary
+
+    Args:
+        stores (dict): Dictionary of apps based on conda channels
+
+    Returns:
+        dict: Dictionary of apps based on status, i.e. availableApps, installedApps, and incompatibleApps. See the
+        example below.
+
+        {
+            'availableApps': {'app1_name': <app1_metadata_dict>, 'app2_name': <app2_metadata_dict>},
+            'installedApps': {'app1_name': <app1_metadata_dict>},
+            'incompatibleApps': {'app3_name': <app3_metadata_dict>}
+        }
+    """
     app_channel_obj = get_app_channel_for_stores(stores)
     merged_channels_app = merge_channels_of_apps(app_channel_obj, stores)
     return merged_channels_app
@@ -121,6 +175,21 @@ def merge_channels_of_apps(app_channel_obj, stores):
 
 
 def get_app_channel_for_stores(stores):
+    """Parses a dictionary of resources based on conda channels and provides a summary of apps shared across channels
+
+    Args:
+        stores (dict): Dictionary of apps based on conda channels
+
+    Returns:
+        dict: Summary of apps and channels based on status, i.e. availableApps, installedApps, and incompatibleApps.
+        See the example below
+
+        {
+            'availableApps': {'app1_name': ['conda_channel1', 'conda_channel2'], 'app2_name': ['conda_channel1']},
+            'installedApps': {'app1_name': ['conda_channel1']},
+            'incompatibleApps': {'app3_name': ['conda_channel1', 'conda_channel2']}
+        }
+    """
     app_channel_obj = {}
     for channel in stores:
         for type_apps in stores[channel]:

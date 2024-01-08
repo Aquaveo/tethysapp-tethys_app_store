@@ -86,6 +86,48 @@ def resource():
 
 
 @pytest.fixture()
+def store_with_resources(resource, store):
+    def _store_with_resources(store_name, conda_labels, available_apps_label=None, available_apps_name="",
+                              installed_apps_label=None, installed_apps_name="", incompatible_apps_label=None,
+                              incompatible_apps_name=""):
+        active_store = store(store_name, conda_labels=conda_labels)
+        available_app = {}
+        installed_app = {}
+        incompatible_app = {}
+
+        if available_apps_label:
+            if available_apps_name:
+                app_name = available_apps_name
+            else:
+                app_name = f"{store_name}_available_app_{available_apps_label}"
+            available_app = {app_name: resource(app_name, active_store['conda_channel'], available_apps_label)}
+
+        if installed_apps_label:
+            if installed_apps_name:
+                app_name = installed_apps_name
+            else:
+                app_name = f"{store_name}_installed_app_{installed_apps_label}"
+            installed_app = {app_name: resource(app_name, active_store['conda_channel'], installed_apps_label)}
+
+        if incompatible_apps_label:
+            if incompatible_apps_name:
+                app_name = incompatible_apps_name
+            else:
+                app_name = f"{store_name}_incompatible_app_{incompatible_apps_label}"
+            incompatible_app = {app_name: resource(app_name, active_store['conda_channel'], incompatible_apps_label)}
+
+        resources = {
+            'availableApps': available_app,
+            'installedApps': installed_app,
+            'incompatibleApps': incompatible_app
+        }
+
+        return (active_store, resources)
+
+    return _store_with_resources
+
+
+@pytest.fixture()
 def tethysapp_base(tmp_path):
     tethysapp_base_dir = tmp_path / "tethysapp-test_app"
     tethysapp_base_dir.mkdir()
