@@ -1,6 +1,6 @@
 from tethysapp.app_store.resource_helpers import (create_pre_multiple_stores_labels_obj, get_resources_single_store,
                                                   get_new_stores_reformated_by_labels, get_stores_reformated_by_channel,
-                                                  get_app_channel_for_stores)
+                                                  get_app_channel_for_stores, merge_channels_of_apps)
 
 
 def test_create_pre_multiple_stores_labels_obj(tmp_path, mocker, store, resource):
@@ -146,3 +146,102 @@ def test_get_app_channel_for_stores(store_with_resources):
     }
 
     assert app_channel_obj == expected_app_channel_obj
+
+
+def test_merge_channels_of_apps(store_with_resources):
+    available_app_name = "available_app_name"
+    installed_app_name = "installed_app_name"
+    incompatible_app_name = "incompatible_app_name"
+    store1, store1_resources = store_with_resources("store_name1", ['main', 'dev'],
+                                                    available_apps_label="main", available_apps_name=available_app_name,
+                                                    installed_apps_label="main", installed_apps_name=installed_app_name,
+                                                    incompatible_apps_label="dev",
+                                                    incompatible_apps_name=incompatible_app_name)
+    store2, store2_resources = store_with_resources("store_name2", ['main'],
+                                                    available_apps_label="dev", available_apps_name=available_app_name,
+                                                    installed_apps_label="main", installed_apps_name=installed_app_name)
+
+    object_stores = {store1['conda_channel']: store1_resources, store2['conda_channel']: store2_resources}
+
+    app_channel_obj = {
+        'availableApps': {available_app_name: [store1['conda_channel'], store2['conda_channel']]},
+        'installedApps': {installed_app_name: [store1['conda_channel'], store2['conda_channel']]},
+        'incompatibleApps': {incompatible_app_name: [store1['conda_channel']]}
+    }
+
+    merged_channels_app = merge_channels_of_apps(app_channel_obj, object_stores)
+
+    expected_object_stores = {
+        'availableApps': {
+            available_app_name: {
+                'name': available_app_name,
+                'installed': {store1['conda_channel']: {'main': False}, store2['conda_channel']: {'dev': False}},
+                'installedVersion': {store1['conda_channel']: {'main': "1.0"},
+                                     store2['conda_channel']: {'dev': "1.0"}},
+                'latestVersion': {store1['conda_channel']: {'main': "1.0"}, store2['conda_channel']: {'dev': "1.0"}},
+                'versions': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
+                'versionURLs': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
+                'channels_and_labels': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
+                'timestamp': {store1['conda_channel']: {'main': "timestamp"},
+                              store2['conda_channel']: {'dev': "timestamp"}},
+                'compatibility': {store1['conda_channel']: {'main': {}}, store2['conda_channel']: {'dev': {}}},
+                'license': {store1['conda_channel']: {'main': None}, store2['conda_channel']: {'dev': None}},
+                'licenses': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
+                'author': {store1['conda_channel']: {'main': 'author'}, store2['conda_channel']: {'dev': 'author'}},
+                'description': {store1['conda_channel']: {'main': 'description'},
+                                store2['conda_channel']: {'dev': 'description'}},
+                'author_email': {store1['conda_channel']: {'main': 'author_email'},
+                                 store2['conda_channel']: {'dev': 'author_email'}},
+                'keywords': {store1['conda_channel']: {'main': 'keywords'},
+                             store2['conda_channel']: {'dev': 'keywords'}},
+                'dev_url': {store1['conda_channel']: {'main': 'dev_url'}, store2['conda_channel']: {'dev': 'dev_url'}}
+            }
+        },
+        'installedApps': {
+            installed_app_name: {
+                'name': installed_app_name,
+                'installed': {store1['conda_channel']: {'main': False}, store2['conda_channel']: {'main': False}},
+                'installedVersion': {store1['conda_channel']: {'main': "1.0"},
+                                     store2['conda_channel']: {'main': "1.0"}},
+                'latestVersion': {store1['conda_channel']: {'main': "1.0"}, store2['conda_channel']: {'main': "1.0"}},
+                'versions': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'versionURLs': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'channels_and_labels': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'timestamp': {store1['conda_channel']: {'main': "timestamp"},
+                              store2['conda_channel']: {'main': "timestamp"}},
+                'compatibility': {store1['conda_channel']: {'main': {}}, store2['conda_channel']: {'main': {}}},
+                'license': {store1['conda_channel']: {'main': None}, store2['conda_channel']: {'main': None}},
+                'licenses': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'author': {store1['conda_channel']: {'main': 'author'}, store2['conda_channel']: {'main': 'author'}},
+                'description': {store1['conda_channel']: {'main': 'description'},
+                                store2['conda_channel']: {'main': 'description'}},
+                'author_email': {store1['conda_channel']: {'main': 'author_email'},
+                                 store2['conda_channel']: {'main': 'author_email'}},
+                'keywords': {store1['conda_channel']: {'main': 'keywords'},
+                             store2['conda_channel']: {'main': 'keywords'}},
+                'dev_url': {store1['conda_channel']: {'main': 'dev_url'}, store2['conda_channel']: {'main': 'dev_url'}}
+            }
+        },
+        'incompatibleApps': {
+            incompatible_app_name: {
+                'name': incompatible_app_name,
+                'installed': {store1['conda_channel']: {'dev': False}},
+                'installedVersion': {store1['conda_channel']: {'dev': "1.0"}},
+                'latestVersion': {store1['conda_channel']: {'dev': "1.0"}},
+                'versions': {store1['conda_channel']: {'dev': []}},
+                'versionURLs': {store1['conda_channel']: {'dev': []}},
+                'channels_and_labels': {store1['conda_channel']: {'dev': []}},
+                'timestamp': {store1['conda_channel']: {'dev': "timestamp"}},
+                'compatibility': {store1['conda_channel']: {'dev': {}}},
+                'license': {store1['conda_channel']: {'dev': None}},
+                'licenses': {store1['conda_channel']: {'dev': []}},
+                'author': {store1['conda_channel']: {'dev': 'author'}},
+                'description': {store1['conda_channel']: {'dev': 'description'}},
+                'author_email': {store1['conda_channel']: {'dev': 'author_email'}},
+                'keywords': {store1['conda_channel']: {'dev': 'keywords'}},
+                'dev_url': {store1['conda_channel']: {'dev': 'dev_url'}}
+            }
+        }
+    }
+
+    assert merged_channels_app == expected_object_stores

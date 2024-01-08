@@ -152,6 +152,47 @@ def get_stores_reformated_by_channel(stores):
 
 
 def merge_channels_of_apps(app_channel_obj, stores):
+    """Merge resource information for apps that have the same name across conda channels
+
+    Args:
+        app_channel_obj (dict): Dictionary with information about apps and in what conda channels they can be found.
+            See get_app_channel_for_stores return information
+        stores (dict): Dictionary of app information based on conda channels
+
+    Returns:
+        dict: Dictionary of merged apps across multiple channels based on status, i.e. availableApps, installedApps, and
+        incompatibleApps. See the example below.
+
+        {
+            'availableApps': {'app1_name': <app1_metadata_dict>, 'app2_name': <app2_metadata_dict>},
+            'installedApps': {'app1_name': <app1_metadata_dict>},
+            'incompatibleApps': {'app3_name': <app3_metadata_dict>}
+        }
+
+        app1_metadata_dict would contain information about the app across multiple channels. See the example resource
+        metadata below.
+
+        {
+            'name': 'app_name,
+            'installed': {'conda_channel1_name': {'main': False}, 'conda_channel2_name': {'dev': False}},
+            'installedVersion': {'conda_channel1_name': {'main': "1.0"}, 'conda_channel2_name': {'dev': "1.0"}},
+            'latestVersion': {'conda_channel1_name': {'main': "1.0"}, 'conda_channel2_name': {'dev': "1.0"}},
+            'versions': {'conda_channel1_name': {'main': []}, 'conda_channel2_name': {'dev': []}},
+            'versionURLs': {'conda_channel1_name': {'main': []}, 'conda_channel2_name': {'dev': []}},
+            'channels_and_labels': {'conda_channel1_name': {'main': []}, 'conda_channel2_name': {'dev': []}},
+            'timestamp': {'conda_channel1_name': {'main': "timestamp"}, 'conda_channel2_name': {'dev': "timestamp"}},
+            'compatibility': {'conda_channel1_name': {'main': {}}, 'conda_channel2_name': {'dev': {}}},
+            'license': {'conda_channel1_name': {'main': None}, 'conda_channel2_name': {'dev': None}},
+            'licenses': {'conda_channel1_name': {'main': []}, 'conda_channel2_name': {'dev': []}},
+            'author': {'conda_channel1_name': {'main': 'author'}, 'conda_channel2_name': {'dev': 'author'}},
+            'description': {'conda_channel1_name': {'main': 'description'},
+                            'conda_channel2_name': {'dev': 'description'}},
+            'author_email': {'conda_channel1_name': {'main': 'author_email'},
+                            'conda_channel2_name': {'dev': 'author_email'}},
+            'keywords': {'conda_channel1_name': {'main': 'keywords'}, 'conda_channel2_name': {'dev': 'keywords'}},
+            'dev_url': {'conda_channel1_name': {'main': 'dev_url'}, 'conda_channel2_name': {'dev': 'dev_url'}}
+        }
+    """
     merged_channels_app = {}
     for channel in stores:
         for type_app in stores[channel]:
