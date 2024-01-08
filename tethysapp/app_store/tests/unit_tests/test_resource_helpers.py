@@ -1,4 +1,6 @@
 from unittest.mock import call
+import json
+import pytest
 from tethysapp.app_store.resource_helpers import (create_pre_multiple_stores_labels_obj, get_resources_single_store,
                                                   get_new_stores_reformated_by_labels, get_stores_reformated_by_channel,
                                                   get_app_channel_for_stores, merge_channels_of_apps, fetch_resources,
@@ -495,7 +497,7 @@ def test_merge_labels_for_app_in_store(store, resource):
     }
     app_labels = {'test_app2': ['main', 'dev']}
 
-    merged_label_store = merge_labels_for_app_in_store(app_labels, object_stores[conda_channel], conda_channel, 
+    merged_label_store = merge_labels_for_app_in_store(app_labels, object_stores[conda_channel], conda_channel,
                                                        'incompatibleApps')
 
     expected_object_stores = {'test_app2': {
@@ -518,3 +520,123 @@ def test_merge_labels_for_app_in_store(store, resource):
     }}
 
     assert merged_label_store == expected_object_stores
+
+
+def test_fetch_resources(tmp_path, mocker, resource):
+    conda_search_rep = json.dumps({
+        "test_app": [{
+            "arch": None,
+            "build": "py_0",
+            "build_number": 0,
+            "channel": "https://conda.anaconda.org/test_channel/noarch",
+            "constrains": [],
+            "depends": [
+                "pandas"
+            ],
+            "fn": "test_app-1.9-py_0.tar.bz2",
+            "license": "{'name': 'test_app', 'version': '1.9', 'description': 'description', "
+                       "'long_description': 'long_description', 'author': 'author', 'author_email': 'author_email', "
+                       "'url': 'url', 'license': 'BSD 3-Clause Clear', 'tethys_version': '>=4.0.0'}",
+            "md5": "ab2eb7cc691f4fd984a2216401fabfa1",
+            "name": "test_app",
+            "noarch": "python",
+            "package_type": "noarch_python",
+            "platform": None,
+            "sha256": "f38c3e39fe3442dc4a72b1acf7415a5e90443139c6684042a5ddf328d06a9354",
+            "size": 1907887,
+            "subdir": "noarch",
+            "timestamp": 1663012608139,
+            "url": "https://conda.anaconda.org/test_channel/noarch/test_app-1.9-py_0.tar.bz2",
+            "version": "1.9"
+        }]
+    })
+    app_installation = {'isInstalled': False}
+    app_resource = resource("test_app", 'conda_channel', 'dev')
+    mock_conda = mocker.patch('tethysapp.app_store.resource_helpers.conda_run',
+                              return_value=[conda_search_rep, None, 0])
+    mocker.patch('tethysapp.app_store.resource_helpers.check_if_app_installed', return_value=app_installation)
+    mocker.patch('tethysapp.app_store.resource_helpers.process_resources', return_value=app_resource)
+    mock_cache = mocker.patch('tethysapp.app_store.resource_helpers.cache')
+    mock_cache.get.side_effect = [None]
+
+    fetched_resource = fetch_resources(tmp_path, "test_channel", conda_label="dev")
+
+    mock_conda.assert_called_with("search", ["-c", "test_channel/label/dev", "--override-channels", "-i", "--json"])
+    mock_cache.set.assert_called_with("test_channel", app_resource)
+    assert fetched_resource == app_resource
+
+
+def test_fetch_resources_already_installed_no_license(tmp_path, mocker, resource):
+    conda_search_rep = json.dumps({
+        "test_app": [{
+            "arch": None,
+            "build": "py_0",
+            "build_number": 0,
+            "channel": "https://conda.anaconda.org/test_channel/noarch",
+            "constrains": [],
+            "depends": [
+                "pandas"
+            ],
+            "fn": "test_app-1.9-py_0.tar.bz2",
+            "license": None,
+            "md5": "ab2eb7cc691f4fd984a2216401fabfa1",
+            "name": "test_app",
+            "noarch": "python",
+            "package_type": "noarch_python",
+            "platform": None,
+            "sha256": "f38c3e39fe3442dc4a72b1acf7415a5e90443139c6684042a5ddf328d06a9354",
+            "size": 1907887,
+            "subdir": "noarch",
+            "timestamp": 1663012608139,
+            "url": "https://conda.anaconda.org/test_channel/noarch/test_app-1.9-py_0.tar.bz2",
+            "version": "1.9"
+        }]
+    })
+    app_installation = {'isInstalled': True, 'channel': 'test_channel', 'version': "1"}
+    app_resource = resource("test_app", 'conda_channel', 'main')
+    mock_conda = mocker.patch('tethysapp.app_store.resource_helpers.conda_run',
+                              return_value=[conda_search_rep, None, 0])
+    mocker.patch('tethysapp.app_store.resource_helpers.check_if_app_installed', return_value=app_installation)
+    mocker.patch('tethysapp.app_store.resource_helpers.process_resources', return_value=app_resource)
+    mock_cache = mocker.patch('tethysapp.app_store.resource_helpers.cache')
+    mock_cache.get.side_effect = [None]
+
+    fetched_resource = fetch_resources(tmp_path, "test_channel", conda_label="main")
+
+    mock_conda.assert_called_with("search", ["-c", "test_channel", "--override-channels", "-i", "--json"])
+    mock_cache.set.assert_called_with("test_channel", app_resource)
+    assert fetched_resource == app_resource
+
+
+def test_fetch_resources_no_resources(tmp_path, mocker, resource, caplog):
+    conda_search_rep = json.dumps({"error": "The following packages are not available from current channels"})
+    mock_conda = mocker.patch('tethysapp.app_store.resource_helpers.conda_run',
+                              return_value=[conda_search_rep, None, 0])
+    mock_cache = mocker.patch('tethysapp.app_store.resource_helpers.cache')
+    mock_cache.get.side_effect = [None]
+
+    fetched_resource = fetch_resources(tmp_path, "test_channel", conda_label="dev")
+
+    mock_conda.assert_called_with("search", ["-c", "test_channel/label/dev", "--override-channels", "-i", "--json"])
+    assert 'no packages found with the label dev in channel test_channel/label/dev' in caplog.messages
+    assert fetched_resource == []
+
+
+def test_fetch_resources_non_zero_code(tmp_path, mocker):
+    conda_search_rep = json.dumps({})
+    mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_search_rep, None, 9])
+
+    with pytest.raises(Exception) as e_info:
+        fetch_resources(tmp_path, "test_channel")
+        assert e_info.message == "ERROR: Couldn't search packages in the conda_channel channel"
+
+
+def test_fetch_resources_cached(tmp_path, mocker, resource, caplog):
+    app_resource = resource("test_app", 'conda_channel', 'main')
+    mock_cache = mocker.patch('tethysapp.app_store.resource_helpers.cache')
+    mock_cache.get.return_value = app_resource
+
+    fetched_resource = fetch_resources(tmp_path, "test_channel")
+
+    assert "Found in cache" in caplog.messages
+    assert fetched_resource == app_resource

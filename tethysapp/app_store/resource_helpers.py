@@ -341,7 +341,8 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     installed_apps = {}
     available_apps = {}
     incompatible_apps = {}
-    all_resources = fetch_resources(app_workspace, require_refresh, conda_channel, conda_label, cache_key)
+    all_resources = fetch_resources(app_workspace, conda_channel, conda_label=conda_label, cache_key=cache_key,
+                                    refresh=require_refresh)
     tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
     for resource in all_resources:
         if resource["installed"][conda_channel][conda_label]:
@@ -379,47 +380,48 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     return return_object
 
 
-def fetch_resources(app_workspace, refresh=False, conda_package="tethysapp", conda_label="main", cache_key=None):
-    """_summary_
+def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=None, refresh=False):
+    """Perform a conda search with the given channel and label to get all the available resources for potential
+    installation
 
     Args:
-        app_workspace (_type_): _description_
-        refresh (bool, optional): _description_. Defaults to False.
-        conda_package (str, optional): _description_. Defaults to "tethysapp".
-        conda_label (str, optional): _description_. Defaults to "main".
-        cache_key (_type_, optional): _description_. Defaults to None.
+        app_workspace (str): Path pointing to the app workspace within the app store
+        conda_channel (str): Name of the conda channel to use for app discovery
+        conda_label (str, optional): Name of the conda label to use for app discovery. Defaults to "main".
+        cache_key (str, optional): Key to be used for caching strategy. Defaults to None.
+        refresh (bool, optional): Indicates whether resources should be refreshed or use a cache. Defaults to False.
 
     Raises:
-        Exception: _description_
+        Exception: Error searching for apps in the conda channel
 
     Returns:
-        _type_: _description_
+        dict: Dictionary representing all the conda channel applications and metadata
     """
-    CHANNEL_NAME = conda_package
+    if not cache_key:
+        cache_key = conda_channel
 
     if conda_label != 'main':
-        CHANNEL_NAME = f'{conda_package}/label/{conda_label}'
+        conda_channel = f'{conda_channel}/label/{conda_label}'
 
-    CACHE_KEY = cache_key
-    refresh = True
+    cached_resources = cache.get(cache_key)
 
-    if (cache.get(CACHE_KEY) is None) or refresh:
+    if not cached_resources or refresh:
 
         # Look for packages:
         logger.info("Refreshing list of apps cache")
 
-        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", CHANNEL_NAME, "--override-channels", "-i", "--json"])
+        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", conda_channel, "--override-channels", "-i", "--json"])
 
         if code != 0:
             # In here maybe we just try re running the install
-            raise Exception(f"ERROR: Couldn't search packages in the {CHANNEL_NAME} channel")
+            raise Exception(f"ERROR: Couldn't search packages in the {conda_channel} channel")
 
         conda_search_result = json.loads(resp)
 
         resource_metadata = []
         logger.info("Total Apps Found:" + str(len(conda_search_result)))
-        if 'error' in conda_search_result and 'The following packages are not available from current channels' in conda_search_result['error']:  # noqa: E501
-            logger.info(f'no packages found with the label {conda_label} in channel {CHANNEL_NAME}')
+        if 'The following packages are not available from current channels' in conda_search_result.get('error', ""):
+            logger.info(f'no packages found with the label {conda_label} in channel {conda_channel}')
             return resource_metadata
 
         for app_package in conda_search_result:
@@ -429,80 +431,80 @@ def fetch_resources(app_workspace, refresh=False, conda_package="tethysapp", con
             newPackage = {
                 'name': app_package,
                 'installed': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: False
                     }
                 },
                 'versions': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: []
                     }
                 },
                 'versionURLs': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: []
                     }
                 },
                 'channels_and_labels': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: []
                     }
                 },
                 'timestamp': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: conda_search_result[app_package][-1]["timestamp"]
                     }
                 },
                 'compatibility': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: {}
                     }
                 },
                 'license': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: None
                     }
                 },
                 'licenses': {
-                    conda_package: {
+                    conda_channel: {
                         conda_label: []
                     }
                 }
             }
 
             if "license" in conda_search_result[app_package][-1]:
-                newPackage["license"][conda_package][conda_label] = conda_search_result[app_package][-1]["license"]
+                newPackage["license"][conda_channel][conda_label] = conda_search_result[app_package][-1]["license"]
 
             if installed_version['isInstalled']:
-                if CHANNEL_NAME == installed_version['channel']:
-                    newPackage["installed"][conda_package][conda_label] = True
+                if conda_channel == installed_version['channel']:
+                    newPackage["installed"][conda_channel][conda_label] = True
                     newPackage["installedVersion"] = {
-                        conda_package: {}
+                        conda_channel: {}
                     }
-                    newPackage["installedVersion"][conda_package][conda_label] = installed_version['version']
+                    newPackage["installedVersion"][conda_channel][conda_label] = installed_version['version']
             for conda_version in conda_search_result[app_package]:
-                newPackage["versions"][conda_package][conda_label].append(conda_version.get('version'))
-                newPackage["versionURLs"][conda_package][conda_label].append(conda_version.get('url'))
-                newPackage["licenses"][conda_package][conda_label].append(conda_version.get('license'))
+                newPackage["versions"][conda_channel][conda_label].append(conda_version.get('version'))
+                newPackage["versionURLs"][conda_channel][conda_label].append(conda_version.get('url'))
+                newPackage["licenses"][conda_channel][conda_label].append(conda_version.get('license'))
 
                 if "license" in conda_version:
                     try:
                         license_json = json.loads(conda_version['license'].replace("', '", '", "')
                                                   .replace("': '", '": "').replace("'}", '"}').replace("{'", '{"'))
                         if 'tethys_version' in license_json:
-                            newPackage["compatibility"][conda_package][conda_label][conda_version['version']] = license_json.get('tethys_version')  # noqa: E501
-                    except (ValueError, TypeError):
-                        pass
+                            newPackage["compatibility"][conda_channel][conda_label][conda_version['version']] = license_json.get('tethys_version')  # noqa: E501
+                    except Exception as e:
+                        logger.warning(e)
 
             resource_metadata.append(newPackage)
 
-        resource_metadata = process_resources(resource_metadata, app_workspace, conda_package, conda_label)
+        resource_metadata = process_resources(resource_metadata, app_workspace, conda_channel, conda_label)
 
-        cache.set(CACHE_KEY, resource_metadata)
+        cache.set(cache_key, resource_metadata)
         return resource_metadata
     else:
         logger.info("Found in cache")
-        return cache.get(CACHE_KEY)
+        return cached_resources
 
 
 def process_resources(resources, app_workspace, conda_channel, conda_label):
@@ -644,7 +646,7 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
 
 
 def get_resource(resource_name, channel, label, app_workspace):
-    all_resources = fetch_resources(app_workspace=app_workspace, conda_package=channel, conda_label=label)
+    all_resources = fetch_resources(app_workspace, channel, conda_label=label)
 
     resource = [x for x in all_resources if x['name'] == resource_name]
 
