@@ -62,6 +62,23 @@ def all_inactive_stores(store):
 
 
 @pytest.fixture
+def fresh_resource():
+    def _fresh_resource(app_name, conda_channel, conda_label):
+        return {
+            'name': app_name,
+            'installed': {conda_channel: {conda_label: False}},
+            'versions': {conda_channel: {conda_label: ["1.0"]}},
+            'versionURLs': {conda_channel: {conda_label: ["versionURL"]}},
+            'channels_and_labels': {conda_channel: {conda_label: []}},
+            'timestamp': {conda_channel: {conda_label: "timestamp"}},
+            'compatibility': {conda_channel: {conda_label: {}}},
+            'license': {conda_channel: {conda_label: None}},
+            'licenses': {conda_channel: {conda_label: []}}
+        }
+    return _fresh_resource
+
+
+@pytest.fixture
 def resource():
     def _resource(app_name, conda_channel, conda_label):
         return {
@@ -69,8 +86,8 @@ def resource():
             'installed': {conda_channel: {conda_label: False}},
             'installedVersion': {conda_channel: {conda_label: "1.0"}},
             'latestVersion': {conda_channel: {conda_label: "1.0"}},
-            'versions': {conda_channel: {conda_label: []}},
-            'versionURLs': {conda_channel: {conda_label: []}},
+            'versions': {conda_channel: {conda_label: ["1.0"]}},
+            'versionURLs': {conda_channel: {conda_label: ["versionURL"]}},
             'channels_and_labels': {conda_channel: {conda_label: []}},
             'timestamp': {conda_channel: {conda_label: "timestamp"}},
             'compatibility': {conda_channel: {conda_label: {}}},
@@ -80,7 +97,7 @@ def resource():
             'description': {conda_channel: {conda_label: 'description'}},
             'author_email': {conda_channel: {conda_label: 'author_email'}},
             'keywords': {conda_channel: {conda_label: 'keywords'}},
-            'dev_url': {conda_channel: {conda_label: 'dev_url'}}
+            'dev_url': {conda_channel: {conda_label: 'url'}}
         }
     return _resource
 

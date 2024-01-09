@@ -263,6 +263,29 @@ def test_begin_install(resource, mocker):
     ])
 
 
+def test_begin_install_no_resource(mocker):
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
+    app_name = "test_app"
+    app_channel = "test_channel"
+    app_label = "main"
+    install_data = {
+        "name": app_name,
+        "label": app_label,
+        "channel": app_channel,
+        "version": "1.0"
+    }
+
+    mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
+    mocker.patch('tethysapp.app_store.begin_install.get_resource', return_value=None)
+
+    begin_install(install_data, mock_channel, mock_workspace)
+
+    mock_ws.assert_has_calls([
+        call(f"Failed to get the {install_data['name']} resource", mock_channel)
+    ])
+
+
 def test_begin_install_failed_install(resource, mocker):
     mock_channel = MagicMock()
     mock_workspace = MagicMock()

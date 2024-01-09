@@ -189,6 +189,9 @@ def begin_install(installData, channel_layer, app_workspace):
         app_workspace (str): Path pointing to the app workspace within the app store
     """
     resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
+    if not resource:
+        send_notification(f"Failed to get the {installData['name']} resource", channel_layer)
+        return
 
     send_notification(f"Starting installation of app: {resource['name']} from store {installData['channel']} "
                       f"with label {installData['label']}", channel_layer)

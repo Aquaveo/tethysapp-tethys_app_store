@@ -1,12 +1,13 @@
-from unittest.mock import call
+from unittest.mock import call, MagicMock
 import json
 import pytest
+import shutil
 from tethysapp.app_store.resource_helpers import (create_pre_multiple_stores_labels_obj, get_resources_single_store,
                                                   get_new_stores_reformated_by_labels, get_stores_reformated_by_channel,
                                                   get_app_channel_for_stores, merge_channels_of_apps, fetch_resources,
-                                                  get_stores_reformatted, clear_conda_channel_cache,
+                                                  get_stores_reformatted, clear_conda_channel_cache, process_resources,
                                                   merge_labels_single_store, get_app_label_obj_for_store,
-                                                  merge_labels_for_app_in_store, )
+                                                  merge_labels_for_app_in_store, get_resource)
 
 
 def test_clear_conda_channel_cache(mocker, store):
@@ -198,8 +199,9 @@ def test_merge_channels_of_apps(store_with_resources):
                 'installedVersion': {store1['conda_channel']: {'main': "1.0"},
                                      store2['conda_channel']: {'dev': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'main': "1.0"}, store2['conda_channel']: {'dev': "1.0"}},
-                'versions': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
-                'versionURLs': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
+                'versions': {store1['conda_channel']: {'main': ["1.0"]}, store2['conda_channel']: {'dev': ["1.0"]}},
+                'versionURLs': {store1['conda_channel']: {'main': ["versionURL"]},
+                                store2['conda_channel']: {'dev': ["versionURL"]}},
                 'channels_and_labels': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
                 'timestamp': {store1['conda_channel']: {'main': "timestamp"},
                               store2['conda_channel']: {'dev': "timestamp"}},
@@ -213,7 +215,7 @@ def test_merge_channels_of_apps(store_with_resources):
                                  store2['conda_channel']: {'dev': 'author_email'}},
                 'keywords': {store1['conda_channel']: {'main': 'keywords'},
                              store2['conda_channel']: {'dev': 'keywords'}},
-                'dev_url': {store1['conda_channel']: {'main': 'dev_url'}, store2['conda_channel']: {'dev': 'dev_url'}}
+                'dev_url': {store1['conda_channel']: {'main': 'url'}, store2['conda_channel']: {'dev': 'url'}}
             }
         },
         'installedApps': {
@@ -223,8 +225,9 @@ def test_merge_channels_of_apps(store_with_resources):
                 'installedVersion': {store1['conda_channel']: {'main': "1.0"},
                                      store2['conda_channel']: {'main': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'main': "1.0"}, store2['conda_channel']: {'main': "1.0"}},
-                'versions': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
-                'versionURLs': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'versions': {store1['conda_channel']: {'main': ["1.0"]}, store2['conda_channel']: {'main': ["1.0"]}},
+                'versionURLs': {store1['conda_channel']: {'main': ["versionURL"]},
+                                store2['conda_channel']: {'main': ["versionURL"]}},
                 'channels_and_labels': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
                 'timestamp': {store1['conda_channel']: {'main': "timestamp"},
                               store2['conda_channel']: {'main': "timestamp"}},
@@ -238,7 +241,7 @@ def test_merge_channels_of_apps(store_with_resources):
                                  store2['conda_channel']: {'main': 'author_email'}},
                 'keywords': {store1['conda_channel']: {'main': 'keywords'},
                              store2['conda_channel']: {'main': 'keywords'}},
-                'dev_url': {store1['conda_channel']: {'main': 'dev_url'}, store2['conda_channel']: {'main': 'dev_url'}}
+                'dev_url': {store1['conda_channel']: {'main': 'url'}, store2['conda_channel']: {'main': 'url'}}
             }
         },
         'incompatibleApps': {
@@ -247,8 +250,8 @@ def test_merge_channels_of_apps(store_with_resources):
                 'installed': {store1['conda_channel']: {'dev': False}},
                 'installedVersion': {store1['conda_channel']: {'dev': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'dev': "1.0"}},
-                'versions': {store1['conda_channel']: {'dev': []}},
-                'versionURLs': {store1['conda_channel']: {'dev': []}},
+                'versions': {store1['conda_channel']: {'dev': ["1.0"]}},
+                'versionURLs': {store1['conda_channel']: {'dev': ["versionURL"]}},
                 'channels_and_labels': {store1['conda_channel']: {'dev': []}},
                 'timestamp': {store1['conda_channel']: {'dev': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'dev': {}}},
@@ -258,7 +261,7 @@ def test_merge_channels_of_apps(store_with_resources):
                 'description': {store1['conda_channel']: {'dev': 'description'}},
                 'author_email': {store1['conda_channel']: {'dev': 'author_email'}},
                 'keywords': {store1['conda_channel']: {'dev': 'keywords'}},
-                'dev_url': {store1['conda_channel']: {'dev': 'dev_url'}}
+                'dev_url': {store1['conda_channel']: {'dev': 'url'}}
             }
         }
     }
@@ -300,8 +303,9 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
                 'installedVersion': {store1['conda_channel']: {'main': "1.0"},
                                      store2['conda_channel']: {'main': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'main': "1.0"}, store2['conda_channel']: {'main': "1.0"}},
-                'versions': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
-                'versionURLs': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
+                'versions': {store1['conda_channel']: {'main': ["1.0"]}, store2['conda_channel']: {'main': ["1.0"]}},
+                'versionURLs': {store1['conda_channel']: {'main': ["versionURL"]},
+                                store2['conda_channel']: {'main': ["versionURL"]}},
                 'channels_and_labels': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
                 'timestamp': {store1['conda_channel']: {'main': "timestamp"},
                               store2['conda_channel']: {'main': "timestamp"}},
@@ -315,7 +319,7 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
                                  store2['conda_channel']: {'main': 'author_email'}},
                 'keywords': {store1['conda_channel']: {'main': 'keywords'},
                              store2['conda_channel']: {'main': 'keywords'}},
-                'dev_url': {store1['conda_channel']: {'main': 'dev_url'}, store2['conda_channel']: {'main': 'dev_url'}}
+                'dev_url': {store1['conda_channel']: {'main': 'url'}, store2['conda_channel']: {'main': 'url'}}
             }
         },
         'incompatibleApps': {
@@ -324,8 +328,8 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
                 'installed': {store1['conda_channel']: {'dev': False}},
                 'installedVersion': {store1['conda_channel']: {'dev': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'dev': "1.0"}},
-                'versions': {store1['conda_channel']: {'dev': []}},
-                'versionURLs': {store1['conda_channel']: {'dev': []}},
+                'versions': {store1['conda_channel']: {'dev': ["1.0"]}},
+                'versionURLs': {store1['conda_channel']: {'dev': ["versionURL"]}},
                 'channels_and_labels': {store1['conda_channel']: {'dev': []}},
                 'timestamp': {store1['conda_channel']: {'dev': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'dev': {}}},
@@ -335,7 +339,7 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
                 'description': {store1['conda_channel']: {'dev': 'description'}},
                 'author_email': {store1['conda_channel']: {'dev': 'author_email'}},
                 'keywords': {store1['conda_channel']: {'dev': 'keywords'}},
-                'dev_url': {store1['conda_channel']: {'dev': 'dev_url'}}
+                'dev_url': {store1['conda_channel']: {'dev': 'url'}}
             }
         }
     }
@@ -420,8 +424,8 @@ def test_merge_labels_single_store(store, resource):
         'installed': {active_store['conda_channel']: {'main': False, 'dev': False}},
         'installedVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
         'latestVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
-        'versions': {active_store['conda_channel']: {'main': [], 'dev': []}},
-        'versionURLs': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'versions': {active_store['conda_channel']: {'main': ["1.0"], 'dev': ["1.0"]}},
+        'versionURLs': {active_store['conda_channel']: {'main': ["versionURL"], 'dev': ["versionURL"]}},
         'channels_and_labels': {active_store['conda_channel']: {'main': [], 'dev': []}},
         'timestamp': {active_store['conda_channel']: {'main': "timestamp", 'dev': "timestamp"}},
         'compatibility': {active_store['conda_channel']: {'main': {}, 'dev': {}}},
@@ -431,7 +435,7 @@ def test_merge_labels_single_store(store, resource):
         'description': {active_store['conda_channel']: {'main': 'description', 'dev': 'description'}},
         'author_email': {active_store['conda_channel']: {'main': 'author_email', 'dev': 'author_email'}},
         'keywords': {active_store['conda_channel']: {'main': 'keywords', 'dev': 'keywords'}},
-        'dev_url': {active_store['conda_channel']: {'main': 'dev_url', 'dev': 'dev_url'}}
+        'dev_url': {active_store['conda_channel']: {'main': 'url', 'dev': 'url'}}
     }}
     assert ref_object_stores == expected_object_stores
 
@@ -505,8 +509,8 @@ def test_merge_labels_for_app_in_store(store, resource):
         'installed': {active_store['conda_channel']: {'main': False, 'dev': False}},
         'installedVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
         'latestVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
-        'versions': {active_store['conda_channel']: {'main': [], 'dev': []}},
-        'versionURLs': {active_store['conda_channel']: {'main': [], 'dev': []}},
+        'versions': {active_store['conda_channel']: {'main': ["1.0"], 'dev': ["1.0"]}},
+        'versionURLs': {active_store['conda_channel']: {'main': ["versionURL"], 'dev': ["versionURL"]}},
         'channels_and_labels': {active_store['conda_channel']: {'main': [], 'dev': []}},
         'timestamp': {active_store['conda_channel']: {'main': "timestamp", 'dev': "timestamp"}},
         'compatibility': {active_store['conda_channel']: {'main': {}, 'dev': {}}},
@@ -516,7 +520,7 @@ def test_merge_labels_for_app_in_store(store, resource):
         'description': {active_store['conda_channel']: {'main': 'description', 'dev': 'description'}},
         'author_email': {active_store['conda_channel']: {'main': 'author_email', 'dev': 'author_email'}},
         'keywords': {active_store['conda_channel']: {'main': 'keywords', 'dev': 'keywords'}},
-        'dev_url': {active_store['conda_channel']: {'main': 'dev_url', 'dev': 'dev_url'}}
+        'dev_url': {active_store['conda_channel']: {'main': 'url', 'dev': 'url'}}
     }}
 
     assert merged_label_store == expected_object_stores
@@ -640,3 +644,269 @@ def test_fetch_resources_cached(tmp_path, mocker, resource, caplog):
 
     assert "Found in cache" in caplog.messages
     assert fetched_resource == app_resource
+
+
+def test_process_resources_with_license_installed_update_available(fresh_resource, resource, tmp_path, mocker):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    app_resources['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    app_resources['installed'] = {conda_channel: {conda_label: True}}
+    app_resources['installedVersion'] = {conda_channel: {conda_label: "0.9"}}
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+    processed_resources['keywords'][conda_channel][conda_label] = 'keywords'
+
+    expected_resource = resource("test_app", conda_channel, conda_label)
+    expected_resource['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    expected_resource['updateAvailable'] = {conda_channel: {conda_label: True}}
+    expected_resource['installed'] = {conda_channel: {conda_label: True}}
+    expected_resource['installedVersion'] = {conda_channel: {conda_label: "0.9"}}
+
+    assert processed_resources == expected_resource
+
+
+def test_process_resources_with_license_installed(fresh_resource, resource, tmp_path, mocker):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    app_resources['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    app_resources['installed'] = {conda_channel: {conda_label: True}}
+    app_resources['installedVersion'] = {conda_channel: {conda_label: "1.0"}}
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "3.9.0")
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+    processed_resources['keywords'][conda_channel][conda_label] = 'keywords'
+
+    expected_resource = resource("test_app", conda_channel, conda_label)
+    expected_resource['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    expected_resource['updateAvailable'] = {conda_channel: {conda_label: False}}
+    expected_resource['installed'] = {conda_channel: {conda_label: True}}
+    expected_resource['latestVersion'] = {conda_channel: {conda_label: "1.0*"}}
+
+    assert processed_resources == expected_resource
+
+
+def test_process_resources_with_license_installed_without_version(fresh_resource, resource, tmp_path, mocker):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    app_resources['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    app_resources['installed'] = {conda_channel: {conda_label: True}}
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+    processed_resources['keywords'][conda_channel][conda_label] = 'keywords'
+
+    expected_resource = resource("test_app", conda_channel, conda_label)
+    expected_resource['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    expected_resource['updateAvailable'] = {conda_channel: {conda_label: False}}
+    expected_resource['installed'] = {conda_channel: {conda_label: True}}
+    del expected_resource['installedVersion']
+
+    assert processed_resources == expected_resource
+
+
+def test_process_resources_with_license_not_installed(fresh_resource, resource, tmp_path, mocker):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    app_resources['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+    processed_resources['keywords'][conda_channel][conda_label] = 'keywords'
+
+    expected_resource = resource("test_app", conda_channel, conda_label)
+    expected_resource['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'url': 'url', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    del expected_resource['installedVersion']
+
+    assert processed_resources == expected_resource
+
+
+def test_process_resources_with_license_not_installed_no_license_url(fresh_resource, resource, tmp_path, mocker):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    app_resources['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+    processed_resources['keywords'][conda_channel][conda_label] = 'keywords'
+
+    expected_resource = resource("test_app", conda_channel, conda_label)
+    expected_resource['license'][conda_channel][conda_label] = json.dumps({
+        'name': 'test_app', 'version': '1.9', 'description': 'description', 'long_description': 'long_description',
+        'author': 'author', 'author_email': 'author_email', 'license': 'BSD 3-Clause Clear',
+        'tethys_version': '>=4.0.0'})
+    expected_resource['dev_url'][conda_channel][conda_label] = ''
+    del expected_resource['installedVersion']
+
+    assert processed_resources == expected_resource
+
+
+def test_process_resources_no_license_no_meta_yaml_not_installed(fresh_resource, tmp_path, mocker, caplog):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+    mock_urllib = mocker.patch('tethysapp.app_store.resource_helpers.urllib')
+    mock_shutil = mocker.patch('tethysapp.app_store.resource_helpers.shutil')
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+
+    expected_resource = fresh_resource("test_app", conda_channel, conda_label)
+    expected_resource['latestVersion'] = {conda_channel: {conda_label: "1.0*"}}
+    filepath = tmp_path / "apps" / conda_channel / conda_label / "test_app"
+    filepath.mkdir(parents=True)
+    expected_resource['filepath'] = {conda_channel: {conda_label: str(filepath)}}
+
+    assert processed_resources == expected_resource
+    download_path = tmp_path / "apps" / conda_channel / conda_label / "versionURL"
+    mock_urllib.request.urlretrieve.assert_called_with("versionURL", str(download_path))
+    mock_shutil.unpack_archive.assert_called_with(str(download_path), str(filepath))
+    assert "License field metadata not found. Downloading: versionURL" in caplog.messages
+    assert "No yaml file available to retrieve metadata" in caplog.messages
+
+
+def test_process_resources_no_license_no_meta_yaml_not_installed_output_exists(fresh_resource, tmp_path,
+                                                                               mocker, caplog):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+    mock_urllib = mocker.patch('tethysapp.app_store.resource_helpers.urllib')
+    mock_shutil = mocker.patch('tethysapp.app_store.resource_helpers.shutil')
+    filepath = tmp_path / "apps" / conda_channel / conda_label / "test_app"
+    filepath.mkdir(parents=True)
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+
+    expected_resource = fresh_resource("test_app", conda_channel, conda_label)
+    expected_resource['latestVersion'] = {conda_channel: {conda_label: "1.0*"}}
+    expected_resource['filepath'] = {conda_channel: {conda_label: str(filepath)}}
+
+    assert processed_resources == expected_resource
+    download_path = tmp_path / "apps" / conda_channel / conda_label / "versionURL"
+    mock_urllib.request.urlretrieve.assert_called_with("versionURL", str(download_path))
+    mock_shutil.unpack_archive.assert_called_with(str(download_path), str(filepath))
+    assert "License field metadata not found. Downloading: versionURL" in caplog.messages
+    assert "No yaml file available to retrieve metadata" in caplog.messages
+
+
+def test_process_resources_no_license_not_installed(fresh_resource, resource, tmp_path, mocker, caplog, test_files_dir):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+    mock_urllib = mocker.patch('tethysapp.app_store.resource_helpers.urllib')
+    mock_shutil = mocker.patch('tethysapp.app_store.resource_helpers.shutil')
+    filepath = tmp_path / "apps" / conda_channel / conda_label / "test_app"
+    filepath.mkdir(parents=True)
+    recipes = filepath / "info" / "recipe"
+    recipes.mkdir(parents=True)
+    test_meta_yaml = test_files_dir / "recipe_meta.yaml"
+    recipes_meta_yaml = recipes / "meta.yaml"
+    shutil.copyfile(test_meta_yaml, recipes_meta_yaml)
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+
+    expected_resource = resource("test_app", conda_channel, conda_label)
+    expected_resource['dev_url'] = {conda_channel: {conda_label: ""}}
+    expected_resource['latestVersion'] = {conda_channel: {conda_label: "1.0*"}}
+    expected_resource['filepath'] = {conda_channel: {conda_label: str(filepath)}}
+    del expected_resource['installedVersion']
+
+    assert processed_resources == expected_resource
+    download_path = tmp_path / "apps" / conda_channel / conda_label / "versionURL"
+    mock_urllib.request.urlretrieve.assert_called_with("versionURL", str(download_path))
+    mock_shutil.unpack_archive.assert_called_with(str(download_path), str(filepath))
+    assert "License field metadata not found. Downloading: versionURL" in caplog.messages
+
+
+def test_process_resources_no_license_yaml_exception(fresh_resource, tmp_path, mocker, caplog,
+                                                     test_files_dir):
+    mock_workspace = MagicMock(path=tmp_path)
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resources = fresh_resource("test_app", conda_channel, conda_label)
+    mocker.patch('tethysapp.app_store.resource_helpers.tethys_version', "4.0.0")
+    mock_urllib = mocker.patch('tethysapp.app_store.resource_helpers.urllib')
+    mock_shutil = mocker.patch('tethysapp.app_store.resource_helpers.shutil')
+    filepath = tmp_path / "apps" / conda_channel / conda_label / "test_app"
+    filepath.mkdir(parents=True)
+    recipes = filepath / "info" / "recipe"
+    recipes.mkdir(parents=True)
+    test_meta_yaml = test_files_dir / "basic_meta.yaml"
+    recipes_meta_yaml = recipes / "meta.yaml"
+    shutil.copyfile(test_meta_yaml, recipes_meta_yaml)
+
+    processed_resources = process_resources([app_resources], mock_workspace, conda_channel, conda_label)[0]
+
+    expected_resource = fresh_resource("test_app", conda_channel, conda_label)
+    expected_resource['latestVersion'] = {conda_channel: {conda_label: "1.0*"}}
+    expected_resource['filepath'] = {conda_channel: {conda_label: str(filepath)}}
+
+    assert processed_resources == expected_resource
+    download_path = tmp_path / "apps" / conda_channel / conda_label / "versionURL"
+    mock_urllib.request.urlretrieve.assert_called_with("versionURL", str(download_path))
+    mock_shutil.unpack_archive.assert_called_with(str(download_path), str(filepath))
+    assert "License field metadata not found. Downloading: versionURL" in caplog.messages
+    assert "Error happened while downloading package for metadata" in caplog.messages
+
+
+def test_get_resource(resource, tmp_path, mocker):
+    conda_channel = "test_channel"
+    conda_label = "main"
+    app_resource = resource("test_app", conda_channel, conda_label)
+    mocker.patch('tethysapp.app_store.resource_helpers.fetch_resources', return_value=[app_resource])
+
+    resource_response = get_resource("test_app", conda_channel, conda_label, tmp_path)
+
+    assert resource_response == app_resource
+
+
+def test_get_resource_none(tmp_path, mocker):
+    conda_channel = "test_channel"
+    conda_label = "main"
+    mocker.patch('tethysapp.app_store.resource_helpers.fetch_resources', return_value=[])
+
+    resource_response = get_resource("test_app", conda_channel, conda_label, tmp_path)
+
+    assert resource_response is None

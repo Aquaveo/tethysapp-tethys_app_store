@@ -482,6 +482,7 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
                         conda_channel: {}
                     }
                     newPackage["installedVersion"][conda_channel][conda_label] = installed_version['version']
+
             for conda_version in conda_search_result[app_package]:
                 newPackage["versions"][conda_channel][conda_label].append(conda_version.get('version'))
                 newPackage["versionURLs"][conda_channel][conda_label].append(conda_version.get('url'))
@@ -508,27 +509,40 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
 
 
 def process_resources(resources, app_workspace, conda_channel, conda_label):
+    """Process resources based on the metadata given. Check compatibility with the current app store, add additional
+    metadata to the resources for licenses, versions, and urls. If the licensing information can't be found in the conda
+    metadata then use the versionurl to download a file and try to extract the information
+
+    Args:
+        resources (_type_): _description_
+        app_workspace (_type_): _description_
+        conda_channel (_type_): _description_
+        conda_label (_type_): _description_
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
     for app in resources:
         workspace_folder = os.path.join(app_workspace.path, 'apps')
         if not os.path.exists(workspace_folder):
             os.makedirs(workspace_folder)
 
         tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
-        # Set Latest Version
-        app["latestVersion"] = {
-            conda_channel: {}
-        }
+        app["latestVersion"] = {conda_channel: {}}
 
-        app["latestVersion"][conda_channel][conda_label] = app.get("versions").get(conda_channel).get(conda_label)[-1]
+        app["latestVersion"][conda_channel][conda_label] = app["versions"][conda_channel][conda_label][-1]
+        license = app["license"][conda_channel][conda_label]
 
-        # Check if latest version is compatible. If not, append an asterisk
-        license = app.get("license").get(f"{conda_channel}").get(f"{conda_label}")
         comp_dict = None
         compatible = None
         try:
             comp_dict = ast.literal_eval(license)
         except Exception:
             pass
+
         if comp_dict and 'tethys_version' in comp_dict:
             compatible = comp_dict['tethys_version']
 
@@ -538,36 +552,21 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
         if not semver.match(tethys_version_regex, compatible):
             app["latestVersion"][conda_channel][conda_label] = app["latestVersion"][conda_channel][conda_label] + "*"
 
-        if (app['installed']):
+        if app['installed'][conda_channel][conda_label]:
+            app["updateAvailable"] = {conda_channel: {conda_label: False}}
             if 'installedVersion' in app:
                 latestVersion = app["latestVersion"][conda_channel][conda_label]
                 installedVersion = app["installedVersion"][conda_channel][conda_label]
-                if (latestVersion.find("*") is False):
+                if "*" not in latestVersion:
                     if parse_version(latestVersion) > parse_version(installedVersion):
-                        app["updateAvailable"] = {
-                            conda_channel: {
-                                conda_label: True
-                            }
-                        }
-                else:
-                    app["updateAvailable"] = {
-                        conda_channel: {
-                            conda_label: False
-                        }
-                    }
-            else:
-                app["updateAvailable"] = {
-                    conda_channel: {
-                        conda_label: False
-                    }
-                }
-        latest_version_url = app.get("versionURLs").get(f"{conda_channel}").get(f"{conda_label}")[-1]
+                        app["updateAvailable"] = {conda_channel: {conda_label: True}}
+
+        latest_version_url = app.get("versionURLs")[conda_channel][conda_label][-1]
         file_name = latest_version_url.split('/')
         folder_name = app.get("name")
 
         # Check for metadata in the Search Description
         # That path will work for newly submitted apps with warehouse ver>0.25
-
         try:
             if "license" not in app or app['license'][conda_channel][conda_label] is None:
                 raise ValueError
@@ -580,20 +579,9 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
                 'author', 'description', 'license', 'author_email', 'keywords'], conda_channel, conda_label)
 
             if "url" in license_metadata:
-                app['dev_url'] = {
-                    conda_channel: {
-                        conda_label: ''
-                    }
-                }
-                app['dev_url'][conda_channel][conda_label] = license_metadata["url"]
-
+                app['dev_url'] = {conda_channel: {conda_label: license_metadata["url"]}}
             else:
-                app['dev_url'] = {
-                    conda_channel: {
-                        conda_label: ''
-                    }
-                }
-                app['dev_url'][conda_channel][conda_label] = ''
+                app['dev_url'] = {conda_channel: {conda_label: ''}}
 
         except (ValueError, TypeError):
             # There wasn't json found in license. Get Metadata from downloading the file
@@ -612,11 +600,7 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
 
                 shutil.unpack_archive(download_path, output_path)
 
-            app["filepath"] = {
-                conda_channel: {
-                    conda_label: output_path
-                }
-            }
+            app["filepath"] = {conda_channel: {conda_label: output_path}}
 
             # Get Meta.Yaml for this file
             try:
@@ -626,18 +610,16 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
                         meta_yaml = yaml.safe_load(f)
                         # Add metadata to the resources object.
 
-                        attr_about = ['author', 'description', 'dev_url', 'license']
+                        attr_about = ['author', 'description', 'license']
                         attr_extra = ['author_email', 'keywords']
 
                         app = add_if_exists_keys(meta_yaml.get('about'), app, attr_about, conda_channel, conda_label)
                         app = add_if_exists_keys(meta_yaml.get('extra'), app, attr_extra, conda_channel, conda_label)
+
                         if 'dev_url' not in app:
-                            app['dev_url'] = {
-                                conda_channel: {
-                                    conda_label: ''
-                                }
-                            }
-                            app['dev_url'][conda_channel][conda_label] = ''
+                            app['dev_url'] = {conda_channel: {conda_label: ''}}
+                else:
+                    logger.info("No yaml file available to retrieve metadata")
             except Exception as e:
                 logger.info("Error happened while downloading package for metadata")
                 logger.error(e)
@@ -645,8 +627,19 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
     return resources
 
 
-def get_resource(resource_name, channel, label, app_workspace):
-    all_resources = fetch_resources(app_workspace, channel, conda_label=label)
+def get_resource(resource_name, conda_channel, conda_label, app_workspace):
+    """Get a specific resource based on channel, label, and app name
+
+    Args:
+        resource_name (str): Name of the app resource
+        conda_channel (str): Name of the conda channel to use for app discovery
+        conda_label (str): Name of the conda label to use for app discovery
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        dict: Dictionary representing the desired resource and metadata
+    """
+    all_resources = fetch_resources(app_workspace, conda_channel, conda_label=conda_label)
 
     resource = [x for x in all_resources if x['name'] == resource_name]
 
