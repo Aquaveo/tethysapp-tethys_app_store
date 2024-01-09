@@ -400,8 +400,9 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
     if not cache_key:
         cache_key = conda_channel
 
+    conda_search_channel = conda_channel
     if conda_label != 'main':
-        conda_channel = f'{conda_channel}/label/{conda_label}'
+        conda_search_channel = f'{conda_channel}/label/{conda_label}'
 
     cached_resources = cache.get(cache_key)
 
@@ -410,11 +411,12 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
         # Look for packages:
         logger.info("Refreshing list of apps cache")
 
-        [resp, err, code] = conda_run(Commands.SEARCH, ["-c", conda_channel, "--override-channels", "-i", "--json"])
+        [resp, err, code] = conda_run(Commands.SEARCH,
+                                      ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
 
         if code != 0:
             # In here maybe we just try re running the install
-            raise Exception(f"ERROR: Couldn't search packages in the {conda_channel} channel")
+            raise Exception(f"ERROR: Couldn't search packages in the {conda_search_channel} channel")
 
         conda_search_result = json.loads(resp)
 
@@ -425,7 +427,6 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
             return resource_metadata
 
         for app_package in conda_search_result:
-
             installed_version = check_if_app_installed(app_package)
 
             newPackage = {
@@ -478,9 +479,7 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
             if installed_version['isInstalled']:
                 if conda_channel == installed_version['channel']:
                     newPackage["installed"][conda_channel][conda_label] = True
-                    newPackage["installedVersion"] = {
-                        conda_channel: {}
-                    }
+                    newPackage["installedVersion"] = {conda_channel: {}}
                     newPackage["installedVersion"][conda_channel][conda_label] = installed_version['version']
 
             for conda_version in conda_search_result[app_package]:
@@ -494,8 +493,8 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
                                                   .replace("': '", '": "').replace("'}", '"}').replace("{'", '{"'))
                         if 'tethys_version' in license_json:
                             newPackage["compatibility"][conda_channel][conda_label][conda_version['version']] = license_json.get('tethys_version')  # noqa: E501
-                    except Exception as e:
-                        logger.warning(e)
+                    except (ValueError, TypeError):
+                        pass
 
             resource_metadata.append(newPackage)
 

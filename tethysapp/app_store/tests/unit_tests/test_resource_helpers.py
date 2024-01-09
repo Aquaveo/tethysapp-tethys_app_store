@@ -582,7 +582,7 @@ def test_fetch_resources_already_installed_no_license(tmp_path, mocker, resource
                 "pandas"
             ],
             "fn": "test_app-1.9-py_0.tar.bz2",
-            "license": None,
+            "license": "BSD",
             "md5": "ab2eb7cc691f4fd984a2216401fabfa1",
             "name": "test_app",
             "noarch": "python",
@@ -612,7 +612,7 @@ def test_fetch_resources_already_installed_no_license(tmp_path, mocker, resource
     assert fetched_resource == app_resource
 
 
-def test_fetch_resources_no_resources(tmp_path, mocker, resource, caplog):
+def test_fetch_resources_no_resources(tmp_path, mocker, caplog):
     conda_search_rep = json.dumps({"error": "The following packages are not available from current channels"})
     mock_conda = mocker.patch('tethysapp.app_store.resource_helpers.conda_run',
                               return_value=[conda_search_rep, None, 0])
@@ -622,7 +622,7 @@ def test_fetch_resources_no_resources(tmp_path, mocker, resource, caplog):
     fetched_resource = fetch_resources(tmp_path, "test_channel", conda_label="dev")
 
     mock_conda.assert_called_with("search", ["-c", "test_channel/label/dev", "--override-channels", "-i", "--json"])
-    assert 'no packages found with the label dev in channel test_channel/label/dev' in caplog.messages
+    assert 'no packages found with the label dev in channel test_channel' in caplog.messages
     assert fetched_resource == []
 
 
