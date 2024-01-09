@@ -2,12 +2,14 @@ from unittest.mock import call, MagicMock
 import json
 import pytest
 import shutil
+import sys
 from tethysapp.app_store.resource_helpers import (create_pre_multiple_stores_labels_obj, get_resources_single_store,
                                                   get_new_stores_reformated_by_labels, get_stores_reformated_by_channel,
                                                   get_app_channel_for_stores, merge_channels_of_apps, fetch_resources,
                                                   get_stores_reformatted, clear_conda_channel_cache, process_resources,
                                                   merge_labels_single_store, get_app_label_obj_for_store,
-                                                  merge_labels_for_app_in_store, get_resource)
+                                                  merge_labels_for_app_in_store, get_resource, check_if_app_installed,
+                                                  add_keys_to_app_metadata, get_app_instance_from_path)
 
 
 def test_clear_conda_channel_cache(mocker, store):
@@ -910,3 +912,96 @@ def test_get_resource_none(tmp_path, mocker):
     resource_response = get_resource("test_app", conda_channel, conda_label, tmp_path)
 
     assert resource_response is None
+
+
+def test_check_if_app_installed_installed(mocker):
+    conda_run_resp = json.dumps([{"channel": "conda_channel", 'version': '1.0'}])
+    mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 0])
+
+    response = check_if_app_installed("test_app")
+
+    expected_response = {
+        'isInstalled': True,
+        'channel': "conda_channel",
+        'version': '1.0'
+    }
+    assert response == expected_response
+
+
+def test_check_if_app_installed_not_installed(mocker):
+    conda_run_resp = json.dumps([{}])
+    mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 10])
+
+    response = check_if_app_installed("test_app")
+
+    expected_response = {
+        'isInstalled': False
+    }
+    assert response == expected_response
+
+
+def test_add_keys_to_app_metadata():
+    conda_channel = "conda_channel"
+    conda_label = "conda_label"
+    additional_data = {
+        "author": "author",
+        "description": "description"
+    }
+    app = {
+        "name": "test_app",
+        "version": {conda_channel: {conda_label: "1.0"}}
+    }
+    additional_keys = ["author"]
+    new_dict = add_keys_to_app_metadata(additional_data, app, additional_keys, conda_channel, conda_label)
+
+    expected_new_dict = {
+        "name": "test_app",
+        "version": {conda_channel: {conda_label: "1.0"}},
+        "author": {conda_channel: {conda_label: "author"}}
+    }
+    assert new_dict == expected_new_dict
+
+
+def test_add_keys_to_app_metadata_no_additional_data():
+    conda_channel = "conda_channel"
+    conda_label = "conda_label"
+    additional_data = {}
+    app = {
+        "name": "test_app",
+        "version": {conda_channel: {conda_label: "1.0"}}
+    }
+    additional_keys = ["author"]
+    new_dict = add_keys_to_app_metadata(additional_data, app, additional_keys, conda_channel, conda_label)
+
+    expected_new_dict = {
+        "name": "test_app",
+        "version": {conda_channel: {conda_label: "1.0"}}
+    }
+    assert new_dict == expected_new_dict
+
+
+def test_get_app_instance_from_path(mocker, tmp_path, tethysapp):
+    app_name = "test_app"
+    mock_module = MagicMock(test_app=tethysapp)
+    sys.modules[f'tethysapp.{app_name}.app'] = mock_module
+    mocker.patch('tethysapp.app_store.resource_helpers.pkgutil.iter_modules', return_value=[["", app_name, True]])
+    mocker.patch('tethysapp.app_store.resource_helpers.inspect.getmembers', return_value=[["test_app", tethysapp]])
+
+    get_app_instance_from_path(tmp_path)
+    app_instance = get_app_instance_from_path(tmp_path)
+
+    assert app_instance.init_ran
+
+
+def test_get_app_instance_from_path_typeerror(mocker, tmp_path, tethysapp):
+    app_name = "test_app"
+    mock_module = MagicMock()
+    mock_module.test_app = "Not a Class"
+    sys.modules[f'tethysapp.{app_name}.app'] = mock_module
+    mocker.patch('tethysapp.app_store.resource_helpers.pkgutil.iter_modules', return_value=[["", app_name, True]])
+    mocker.patch('tethysapp.app_store.resource_helpers.inspect.getmembers', return_value=[["test_app", tethysapp]])
+
+    get_app_instance_from_path(tmp_path)
+    app_instance = get_app_instance_from_path(tmp_path)
+
+    assert app_instance is None

@@ -49,8 +49,8 @@ class notificationsConsumer(AsyncWebsocketConsumer):
         app_workspace = await sync_to_async(get_app_workspace, thread_sensitive=True)(app)
         # app_workspace = get_app_workspace(app)
         if "type" in text_data_json:
-            if text_data_json['type'] in ['begin_install', 'restart_server', 'get_log_file', 'initialize_local_repo_for_active_stores',
-                                          'update_app', 'uninstall_app']:
+            if text_data_json['type'] in ['begin_install', 'restart_server', 'get_log_file',
+                                          'initialize_local_repo_for_active_stores', 'update_app', 'uninstall_app']:
                 args.append(app_workspace)
             thread = threading.Thread(target=getattr(module_name, function_name), args=args)
             thread.start()

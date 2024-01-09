@@ -16,7 +16,8 @@ from tethys_cli.services_commands import services_list_command
 
 from .app import AppStore as app
 from .begin_install import detect_app_dependencies
-from .helpers import get_app_instance_from_path, logger, run_process, send_notification
+from .resource_helpers import get_app_instance_from_path
+from .helpers import logger, run_process, send_notification
 from .model import *  # noqa: F401, F403
 
 

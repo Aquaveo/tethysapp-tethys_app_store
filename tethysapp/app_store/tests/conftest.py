@@ -1,6 +1,20 @@
 import pytest
 import shutil
 from pathlib import Path
+from tethys_apps.base import TethysAppBase
+
+
+class TestApp(TethysAppBase):
+    name = 'Test App'
+    init_ran = False
+
+    def __init__(self):
+        self.init_ran = True
+
+
+@pytest.fixture()
+def tethysapp():
+    return TestApp
 
 
 @pytest.fixture()

@@ -3,8 +3,11 @@ from django.core.cache import cache
 import ast
 import re
 import semver
+from tethys_apps.base import TethysAppBase
 from tethys_portal import __version__ as tethys_version
 import copy
+import pkgutil
+import inspect
 
 import os
 import json
@@ -12,7 +15,7 @@ import urllib
 import shutil
 from pkg_resources import parse_version
 import yaml
-from .helpers import check_if_app_installed, add_if_exists_keys, logger, get_conda_stores
+from .helpers import logger, get_conda_stores
 from conda.cli.python_api import run_command as conda_run, Commands
 
 
@@ -380,6 +383,33 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     return return_object
 
 
+def check_if_app_installed(app_name, retried=False):
+    """Check if the app is installed with conda. If so, return additional information about the resource
+
+    Args:
+        app_name (str): name of the potentially installed app
+
+    Returns:
+        dict: Dictionary containing additional information about the application
+    """
+    return_obj = {'isInstalled': False}
+    [resp, err, code] = conda_run(Commands.LIST, ["-f", "--json", app_name])
+    if code != 0:
+        # In here maybe we just try re running the install
+        logger.error(
+            "ERROR: Couldn't get list of installed apps to verify if the conda install was successful")
+    else:
+        conda_search_result = json.loads(resp)
+        if len(conda_search_result) > 0:
+            # return conda_search_result[0]["version"]
+            return_obj['isInstalled'] = True
+            return_obj['channel'] = conda_search_result[0]["channel"]
+            return_obj['version'] = conda_search_result[0]["version"]
+            return return_obj
+
+    return return_obj
+
+
 def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=None, refresh=False):
     """Perform a conda search with the given channel and label to get all the available resources for potential
     installation
@@ -574,7 +604,7 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
                                           .replace("'}", '"}').replace("{'", '{"'))
 
             # create new one
-            app = add_if_exists_keys(license_metadata, app, [
+            app = add_keys_to_app_metadata(license_metadata, app, [
                 'author', 'description', 'license', 'author_email', 'keywords'], conda_channel, conda_label)
 
             if "url" in license_metadata:
@@ -612,8 +642,10 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
                         attr_about = ['author', 'description', 'license']
                         attr_extra = ['author_email', 'keywords']
 
-                        app = add_if_exists_keys(meta_yaml.get('about'), app, attr_about, conda_channel, conda_label)
-                        app = add_if_exists_keys(meta_yaml.get('extra'), app, attr_extra, conda_channel, conda_label)
+                        app = add_keys_to_app_metadata(meta_yaml.get('about'), app, attr_about, conda_channel,
+                                                       conda_label)
+                        app = add_keys_to_app_metadata(meta_yaml.get('extra'), app, attr_extra, conda_channel,
+                                                       conda_label)
 
                         if 'dev_url' not in app:
                             app['dev_url'] = {conda_channel: {conda_label: ''}}
@@ -646,3 +678,61 @@ def get_resource(resource_name, conda_channel, conda_label, app_workspace):
         return resource[0]
     else:
         return None
+
+
+def add_keys_to_app_metadata(additional_metadata, app_metadata, keys_to_add, conda_channel, conda_label):
+    """Update an apps metadata (based on conda channels and labels) from a dictionary of additional metadata and a list
+    of keys to add
+
+    Args:
+        additional_metadata (dict): Dictionary contianing addition information to add to the app metadata
+        app_metadata (dict): Dictionary representing an application and all the metadata needed to install it
+        keys_to_add (list): List of keys to add to the app_metadata from the additional metadata
+        conda_channel (str): Name of the conda channel to use for app discovery
+        conda_label (str): Name of the conda label to use for app discovery
+
+    Returns:
+        dict: A new app metadata dictionary with the added keys and information
+    """
+    if not additional_metadata:
+        return app_metadata
+    for key in keys_to_add:
+        if key not in app_metadata:
+            app_metadata[key] = {}
+            if conda_channel not in app_metadata[key]:
+                app_metadata[key][conda_channel] = {}
+                if conda_label not in app_metadata[key][conda_channel] and key in additional_metadata:
+                    app_metadata[key][conda_channel][conda_label] = additional_metadata[key]
+
+    return app_metadata
+
+
+def get_app_instance_from_path(paths):
+    """Dynamically import and instantiate an app instance for a tethysapp based on the python path to the application
+
+    Args:
+        paths (str): Python path to the installed application
+
+    Returns:
+        Instantiated TethysApp: A tethyspp instance for the installed application
+    """
+    app_instance = None
+    for _, modname, ispkg in pkgutil.iter_modules(paths):
+        if ispkg:
+            app_module = __import__(f'tethysapp.{modname}.app', fromlist=[''])
+            for name, obj in inspect.getmembers(app_module):
+                # Retrieve the members of the app_module and iterate through
+                # them to find the the class that inherits from AppBase.
+                try:
+                    # issubclass() will fail if obj is not a class
+                    if (issubclass(obj, TethysAppBase)) and (obj is not TethysAppBase):
+                        # Assign a handle to the class
+                        AppClass = getattr(app_module, name)
+                        # Instantiate app
+                        app_instance = AppClass()
+                        app_instance.sync_with_tethys_db()
+                        # We found the app class so we're done
+                        break
+                except TypeError:
+                    continue
+    return app_instance

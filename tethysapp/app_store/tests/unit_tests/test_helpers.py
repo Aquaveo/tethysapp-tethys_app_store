@@ -1,4 +1,52 @@
-from tethysapp.app_store.helpers import (parse_setup_py, get_conda_stores)
+import pytest
+from unittest.mock import MagicMock
+from tethysapp.app_store.helpers import (parse_setup_py, get_conda_stores, check_all_present, run_process,
+                                         send_notification, apply_template)
+
+
+@pytest.mark.parametrize(
+    "substrings, expected_outcome", [
+        (["This", "testing"], True),
+        (["This", "not present"], False)])
+def test_check_all_present(substrings, expected_outcome):
+    string = "This is a testing string"
+    present = check_all_present(string, substrings)
+
+    assert present is expected_outcome
+
+
+def test_run_process(mocker, caplog):
+
+    mock_run_results = MagicMock(stdout="standard output", returncode=10, stderr="standard error")
+    mock_run = mocker.patch('tethysapp.app_store.helpers.run', return_value=mock_run_results)
+
+    args = ["executable", "arg1", "arg2"]
+    run_process(args)
+
+    mock_run.assert_called_with(args, capture_output=True)
+    assert "standard output" in caplog.messages
+    assert "standard error" in caplog.messages
+
+
+def test_send_notification(mocker):
+    channel_layer = MagicMock(group_send="some_function")
+    mock_async_to_sync = mocker.patch('tethysapp.app_store.helpers.async_to_sync')
+    msg = "testing functionality"
+
+    send_notification(msg, channel_layer)
+
+    expected_args = ["notifications", {"type": "install_notifications", "message": msg}]
+    assert mock_async_to_sync.some_function.called_once_with(expected_args)
+
+
+def test_apply_template(app_files_dir, tmp_path):
+    upload_template = app_files_dir / "upload_command.txt"
+    data = {"label_string": "main"}
+    output_location = tmp_path / "upload_command.txt"
+
+    apply_template(upload_template, data, output_location)
+
+    assert output_location.read_text() == "anaconda upload --force --label main noarch/*.tar.bz2"
 
 
 def test_parse_setup_py(test_files_dir):

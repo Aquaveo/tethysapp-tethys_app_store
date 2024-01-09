@@ -9,8 +9,8 @@ from django.core.cache import cache
 
 from subprocess import call
 
-from .helpers import check_all_present, get_app_instance_from_path, logger, send_notification
-from .resource_helpers import get_resource
+from .helpers import check_all_present, logger, send_notification
+from .resource_helpers import get_resource, get_app_instance_from_path
 
 
 def handle_property_not_present(prop):
