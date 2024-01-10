@@ -19,8 +19,12 @@ from .helpers import logger, get_conda_stores
 from conda.cli.python_api import run_command as conda_run, Commands
 
 
-def clear_conda_channel_cache():
+def clear_conda_channel_cache(data, channel_layer):
     """Clears Django cache for all the conda stores
+
+    Args:
+        data (dict): Data to use for clearing cache
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
     """
     available_stores_data_dict = get_conda_stores()
     for store in available_stores_data_dict:

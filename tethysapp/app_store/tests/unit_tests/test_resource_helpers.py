@@ -19,7 +19,7 @@ def test_clear_conda_channel_cache(mocker, store):
     mocker.patch('tethysapp.app_store.resource_helpers.get_conda_stores', return_value=[active_store])
     mock_cache = mocker.patch('tethysapp.app_store.resource_helpers.cache')
 
-    clear_conda_channel_cache()
+    clear_conda_channel_cache({}, None)
 
     mock_calls = [call(f'{active_store["conda_channel"]}_{conda_label}_app_resources') for conda_label in conda_labels]
     mock_cache.delete.assert_has_calls(mock_calls)

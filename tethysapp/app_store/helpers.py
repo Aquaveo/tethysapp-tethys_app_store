@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 
 from django.conf import settings
 from django.core.cache import cache
@@ -166,7 +165,7 @@ def get_github_install_metadata(app_workspace):
         installed_app["metadata"]["description"] = setup_py_data.get('description')
         installed_app["author"] = setup_py_data.get('author')
         installed_app["dev_url"] = setup_py_data.get('url')
-        
+
         github_installed_apps_list.append(installed_app)
     cache.set(CACHE_KEY, github_installed_apps_list)
     return github_installed_apps_list

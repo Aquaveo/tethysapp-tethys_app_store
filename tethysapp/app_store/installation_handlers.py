@@ -22,7 +22,15 @@ from .model import *  # noqa: F401, F403
 
 
 def get_service_options(service_type):
-    # # List existing services
+    """Use the service list command line command to get available tethys services for spatial, persistent, wps, or
+     datasets
+
+    Args:
+        service_type (str): tethys service type. Can be 'spatial', 'persistent', 'wps', or 'dataset'
+
+    Returns:
+        list: List of tethys services for the specified service type
+    """
     args = Namespace()
 
     for conf in ['spatial', 'persistent', 'wps', 'dataset']:
@@ -39,6 +47,7 @@ def get_service_options(service_type):
                 "name": service.name,
                 "id": service.id
             })
+
     return existing_services
 
 
@@ -186,7 +195,7 @@ def process_settings(app_instance, app_py_path, channel_layer):
 
     services = []
     for setting in unlinked_settings:
-        if setting.__class__.__name__ == "CustomSetting":
+        if "CustomSetting" in setting.__class__.__name__:
             continue
         service_type = get_service_type_from_setting(setting)
         newSetting = {

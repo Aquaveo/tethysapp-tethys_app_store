@@ -75,7 +75,7 @@ def test_get_github_install_metadata(tmp_path, test_files_dir, mocker):
 
     expected_apps = {
         'name': 'release_package', 'installed': True, 'installedVersion': '0.0.1',
-        'metadata': {'channel': 'tethysapp','license': 'BSD 3-Clause License', 'description': 'example'},
+        'metadata': {'channel': 'tethysapp', 'license': 'BSD 3-Clause License', 'description': 'example'},
         'path': str(mock_installed_app), 'author': 'Tester', 'dev_url': ''
     }
     assert installed_apps[0] == expected_apps
@@ -86,13 +86,13 @@ def test_get_github_install_metadata_cached(mocker):
     mock_cache = mocker.patch('tethysapp.app_store.helpers.cache')
     apps = [{
         'name': 'release_package', 'installed': True, 'installedVersion': '0.0.1',
-        'metadata': {'channel': 'tethysapp','license': 'BSD 3-Clause License', 'description': 'example'},
+        'metadata': {'channel': 'tethysapp', 'license': 'BSD 3-Clause License', 'description': 'example'},
         'path': 'app_path', 'author': 'Tester', 'dev_url': ''
     }]
     mock_cache.get.return_value = apps
-    
+
     installed_apps = get_github_install_metadata("workspace_path")
-    
+
     assert installed_apps == apps
 
 
