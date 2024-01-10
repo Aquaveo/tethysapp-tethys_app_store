@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import MagicMock
 import shutil
 from pathlib import Path
 from tethys_apps.base import TethysAppBase
@@ -7,9 +8,15 @@ from tethys_apps.base import TethysAppBase
 class TestApp(TethysAppBase):
     name = 'Test App'
     init_ran = False
+    package = 'test_app'
 
     def __init__(self):
         self.init_ran = True
+
+    def custom_settings(self):
+        mock_setting = MagicMock()
+        mock_setting.name = "mock_setting"
+        return [mock_setting]
 
 
 @pytest.fixture()

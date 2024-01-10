@@ -387,7 +387,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     return return_object
 
 
-def check_if_app_installed(app_name, retried=False):
+def check_if_app_installed(app_name):
     """Check if the app is installed with conda. If so, return additional information about the resource
 
     Args:
@@ -405,7 +405,6 @@ def check_if_app_installed(app_name, retried=False):
     else:
         conda_search_result = json.loads(resp)
         if len(conda_search_result) > 0:
-            # return conda_search_result[0]["version"]
             return_obj['isInstalled'] = True
             return_obj['channel'] = conda_search_result[0]["channel"]
             return_obj['version'] = conda_search_result[0]["version"]

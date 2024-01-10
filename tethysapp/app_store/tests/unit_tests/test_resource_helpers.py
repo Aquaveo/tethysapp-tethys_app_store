@@ -1001,7 +1001,6 @@ def test_get_app_instance_from_path_typeerror(mocker, tmp_path, tethysapp):
     mocker.patch('tethysapp.app_store.resource_helpers.pkgutil.iter_modules', return_value=[["", app_name, True]])
     mocker.patch('tethysapp.app_store.resource_helpers.inspect.getmembers', return_value=[["test_app", tethysapp]])
 
-    get_app_instance_from_path(tmp_path)
     app_instance = get_app_instance_from_path(tmp_path)
 
     assert app_instance is None
