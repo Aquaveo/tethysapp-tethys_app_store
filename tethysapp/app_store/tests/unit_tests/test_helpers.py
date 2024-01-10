@@ -1,7 +1,8 @@
 import pytest
+import shutil
 from unittest.mock import MagicMock
 from tethysapp.app_store.helpers import (parse_setup_py, get_conda_stores, check_all_present, run_process,
-                                         send_notification, apply_template)
+                                         send_notification, apply_template, get_github_install_metadata)
 
 
 @pytest.mark.parametrize(
@@ -62,6 +63,52 @@ def test_parse_setup_py(test_files_dir):
     assert parsed_data == expected_data
 
 
+def test_get_github_install_metadata(tmp_path, test_files_dir, mocker):
+    mock_cache = mocker.patch('tethysapp.app_store.helpers.cache')
+    mock_cache.get.return_value = None
+    mock_installed_app = tmp_path / "apps" / "installed" / "test_app"
+    mock_installed_app.mkdir(parents=True)
+    shutil.copyfile(test_files_dir / "setup.py", mock_installed_app / "setup.py")
+    mock_workspace = MagicMock(path=tmp_path)
+
+    installed_apps = get_github_install_metadata(mock_workspace)
+
+    expected_apps = {
+        'name': 'release_package', 'installed': True, 'installedVersion': '0.0.1',
+        'metadata': {'channel': 'tethysapp','license': 'BSD 3-Clause License', 'description': 'example'},
+        'path': str(mock_installed_app), 'author': 'Tester', 'dev_url': ''
+    }
+    assert installed_apps[0] == expected_apps
+    mock_cache.set.assert_called_with("warehouse_github_app_resources", installed_apps)
+
+
+def test_get_github_install_metadata_cached(mocker):
+    mock_cache = mocker.patch('tethysapp.app_store.helpers.cache')
+    apps = [{
+        'name': 'release_package', 'installed': True, 'installedVersion': '0.0.1',
+        'metadata': {'channel': 'tethysapp','license': 'BSD 3-Clause License', 'description': 'example'},
+        'path': 'app_path', 'author': 'Tester', 'dev_url': ''
+    }]
+    mock_cache.get.return_value = apps
+    
+    installed_apps = get_github_install_metadata("workspace_path")
+    
+    assert installed_apps == apps
+
+
+def test_get_github_install_metadata_no_apps(tmp_path, mocker):
+    mock_cache = mocker.patch('tethysapp.app_store.helpers.cache')
+    mock_cache.get.return_value = None
+    mock_installed_app = tmp_path / "apps"
+    mock_installed_app.mkdir(parents=True)
+    mock_workspace = MagicMock(path=tmp_path)
+
+    installed_apps = get_github_install_metadata(mock_workspace)
+
+    assert installed_apps == []
+    mock_cache.set.assert_called_with("warehouse_github_app_resources", [])
+
+
 def test_get_conda_stores(mocker, store):
     mock_app = mocker.patch('tethysapp.app_store.helpers.app')
     encryption_key = 'fake_encryption_key'
@@ -101,7 +148,7 @@ def test_get_conda_stores_specific_str(mocker, store):
     mock_app.get_custom_setting.side_effect = [{'stores': [active_store, inactive_store]}, encryption_key]
     mocker.patch('tethysapp.app_store.helpers.decrypt', return_value='decrypted_token')
 
-    stores = get_conda_stores(channel_names="conda_channel_inactive_not_default")
+    stores = get_conda_stores(conda_channels="conda_channel_inactive_not_default")
 
     inactive_store['github_token'] = 'decrypted_token'
     expected_stores = [inactive_store]
@@ -116,7 +163,7 @@ def test_get_conda_stores_specific_list(mocker, store):
     mock_app.get_custom_setting.side_effect = [{'stores': [active_store, inactive_store]}, encryption_key]
     mocker.patch('tethysapp.app_store.helpers.decrypt', return_value='decrypted_token')
 
-    stores = get_conda_stores(channel_names=["conda_channel_inactive_not_default", "conda_channel_active_default"])
+    stores = get_conda_stores(conda_channels=["conda_channel_inactive_not_default", "conda_channel_active_default"])
 
     active_store['github_token'] = 'decrypted_token'
     inactive_store['github_token'] = 'decrypted_token'

@@ -123,99 +123,76 @@ def parse_setup_py(file_location):
     return params
 
 
-def find_string_in_line(line):
-    # try singleQuotes First
-    matches = re.findall("'([^']*)'", line)
-    if len(matches) > 0:
-        return matches[0]
-    else:
-        # try double quotes
-        matches = re.findall('"([^"]*)"', line)
-        if len(matches) > 0:
-            return matches[0]
-
-
 def get_github_install_metadata(app_workspace):
+    """Get resource metadata for all applications already installed.
 
-    if (cache.get(CACHE_KEY) is None):
-        logger.info("GitHub Apps list cache miss")
-        workspace_directory = app_workspace.path
-        workspace_apps_path = os.path.join(
-            workspace_directory, 'apps', 'installed')
-        if (not os.path.exists(workspace_apps_path)):
-            cache.set(CACHE_KEY, [])
-            return []
+    Args:
+        app_workspace (str): Path pointing to the app workspace within the app store
 
-        possible_apps = [f.path for f in os.scandir(
-            workspace_apps_path) if f.is_dir()]
-        github_installed_apps_list = []
-        for possible_app in possible_apps:
-            installed_app = {
-                'name': '',
-                'installed': True,
-                'metadata':
-                {
-                    'channel': 'tethysapp',
-                    'license': 'BSD 3-Clause License',
-                },
-                'installedVersion': '',
-                'path': possible_app
-            }
-            setup_path = os.path.join(possible_app, 'setup.py')
-            with open(setup_path, 'rt') as myfile:
-                for myline in myfile:
-                    if 'app_package' in myline and 'find_resource_files' not in myline and 'release_package' not in myline: # noqa e501
-                        installed_app["name"] = find_string_in_line(myline)
-                        continue
-                    if 'version' in myline:
-                        installed_app["installedVersion"] = find_string_in_line(
-                            myline)
-                        continue
-                    if 'description' in myline:
-                        installed_app["metadata"]["description"] = find_string_in_line(
-                            myline)
-                        continue
-                    if 'author' in myline:
-                        installed_app["author"] = find_string_in_line(myline)
-                        continue
-                    if 'description' in myline:
-                        installed_app["installedVersion"] = find_string_in_line(
-                            myline)
-                        continue
-                    if 'url' in myline:
-                        installed_app["dev_url"] = find_string_in_line(
-                            myline)
-                        continue
-            github_installed_apps_list.append(installed_app)
-        cache.set(CACHE_KEY, github_installed_apps_list)
-        return github_installed_apps_list
-    else:
-        return cache.get(CACHE_KEY)
+    Returns:
+        list: List of resources found in the installed directory
+    """
+    cached_app = cache.get(CACHE_KEY)
+    if cached_app:
+        return cached_app
+
+    logger.info("GitHub Apps list cache miss")
+    workspace_directory = app_workspace.path
+    workspace_apps_path = os.path.join(
+        workspace_directory, 'apps', 'installed')
+    if (not os.path.exists(workspace_apps_path)):
+        cache.set(CACHE_KEY, [])
+        return []
+
+    possible_apps = [f.path for f in os.scandir(
+        workspace_apps_path) if f.is_dir()]
+    github_installed_apps_list = []
+    for possible_app in possible_apps:
+        installed_app = {
+            'name': '',
+            'installed': True,
+            'metadata':
+            {
+                'channel': 'tethysapp',
+                'license': 'BSD 3-Clause License',
+            },
+            'installedVersion': '',
+            'path': possible_app
+        }
+        setup_path = os.path.join(possible_app, 'setup.py')
+        setup_py_data = parse_setup_py(setup_path)
+        installed_app["name"] = setup_py_data.get('name')
+        installed_app["installedVersion"] = setup_py_data.get('version')
+        installed_app["metadata"]["description"] = setup_py_data.get('description')
+        installed_app["author"] = setup_py_data.get('author')
+        installed_app["dev_url"] = setup_py_data.get('url')
+        
+        github_installed_apps_list.append(installed_app)
+    cache.set(CACHE_KEY, github_installed_apps_list)
+    return github_installed_apps_list
 
 
-def check_github_install(app_name, app_workspace):
-    possible_apps = get_github_install_metadata(app_workspace)
-    print(possible_apps)
+def get_conda_stores(active_only=False, conda_channels="all"):
+    """Get the conda stores from the custom settings and decrypt tokens as well
 
+    Args:
+        active_only (bool, optional): Option to only retrieve the active stores. Defaults to False.
+        conda_channels (str, optional): Option to only retrieve certain stores based on the conda channel name.
+            Defaults to "all".
 
-def get_github_installed_apps():
-
-    # print(possible_apps)
-
-    return ""
-
-
-def get_conda_stores(active_only=False, channel_names="all"):
+    Returns:
+        list: List of stores to use for retrieving resources
+    """
     available_stores = app.get_custom_setting("stores_settings")['stores']
     encryption_key = app.get_custom_setting("encryption_key")
 
     if active_only:
         available_stores = [store for store in available_stores if store['active']]
 
-    if channel_names != "all":
-        if isinstance(channel_names, str):
-            channel_names = channel_names.split(",")
-        available_stores = [store for store in available_stores if store['conda_channel'] in channel_names]
+    if conda_channels != "all":
+        if isinstance(conda_channels, str):
+            conda_channels = conda_channels.split(",")
+        available_stores = [store for store in available_stores if store['conda_channel'] in conda_channels]
 
     for store in available_stores:
         store['github_token'] = decrypt(store['github_token'], encryption_key)

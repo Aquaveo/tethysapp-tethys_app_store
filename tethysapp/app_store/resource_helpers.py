@@ -56,7 +56,7 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_ch
             }
         }
     """
-    available_stores_data_dict = get_conda_stores(channel_names=conda_channels)
+    available_stores_data_dict = get_conda_stores(conda_channels=conda_channels)
     object_stores = {}
     for store in available_stores_data_dict:
         conda_channel = store['conda_channel']
