@@ -17,7 +17,8 @@ from tethys_cli.services_commands import services_list_command
 from .app import AppStore as app
 from .begin_install import detect_app_dependencies
 from .helpers import get_app_instance_from_path, logger, run_process, send_notification
-from .model import * # noqa: F401
+from .model import *  # noqa: F401, F403
+
 
 def get_service_options(service_type):
     # # List existing services
@@ -31,7 +32,7 @@ def get_service_options(service_type):
     existing_services_list = services_list_command(args)[0]
     existing_services = []
 
-    if(len(existing_services_list)):
+    if (len(existing_services_list)):
         for service in existing_services_list:
             existing_services.append({
                 "name": service.name,
@@ -52,7 +53,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
     scaffold_running_path = os.path.join(workspace_directory, 'install_status', 'scaffoldRunning')
     if os.path.exists(scaffold_running_path):
         os.remove(scaffold_running_path)
-    
+
     manage_path = get_manage_path({})
     if data["restart_type"] in ["install", "update", "github_install"]:
         # Run SyncStores
@@ -69,8 +70,6 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
         with open(file_path, "w") as f:
             f.write(f'print("{data["name"]} installed in dev mode")')
             f.write("\n")
-
-
     else:
         if run_collect_all and data["restart_type"] in ["install", "update", "github_install"]:
 
@@ -88,14 +87,8 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
         try:
             send_notification("Server Restarting . . .", channel_layer)
             command = 'supervisorctl restart all'
-            subprocess.run(['sudo','-h'], check=True)
+            subprocess.run(['sudo', '-h'], check=True)
             sudoPassword = app.get_custom_setting('sudo_server_pass')
-            dir_path = os.path.dirname(os.path.realpath(__file__))
-            # script_path = os.path.join(dir_path, "scripts", "restart2.sh")
-            # subprocess.Popen(['sudo', '-S', 'supervisorctl', 'restart','all'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=f'{sudoPassword}\n')
-            # subprocess.run(["sudo", "-S", "supervisorctl", "restart", "all"])
-            # subprocess.run([script_path])
-            # logger.info("pass info")
 
             os.system('echo %s|sudo -S %s' % (sudoPassword, command))
         except Exception as e:
@@ -141,7 +134,7 @@ def set_custom_settings(custom_settings_data, channel_layer):
     current_app = get_app_instance_from_path([custom_settings_data['app_py_path']])
 
     if "skip" in custom_settings_data:
-        if(custom_settings_data["skip"]):
+        if (custom_settings_data["skip"]):
             logger.info("Skip/NoneFound option called.")
 
             msg = "Custom Setting Configuration Skipped"
@@ -152,8 +145,8 @@ def set_custom_settings(custom_settings_data, channel_layer):
             process_settings(current_app, custom_settings_data['app_py_path'], channel_layer)
             return
 
-    current_app_name = getattr(current_app, "name")
-    custom_settings = getattr(current_app, "custom_settings")
+    current_app_name = current_app.name
+    custom_settings = current_app.custom_settings()
 
     try:
         current_app_tethysapp_instance = TethysApp.objects.get(name=current_app_name)
@@ -162,10 +155,10 @@ def set_custom_settings(custom_settings_data, channel_layer):
         send_notification("Error Setting up custom settings. Check logs for more details", channel_layer)
         return
 
-    for setting in custom_settings():
-        setting_name = getattr(setting, "name")
+    for setting in custom_settings:
+        setting_name = setting.name
         actual_setting = CustomSetting.objects.get(name=setting_name, tethys_app=current_app_tethysapp_instance.id)
-        if(setting_name in custom_settings_data['settings']):
+        if (setting_name in custom_settings_data['settings']):
             actual_setting.value = custom_settings_data['settings'][setting_name]
             actual_setting.clean()
             actual_setting.save()

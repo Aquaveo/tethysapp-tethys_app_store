@@ -1,10 +1,11 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
-from .installation_handlers import logger, continueAfterInstall, restart_server, set_custom_settings,configure_services # noqa: F401
-from .uninstall_handlers import uninstall_app # noqa: F401
-from .git_install_handlers import get_log_file # noqa: F401
-from .update_handlers import update_app # noqa: F401
-from .resource_helpers import clear_cache # noqa: F401
-from .submission_handlers import process_branch, validate_git_repo, pull_git_repo_all # noqa: F401
+from .installation_handlers import (logger, continueAfterInstall, restart_server, set_custom_settings,  # noqa: F401
+                                    configure_services)  # noqa: F401
+from .uninstall_handlers import uninstall_app  # noqa: F401
+from .git_install_handlers import get_log_file  # noqa: F401
+from .update_handlers import update_app  # noqa: F401
+from .resource_helpers import clear_cache  # noqa: F401
+from .submission_handlers import process_branch, pull_git_repo_all  # noqa: F401
 # called with threading.Thread
 from .begin_install import begin_install  # noqa: F401
 from tethys_sdk.routing import consumer
@@ -37,7 +38,7 @@ class notificationsConsumer(AsyncWebsocketConsumer):
         logger.info(f"print message {message} at {self.channel_name}")
         await self.send(text_data=json.dumps({'message': message, }))
         logger.info(f"Got message {event} at {self.channel_name}")
-        
+
     async def receive(self, text_data):
         logger.info(f"Received message {text_data} at {self.channel_name}")
 

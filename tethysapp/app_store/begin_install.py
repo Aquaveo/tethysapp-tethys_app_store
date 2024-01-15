@@ -8,7 +8,7 @@ from django.core.cache import cache
 from subprocess import call
 
 from .helpers import check_all_present, get_app_instance_from_path, logger, send_notification
-from .resource_helpers import get_resource, get_resource_new
+from .resource_helpers import get_resource
 
 
 def handle_property_not_present(prop):
@@ -55,7 +55,6 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
     # paths = list(filter(lambda x: app_name in x, store_pkg.__path__))
     paths = list(filter(lambda x: app_name in x, tethysapp.__path__))
 
-
     if len(paths) < 1:
         logger.error("Can't find the installed app location.")
         return
@@ -79,7 +78,7 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
                 # Checkpoints for the output
                 str_output = str(output.strip())
                 logger.info(str_output)
-                if(check_all_present(str_output, ['PIP Install Complete'])):
+                if (check_all_present(str_output, ['PIP Install Complete'])):
                     break
 
         notification_method("PIP install completed", channel_layer)
@@ -88,14 +87,14 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
 
     app_instance = get_app_instance_from_path(paths)
     custom_settings_json = []
+    custom_settings = app_instance.custom_settings()
 
-    if getattr(app_instance, "custom_settings"):
+    if custom_settings:
         notification_method("Processing App's Custom Settings....", channel_layer)
-        custom_settings = getattr(app_instance, "custom_settings")
-        for setting in custom_settings() or []:
-            setting = {"name": getattr(setting, "name"),
-                       "description": getattr(setting, "description"),
-                       "default": str(getattr(setting, "default")),
+        for setting in custom_settings:
+            setting = {"name": setting.name,
+                       "description": setting.description,
+                       "default": str(setting.default),
                        }
             custom_settings_json.append(setting)
 
@@ -110,7 +109,7 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
     return
 
 
-def conda_install(app_metadata, app_channel,app_label,app_version, channel_layer):
+def conda_install(app_metadata, app_channel, app_label, app_version, channel_layer):
 
     start_time = time.time()
     send_notification("Mamba install may take a couple minutes to complete depending on how complicated the "
@@ -127,7 +126,7 @@ def conda_install(app_metadata, app_channel,app_label,app_version, channel_layer
     app_name = app_metadata['name'] + "=" + app_version
 
     label_channel = f'{app_channel}'
-    
+
     if app_label != 'main':
         label_channel = f'{app_channel}/label/{app_label}'
 
@@ -145,18 +144,18 @@ def conda_install(app_metadata, app_channel,app_label,app_version, channel_layer
             # Checkpoints for the output
             str_output = str(output.strip())
             logger.info(str_output)
-            if(check_all_present(str_output, ['Collecting package metadata', 'done'])):
+            if (check_all_present(str_output, ['Collecting package metadata', 'done'])):
                 send_notification("Package Metadata Collection: Done", channel_layer)
-            if(check_all_present(str_output, ['Solving environment', 'done'])):
+            if (check_all_present(str_output, ['Solving environment', 'done'])):
                 send_notification("Solving Environment: Done", channel_layer)
-            if(check_all_present(str_output, ['Verifying transaction', 'done'])):
+            if (check_all_present(str_output, ['Verifying transaction', 'done'])):
                 send_notification("Verifying Transaction: Done", channel_layer)
-            if(check_all_present(str_output, ['All requested packages already installed.'])):
+            if (check_all_present(str_output, ['All requested packages already installed.'])):
                 send_notification("Application package is already installed in this conda environment.",
                                   channel_layer)
-            if(check_all_present(str_output, ['Mamba Install Complete'])):
+            if (check_all_present(str_output, ['Mamba Install Complete'])):
                 break
-            if(check_all_present(str_output, ['Found conflicts!'])):
+            if (check_all_present(str_output, ['Found conflicts!'])):
                 send_notification("Mamba install found conflicts."
                                   "Please try running the following command in your terminal's"
                                   "conda environment to attempt a manual installation : "
@@ -168,16 +167,14 @@ def conda_install(app_metadata, app_channel,app_label,app_version, channel_layer
 
 def begin_install(installData, channel_layer, app_workspace):
 
-    # resource = get_resource(installData["name"], app_workspace)
+    resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
 
-    resource = get_resource_new(installData["name"],installData['channel'],installData['label'], app_workspace)
-    
-    send_notification("Starting installation of app: " + resource['name'] + " from store "+ installData['channel'] + " with label "+ installData['label'] , channel_layer)
+    send_notification("Starting installation of app: " + resource['name'] + " from store " + installData['channel'] +
+                      " with label " + installData['label'], channel_layer)
     send_notification("Installing Version: " + installData["version"], channel_layer)
 
-
     try:
-        conda_install(resource,installData['channel'],installData['label'], installData["version"], channel_layer)
+        conda_install(resource, installData['channel'], installData['label'], installData["version"], channel_layer)
     except Exception as e:
         logger.error("Error while running conda install")
         logger.error(e)

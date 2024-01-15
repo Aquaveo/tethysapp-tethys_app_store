@@ -163,7 +163,8 @@ def continue_install(logger, status_file_path, install_options, app_name, app_wo
     update_status_file(status_file_path, True, "setupPy")
     logger.info("Install completed")
     clear_github_cache_list()
-    restart_server({"restart_type": "github_install", "name": app_name}, channel_layer=None, app_workspace=app_workspace)
+    restart_server({"restart_type": "github_install", "name": app_name}, channel_layer=None,
+                   app_workspace=app_workspace)
 
 
 def install_worker(workspace_apps_path, status_file_path, logger, install_run_id, develop, app_workspace):
@@ -261,7 +262,7 @@ def get_status_override(request):
     # based on a custom key set in the custom settings.
     # This allows app nursery to use the same code to process the request
     override_key = get_override_key()
-    if(request.GET.get('custom_key') == override_key):
+    if (request.GET.get('custom_key') == override_key):
         return get_status_main(request)
     else:
         return HttpResponse('Unauthorized', status=401)
@@ -304,7 +305,7 @@ def get_logs_override(request):
     # based on a custom key set in the custom settings.
     # This allows app nursery to use the same code to process the request
     override_key = get_override_key()
-    if(request.GET.get('custom_key') == override_key):
+    if (request.GET.get('custom_key') == override_key):
         return get_logs_main(request)
     else:
         return HttpResponse('Unauthorized', status=401)
@@ -439,7 +440,7 @@ def run_git_install_override(request):
     # based on a custom key set in the custom settings. This allows app nursery to use the same code to process the
     # request
     override_key = get_override_key()
-    if(request.GET.get('custom_key') == override_key):
+    if (request.GET.get('custom_key') == override_key):
         return run_git_install_main(request)
     else:
         return HttpResponse('Unauthorized', status=401)

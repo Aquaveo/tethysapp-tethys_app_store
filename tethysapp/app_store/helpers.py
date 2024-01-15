@@ -67,7 +67,7 @@ def check_if_app_installed(app_name):
                 return_obj['channel'] = conda_search_result[0]["channel"]
                 return_obj['version'] = conda_search_result[0]["version"]
                 return return_obj
-            
+
             else:
                 return_obj['isInstalled'] = False
                 return return_obj
@@ -86,7 +86,6 @@ def check_if_app_installed(app_name):
         return check_if_app_installed(app_name)
 
 
-
 def add_if_exists(a, b, keys):
     if not a:
         return b
@@ -95,7 +94,8 @@ def add_if_exists(a, b, keys):
             b[key] = a[key]
     return b
 
-def add_if_exists_keys(a, final_a, keys,channel,label):
+
+def add_if_exists_keys(a, final_a, keys, channel, label):
     if not a:
         return final_a
     for key in keys:
@@ -107,7 +107,7 @@ def add_if_exists_keys(a, final_a, keys,channel,label):
                     final_a[key][channel][label] = a[key]
 
     return final_a
-    
+
 
 def get_app_instance_from_path(paths):
     app_instance = None
@@ -187,11 +187,11 @@ def parse_setup_py(file_location):
                     if len(parts) < 2:
                         continue
                     value = parts[1].strip()
-                    if(value[-1] == ","):
+                    if (value[-1] == ","):
                         value = value[:-1]
-                    if(value[0] == "'" or value[0] == '"'):
+                    if (value[0] == "'" or value[0] == '"'):
                         value = value[1:]
-                    if(value[-1] == "'" or value[-1] == '"'):
+                    if (value[-1] == "'" or value[-1] == '"'):
                         value = value[:-1]
                     params[parts[0].strip()] = value
     return params
@@ -218,7 +218,7 @@ def get_github_install_metadata(app_workspace):
         workspace_directory = app_workspace.path
         workspace_apps_path = os.path.join(
             workspace_directory, 'apps', 'installed')
-        if(not os.path.exists(workspace_apps_path)):
+        if (not os.path.exists(workspace_apps_path)):
             cache.set(CACHE_KEY, [])
             return []
 
