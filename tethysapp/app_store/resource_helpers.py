@@ -546,16 +546,13 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
     metadata then use the versionurl to download a file and try to extract the information
 
     Args:
-        resources (_type_): _description_
-        app_workspace (_type_): _description_
-        conda_channel (_type_): _description_
-        conda_label (_type_): _description_
-
-    Raises:
-        ValueError: _description_
+        resources (list): List of resources to process
+        app_workspace (str): Path pointing to the app workspace within the app store
+        conda_channel (str): Name of the conda channel to use for app discovery
+        conda_label (str, optional): Name of the conda label to use for app discovery.
 
     Returns:
-        _type_: _description_
+        (list): List of updated resources
     """
     for app in resources:
         workspace_folder = os.path.join(app_workspace.path, 'apps')
