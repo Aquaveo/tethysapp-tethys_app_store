@@ -6,6 +6,7 @@ from channels.layers import get_channel_layer
 from django.test import override_settings
 from tethysapp.app_store.notifications import notificationsConsumer
 
+
 @pytest.mark.asyncio
 async def test_notificationsConsumer_connect_disconnect(caplog):
     consumer = notificationsConsumer
@@ -19,10 +20,11 @@ async def test_notificationsConsumer_connect_disconnect(caplog):
         assert connected
         channel_layer = get_channel_layer("testlayer")
         channel_name = list(channel_layer.channels.keys())[0]
-        # Close
+
         await communicator.disconnect()
         assert f"Added {channel_name} channel to notifications" in caplog.messages
         assert f"Removed {channel_name} channel from notifications" in caplog.messages
+
 
 @pytest.mark.asyncio
 async def test_notificationsConsumer_install_notifications(caplog):
@@ -35,18 +37,19 @@ async def test_notificationsConsumer_install_notifications(caplog):
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
         connected, _ = await communicator.connect()
         assert connected
-        
+
         channel_layer = get_channel_layer("testlayer")
         channel_name = list(channel_layer.channels.keys())[0]
-        
+
         message = "Sending a message"
-        await channel_layer.group_send("notifications", {"type": "install_notifications","message": message})
+        await channel_layer.group_send("notifications", {"type": "install_notifications", "message": message})
         await communicator.receive_from()
 
         await communicator.disconnect()
         assert f"Added {channel_name} channel to notifications" in caplog.messages
         assert f"Sent message {message} at {channel_name}" in caplog.messages
         assert f"Removed {channel_name} channel from notifications" in caplog.messages
+
 
 @pytest.mark.asyncio
 async def test_notificationsConsumer_receive_begin_install(mocker, caplog):
@@ -64,10 +67,10 @@ async def test_notificationsConsumer_receive_begin_install(mocker, caplog):
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
         connected, _ = await communicator.connect()
         assert connected
-        
+
         channel_layer = get_channel_layer("testlayer")
         channel_name = list(channel_layer.channels.keys())[0]
-        
+
         install_data = {
             "data": {
                 "name": "appName",
@@ -83,9 +86,10 @@ async def test_notificationsConsumer_receive_begin_install(mocker, caplog):
         assert f"Added {channel_name} channel to notifications" in caplog.messages
         assert f"Received message {json.dumps(install_data)} at {channel_name}" in caplog.messages
         assert f"Removed {channel_name} channel from notifications" in caplog.messages
-        mock_threading.Thread.assert_called_with(target=mock_begin_install, 
+        mock_threading.Thread.assert_called_with(target=mock_begin_install,
                                                  args=[install_data['data'], channel_layer, mock_workspace])
         mock_threading.Thread().start.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_notificationsConsumer_receive_invalid_type(caplog):
@@ -98,10 +102,10 @@ async def test_notificationsConsumer_receive_invalid_type(caplog):
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
         connected, _ = await communicator.connect()
         assert connected
-        
+
         channel_layer = get_channel_layer("testlayer")
         channel_name = list(channel_layer.channels.keys())[0]
-        
+
         install_data = {"data": {}}
         await communicator.send_json_to(install_data)
 
