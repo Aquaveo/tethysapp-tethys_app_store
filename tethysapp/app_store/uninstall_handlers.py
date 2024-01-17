@@ -1,6 +1,7 @@
 from conda.exceptions import PackagesNotFoundError
 from tethys_cli.cli_helpers import get_manage_path
 from tethys_apps.exceptions import TethysAppSettingNotAssigned
+from tethys_apps.models import TethysApp
 
 import subprocess
 import shutil
@@ -10,6 +11,12 @@ from .git_install_handlers import clear_github_cache_list
 
 
 def send_uninstall_messages(msg, channel_layer):
+    """Send a message to the django channel about the uninstall status
+
+    Args:
+        msg (str): Message to send to the django channel
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
     data_json = {
         "target": 'uninstallNotices',
         "message": msg
@@ -18,6 +25,14 @@ def send_uninstall_messages(msg, channel_layer):
 
 
 def uninstall_app(data, channel_layer, app_workspace):
+    """Removed app database connections and uninstall the app. Try to uninstall with mamba first and if that fails,
+    assume it is a github app and try to uninstall that.
+
+    Args:
+        data (dict): Information about the app that will be uninstalled
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     manage_path = get_manage_path({})
     app_name = data['name']
 
@@ -26,7 +41,6 @@ def uninstall_app(data, channel_layer, app_workspace):
 
     try:
         # Check if application had provisioned any Persistent stores and clear them out
-        from tethys_apps.models import TethysApp
         target_app = TethysApp.objects.filter(package=app_name)[0]
         ps_db_settings = target_app.persistent_store_database_settings
 
@@ -36,7 +50,7 @@ def uninstall_app(data, channel_layer, app_workspace):
                 try:
                     if setting.persistent_store_database_exists():
                         logger.info(
-                            "Droping Database for persistent store setting: " + str(setting))
+                            "Dropping Database for persistent store setting: " + str(setting))
                         setting.drop_persistent_store_database()
                 except TethysAppSettingNotAssigned:
                     pass
@@ -54,8 +68,7 @@ def uninstall_app(data, channel_layer, app_workspace):
         logger.info(
             "Couldn't connect to database for removal. Continuing clean up")
 
-    process = ['python', manage_path, 'tethys_app_uninstall', app_name]
-    process.append('-f')
+    process = ['python', manage_path, 'tethys_app_uninstall', app_name, '-f']
 
     try:
         subprocess.call(process)
@@ -90,7 +103,7 @@ def uninstall_app(data, channel_layer, app_workspace):
         # This was installed using GitHub. Try to clean out
         github_installed = get_github_install_metadata(app_workspace)
         for app in github_installed:
-            if app['name'] == data['name']:
+            if app['name'] == app_name:
                 # remove App Directory
                 shutil.rmtree(app['path'])
 

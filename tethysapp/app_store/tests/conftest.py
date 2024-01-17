@@ -25,9 +25,15 @@ def tethysapp():
 
 
 @pytest.fixture()
-def app_files_dir():
-    current_dir = Path(__file__).parent.parent
-    app_files_dir = current_dir / "application_files"
+def app_store_dir():
+    app_store_dir = Path(__file__).parent.parent
+
+    return app_store_dir
+
+
+@pytest.fixture()
+def app_files_dir(app_store_dir):
+    app_files_dir = app_store_dir / "application_files"
 
     return app_files_dir
 
