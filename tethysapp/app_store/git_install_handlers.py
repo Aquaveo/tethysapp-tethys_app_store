@@ -12,6 +12,7 @@ from tethys_sdk.workspaces import get_app_workspace
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes
 from rest_framework.exceptions import ValidationError
+from tethys_sdk.permissions import has_permission
 
 from django.http import JsonResponse, Http404, HttpResponse
 
@@ -242,11 +243,14 @@ def get_status_main(request, app_workspace):
     name='git_get_status',
     url='app-store/install/git/status',
     app_workspace=True,
-    permissions_required='use_app_store'
+    login_required=False
 )
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 def get_status(request, app_workspace):
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
+
     # This method is a wrapper function to protect the actual method from being accessed without auth
     get_status_main(request, app_workspace)
 
@@ -254,11 +258,14 @@ def get_status(request, app_workspace):
 @controller(
     name='git_get_status_override',
     url='app-store/install/git/status_override',
-    permissions_required='use_app_store'
+    login_required=False
 )
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 def get_status_override(request):
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
+
     # This method is an override to the get status method. It allows for installation
     # based on a custom key set in the custom settings.
     # This allows app nursery to use the same code to process the request
@@ -288,22 +295,28 @@ def get_logs_main(request, app_workspace):
     name='git_get_logs',
     url='app-store/install/git/logs',
     app_workspace=True,
-    permissions_required='use_app_store'
+    login_required=False
 )
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 def get_logs(request, app_workspace):
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
+
     get_logs_main(request, app_workspace)
 
 
 @controller(
     name='git_get_logs_override',
     url='app-store/install/git/logs_override',
-    permissions_required='use_app_store'
+    login_required=False
 )
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 def get_logs_override(request):
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
+
     # This method is an override to the get status method. It allows for installation
     # based on a custom key set in the custom settings.
     # This allows app nursery to use the same code to process the request
@@ -318,12 +331,15 @@ def get_logs_override(request):
     name='install_git',
     url='app-store/install/git',
     app_workspace=True,
-    permissions_required='use_app_store'
+    login_required=False
 )
 @api_view(['POST'])
 @authentication_classes((TokenAuthentication,))
 def run_git_install_main(request, app_workspace):
     breakpoint()
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
+
     workspace_directory = app_workspace.path
     install_logs_dir = os.path.join(
         workspace_directory, 'logs', 'github_install')
@@ -436,11 +452,14 @@ def run_git_install_main(request, app_workspace):
 @controller(
     name='install_git_override',
     url='app-store/install/git_override',
-    permissions_required='use_app_store'
+    login_required=False
 )
 @api_view(['POST'])
 @authentication_classes((TokenAuthentication,))
 def run_git_install_override(request):
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
+
     # This method is an override to the install method. It allows for installation
     # based on a custom key set in the custom settings. This allows app nursery to use the same code to process the
     # request

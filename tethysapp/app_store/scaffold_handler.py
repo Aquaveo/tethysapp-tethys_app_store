@@ -13,9 +13,10 @@ from tethys_cli.scaffold_commands import APP_PATH, APP_PREFIX, get_random_color,
 from tethys_cli.cli_helpers import get_manage_path
 
 from rest_framework.decorators import api_view, authentication_classes
+from tethys_sdk.permissions import has_permission
 from rest_framework.authentication import TokenAuthentication
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from tethys_sdk.routing import controller
 
 
@@ -76,8 +77,8 @@ def proper_name_validator(value, default):
 @controller(
     name='scaffold_app',
     url='app-store/scaffold',
-    app_workspace=True,
-    permissions_required='use_app_store'
+    login_required=False,
+    app_workspace=True
 )
 @api_view(['POST'])
 @authentication_classes((TokenAuthentication,))
@@ -100,7 +101,8 @@ def scaffold_command(request, app_workspace):
     }
 
     """
-    breakpoint()
+    if not has_permission(request, 'use_app_store'):
+        return HttpResponse('Unauthorized', status=401)
     # Set ScaffoldRunning file to prevent auto restart from the filewatchers
     workspace_directory = app_workspace.path
 
