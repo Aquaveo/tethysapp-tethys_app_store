@@ -5,9 +5,7 @@ from django.shortcuts import render
 from tethys_sdk.routing import controller
 
 from .resource_helpers import get_stores_reformatted
-
-from .app import AppStore as app
-from .utilities import decrypt
+from .helpers import get_conda_stores
 ALL_RESOURCES = []
 CACHE_KEY = "warehouse_app_resources"
 
@@ -15,18 +13,22 @@ CACHE_KEY = "warehouse_app_resources"
 @controller(
     name='home',
     url='app-store',
-    permissions_required='use_app_store',
-    app_workspace=True,
+    permissions_required='use_app_store'
 )
-def home(request, app_workspace):
-    available_stores_data_dict = app.get_custom_setting("stores_settings")['stores']
-    encryption_key = app.get_custom_setting("encryption_key")
-    for store in available_stores_data_dict:
-        store['github_token'] = decrypt(store['github_token'], encryption_key)
+def home(request):
+    """Created the context for the home page of the app store
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+
+    Returns:
+        object: Rendered html Django object
+    """
+    available_stores = get_conda_stores()
 
     context = {
-        'storesData': available_stores_data_dict,
-        'show_stores': True if len(available_stores_data_dict) > 0 else False
+        'storesData': available_stores,
+        'show_stores': True if len(available_stores) > 0 else False
     }
 
     return render(request, 'app_store/home.html', context)
@@ -35,17 +37,20 @@ def home(request, app_workspace):
 @controller(
     name='get_available_stores',
     url='app-store/get_available_stores',
-    permissions_required='use_app_store',
-    app_workspace=True,
+    permissions_required='use_app_store'
 )
-def get_available_stores(request, app_workspace):
+def get_available_stores(request):
+    """Retrieves the available stores through an ajax request
 
-    available_stores_data_dict = app.get_custom_setting("stores_settings")
-    encryption_key = app.get_custom_setting("encryption_key")
-    for store in available_stores_data_dict['stores']:
-        store['github_token'] = decrypt(store['github_token'], encryption_key)
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
 
-    return JsonResponse(available_stores_data_dict)
+    Returns:
+        JsonResponse: A json reponse of the available conda stores
+    """
+    available_stores = get_conda_stores()
+    available_stores_dict = {"stores": available_stores}
+    return JsonResponse(available_stores_dict)
 
 
 @controller(
@@ -54,12 +59,12 @@ def get_available_stores(request, app_workspace):
     permissions_required='use_app_store',
     app_workspace=True,
 )
-def get_resources_multiple_stores(request, app_workspace):
+def get_merged_resources(request, app_workspace):
 
     stores_active = request.GET.get('active_store')
 
     object_stores_formatted_by_label_and_channel = get_stores_reformatted(app_workspace, refresh=False,
-                                                                          stores=stores_active)
+                                                                          conda_channels=stores_active)
 
     tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
     object_stores_formatted_by_label_and_channel['tethysVersion'] = tethys_version_regex

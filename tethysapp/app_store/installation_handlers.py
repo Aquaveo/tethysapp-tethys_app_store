@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import subprocess
@@ -7,7 +6,6 @@ from argparse import Namespace
 from django.core.exceptions import ObjectDoesNotExist
 from pathlib import Path
 
-from conda.cli.python_api import run_command as conda_run, Commands
 from tethys_apps.models import CustomSetting, TethysApp
 from tethys_apps.utilities import (get_app_settings, link_service_to_app_setting)
 from tethys_cli.cli_helpers import get_manage_path
@@ -16,12 +14,21 @@ from tethys_cli.services_commands import services_list_command
 
 from .app import AppStore as app
 from .begin_install import detect_app_dependencies
-from .helpers import get_app_instance_from_path, logger, run_process, send_notification
+from .resource_helpers import get_app_instance_from_path, check_if_app_installed
+from .helpers import logger, run_process, send_notification
 from .model import *  # noqa: F401, F403
 
 
 def get_service_options(service_type):
-    # # List existing services
+    """Use the service list command line command to get available tethys services for spatial, persistent, wps, or
+     datasets
+
+    Args:
+        service_type (str): tethys service type. Can be 'spatial', 'persistent', 'wps', or 'dataset'
+
+    Returns:
+        list: List of tethys services for the specified service type
+    """
     args = Namespace()
 
     for conf in ['spatial', 'persistent', 'wps', 'dataset']:
@@ -38,11 +45,20 @@ def get_service_options(service_type):
                 "name": service.name,
                 "id": service.id
             })
+
     return existing_services
 
 
 def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
+    """Runs some tethys commands after an application is installed. Once finished, try to restart the server to get
+    the changes made
 
+    Args:
+        data (dict): Dictionary of data with app information and restart type
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        app_workspace (str): Path pointing to the app workspace within the app store
+        run_collect_all (bool, optional): Detemines if collect all needs to be ran. Defaults to True.
+    """
     # Check if Install Running file is present and delete it
     workspace_directory = app_workspace.path
     install_running_path = os.path.join(workspace_directory, 'install_status', 'installRunning')
@@ -59,7 +75,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
         # Run SyncStores
         logger.info("Running Syncstores for app: " + data["name"])
         send_notification("Running Syncstores for app: " + data["name"], channel_layer)
-        intermediate_process = ['python', manage_path, 'syncstores', data["name"],  '-f']
+        intermediate_process = ['python', manage_path, 'syncstores', data["name"], '-f']
         run_process(intermediate_process)
 
     if 'runserver' in sys.argv:
@@ -81,7 +97,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
             intermediate_process = ['python', manage_path, 'collectstatic', '--noinput']
             run_process(intermediate_process)
             # Run collectworkspaces command
-            intermediate_process = ['python', manage_path, 'collectworkspaces',  '--force']
+            intermediate_process = ['python', manage_path, 'collectworkspaces', '--force']
             run_process(intermediate_process)
 
         try:
@@ -106,44 +122,42 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
 
 
 def continueAfterInstall(installData, channel_layer):
+    """If install is still running, check if the app is installed and check that the correct version is installed
 
-    # Check if app is installed
-    [resp, err, code] = conda_run(Commands.LIST, [installData['name'], "--json"])
-    # logger.info(resp, err, code)
-    if code != 0:
-        # In here maybe we just try re running the install
-        logger.error("ERROR: Couldn't get list of installed apps to verify if the conda install was successfull")
-    else:
-        conda_search_result = json.loads(resp)
-        # Check if matching version found
-        for package in conda_search_result:
-            if package["version"] == installData['version']:
-                send_notification("Resuming processing...", channel_layer)
-                # detect_app_dependencies(installData['name'], installData['version'], channel_layer)
-                detect_app_dependencies(installData['name'], channel_layer)
+    Args:
+        installData (dict): User provided information about the application that should be installed
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
+    app_data = check_if_app_installed(installData['name'])
 
-                break
-            else:
-                send_notification(
-                    "Server error while processing this installation. Please check your logs", channel_layer)
-                logger.error("ERROR: ContinueAfterInstall: Correct version is not installed of this package.")
+    if app_data['isInstalled']:
+        if app_data["version"] == installData['version']:
+            send_notification("Resuming processing...", channel_layer)
+            detect_app_dependencies(installData['name'], channel_layer)
+        else:
+            send_notification(
+                "Server error while processing this installation. Please check your logs", channel_layer)
+            logger.error("ERROR: ContinueAfterInstall: Correct version is not installed of this package.")
 
 
 def set_custom_settings(custom_settings_data, channel_layer):
+    """Get custom settings from the the app and set the actual value in tethys using the custom settings data
 
+    Args:
+        custom_settings_data (dict): Dictionary containing information about the custom settings of the app
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
     current_app = get_app_instance_from_path([custom_settings_data['app_py_path']])
 
-    if "skip" in custom_settings_data:
-        if (custom_settings_data["skip"]):
-            logger.info("Skip/NoneFound option called.")
+    if custom_settings_data.get("skip"):
+        logger.info("Skip/NoneFound option called.")
 
-            msg = "Custom Setting Configuration Skipped"
-            if "noneFound" in custom_settings_data:
-                if custom_settings_data["noneFound"]:
-                    msg = "No Custom Settings Found to process."
-            send_notification(msg, channel_layer)
-            process_settings(current_app, custom_settings_data['app_py_path'], channel_layer)
-            return
+        msg = "Custom Setting Configuration Skipped"
+        if custom_settings_data.get("noneFound"):
+            msg = "No Custom Settings Found to process."
+        send_notification(msg, channel_layer)
+        process_settings(current_app, custom_settings_data['app_py_path'], channel_layer)
+        return
 
     current_app_name = current_app.name
     custom_settings = current_app.custom_settings()
@@ -174,6 +188,14 @@ def set_custom_settings(custom_settings_data, channel_layer):
 
 
 def process_settings(app_instance, app_py_path, channel_layer):
+    """Retrieve the app settings and processes unlinked and non custom settings. Also get potential existing service
+    options that can be used later for linking
+
+    Args:
+        app_instance (TethysAppBase Instance): Tethys app instance for the installed application
+        app_py_path (str): Path to the app.py file for the application
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
     app_settings = get_app_settings(app_instance.package)
 
     # In the case the app isn't installed, has no settings, or it is an extension,
@@ -185,7 +207,7 @@ def process_settings(app_instance, app_py_path, channel_layer):
 
     services = []
     for setting in unlinked_settings:
-        if setting.__class__.__name__ == "CustomSetting":
+        if "CustomSetting" in setting.__class__.__name__:
             continue
         service_type = get_service_type_from_setting(setting)
         newSetting = {
@@ -209,6 +231,12 @@ def process_settings(app_instance, app_py_path, channel_layer):
 
 
 def configure_services(services_data, channel_layer):
+    """Link applications to the specified services
+
+    Args:
+        services_data (dict): Contains information about a service for linking and the application it is for
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
     try:
         link_service_to_app_setting(services_data['service_type'],
                                     services_data['service_id'],
@@ -228,6 +256,12 @@ def configure_services(services_data, channel_layer):
 
 
 def getServiceList(data, channel_layer):
+    """_summary_
+
+    Args:
+        data (dict): Contains the type of setting to be used to get available services
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+    """
     get_data_json = {
         "data": {"settingType": data['settingType'],
                  "newOptions": get_service_options(data['settingType'])},

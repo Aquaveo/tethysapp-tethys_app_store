@@ -357,8 +357,8 @@ const startInstall = (appName,channel_app,label_app,current_version) => {
         JSON.stringify({
             data: {
                 name: appName,
-                channel:channel_app,
-                label:label_app,
+                channel: channel_app,
+                label: label_app,
                 version: current_version
             },
             type: `begin_install`
@@ -420,7 +420,7 @@ const getRepoForAdd = () => {
                     url: githubURL,
                     stores: active_stores
                 },
-                type: `pull_git_repo_all`
+                type: `initialize_local_repo_for_active_stores`
             })
         )
     } else {

@@ -22,8 +22,9 @@ from pathlib import Path
 from subprocess import (Popen, PIPE, STDOUT)
 from datetime import datetime
 
+from conda.cli.python_api import run_command as conda_run, Commands
 from .app import AppStore as app
-from .helpers import Commands, conda_run, get_override_key, logger
+from .helpers import get_override_key, logger
 from .installation_handlers import restart_server
 
 FNULL = open(os.devnull, 'w')

@@ -1,0 +1,28 @@
+package:
+  name: test_app
+  version: 1.0
+
+about:
+  author: author
+  description: description
+  license: "{}"
+
+outputs:
+  - name: test_app
+
+extra:
+  author_email: author_email
+  keywords: keywords
+  recipe-maintainers:
+  - TethysAppWarehouse
+
+build:
+  noarch: python
+  preserve_egg_dir: true
+  script: python setup.py install --record=record.txt
+requirements:
+  build:
+  - python
+  run: null
+source:
+  path: ..
