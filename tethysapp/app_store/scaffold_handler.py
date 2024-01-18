@@ -8,15 +8,14 @@ from subprocess import (Popen, PIPE, STDOUT)
 from pathlib import Path
 
 from .git_install_handlers import write_logs
-from .helpers import logger, get_override_key, run_process
+from .helpers import logger, run_process
 from tethys_cli.scaffold_commands import APP_PATH, APP_PREFIX, get_random_color, render_path, TEMPLATE_SUFFIX
 from tethys_cli.cli_helpers import get_manage_path
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, authentication_classes
+from rest_framework.authentication import TokenAuthentication
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from tethys_sdk.routing import controller
 
 
@@ -74,14 +73,14 @@ def proper_name_validator(value, default):
     return True, value
 
 
-@api_view(['POST'])
-@permission_classes((AllowAny,))
-@csrf_exempt
 @controller(
     name='scaffold_app',
     url='app-store/scaffold',
     app_workspace=True,
+    permissions_required='use_app_store'
 )
+@api_view(['POST'])
+@authentication_classes((TokenAuthentication,))
 def scaffold_command(request, app_workspace):
     """
     Create a new Tethys app projects in the workspace dir. based on an API Call to the app store
@@ -101,11 +100,7 @@ def scaffold_command(request, app_workspace):
     }
 
     """
-
-    override_key = get_override_key()
-    if (request.GET.get('custom_key') != override_key):
-        return HttpResponse('Unauthorized', status=401)
-
+    breakpoint()
     # Set ScaffoldRunning file to prevent auto restart from the filewatchers
     workspace_directory = app_workspace.path
 

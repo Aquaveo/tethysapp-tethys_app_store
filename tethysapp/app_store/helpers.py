@@ -19,6 +19,11 @@ CACHE_KEY = "warehouse_github_app_resources"
 
 
 def get_override_key():
+    """Returns a github override value if set
+
+    Returns:
+        str: github override value
+    """
     try:
         return settings.GITHUB_OVERRIDE_VALUE
     except AttributeError:
