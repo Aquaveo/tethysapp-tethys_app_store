@@ -6,7 +6,7 @@ import logging
 import uuid
 import json
 
-from tethys_cli.install_commands import (open_file, validate_schema)
+from tethys_cli.install_commands import open_file, validate_schema
 from tethys_sdk.routing import controller
 from tethys_sdk.workspaces import get_app_workspace
 from rest_framework.authentication import TokenAuthentication
@@ -18,7 +18,7 @@ from django.http import JsonResponse, Http404, HttpResponse
 
 from django.core.cache import cache
 from pathlib import Path
-from subprocess import (Popen, PIPE, STDOUT)
+from subprocess import Popen, PIPE, STDOUT
 from datetime import datetime
 
 from conda.cli.python_api import run_command as conda_run, Commands
@@ -35,15 +35,15 @@ logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
 
 
 def clear_github_cache_list():
-    # This method clears out the stored cache of GitHub installed apps.
+    """Clears out the stored cache of GitHub installed apps.
+    """
     cache.delete(CACHE_KEY)
 
 
 def run_pending_installs():
-    # This function is run when this module gets loaded at reboots
-    # Picks up on any pending installs based on the status files
-    # Sleep for 10 s. This could just be a restart attempt and in case it is, we don't want to continue until
-    # it's completely done and the server is ready.
+    """On server reboots, check for pending installs based on the status file and continue with installation if any
+    exist
+    """
     time.sleep(10)
     logger.info("Checking for Pending Installs")
 
@@ -85,7 +85,14 @@ def run_pending_installs():
 
 
 def update_status_file(path, status, status_key, error_msg=""):
+    """Updates a status file for the git install
 
+    Args:
+        path (str): Path to the git install status file
+        status (str): Status of the install step. i.e. Pending, Running, False, or True
+        status_key (str): Install step. i.e. conda, pip, setupPy, dbSync, and post
+        error_msg (str, optional): Error message to add to the file. Defaults to "".
+    """
     with open(path, "r") as json_file:
         data = json.load(json_file)
 
@@ -167,8 +174,16 @@ def continue_install(logger, status_file_path, install_options, app_name, app_wo
                    app_workspace=app_workspace)
 
 
-def install_worker(workspace_apps_path, status_file_path, logger, install_run_id, develop, app_workspace):
-    # Install Dependencies
+def install_worker(workspace_apps_path, status_file_path, logger, develop, app_workspace):
+    """A worker function that installs application dependencies and the application itself from the app store workspace
+
+    Args:
+        workspace_apps_path (str): Path to the application being installed from the app store workspace
+        status_file_path (str): Path to the file tracking the app installation process
+        logger (Logger): Logger for the git install
+        develop (boolean): True if running installing in dev mode. False if installing in production mode
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     logger.info("Installing dependencies...")
     file_path = Path(os.path.join(workspace_apps_path, 'install.yml'))
     install_options = open_file(file_path)
@@ -194,7 +209,7 @@ def install_worker(workspace_apps_path, status_file_path, logger, install_run_id
                     ['pip', 'install', *requirements_config["pip"]], stdout=PIPE, stderr=STDOUT)
                 write_logs(logger, process.stdout, 'PIP Install: ')
                 exitcode = process.wait()
-                logger.info("PIP Install exited with: " + str(exitcode))
+                logger.info(f"PIP Install exited with: {str(exitcode)}")
 
     update_status_file(status_file_path, True, "conda")
     update_status_file(status_file_path, True, "pip")
@@ -202,9 +217,7 @@ def install_worker(workspace_apps_path, status_file_path, logger, install_run_id
 
     # Run Setup.py
     logger.info("Running application install....")
-    command = "install"
-    if develop:
-        command = "develop"
+    command = "develop" if develop else "install"
     process = Popen(['python', 'setup.py', command],
                     cwd=workspace_apps_path, stdout=PIPE, stderr=STDOUT)
     write_logs(logger, process.stdout, 'Python Install SubProcess: ')
@@ -336,6 +349,23 @@ def get_logs_override(request):
 @api_view(['POST'])
 @authentication_classes((TokenAuthentication,))
 def run_git_install_main(request, app_workspace):
+    """POST API call to install an application from a github url
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Input JSON Object:
+
+    {
+                url: "https://github.com/app_url",
+                brach: "master",
+                develop: "true|false"
+    }
+
+    Returns:
+        _type_: _description_
+    """
     breakpoint()
     if not has_permission(request, 'use_app_store'):
         return HttpResponse('Unauthorized', status=401)
@@ -363,7 +393,6 @@ def run_git_install_main(request, app_workspace):
         repo_url = request.POST.get('url', '')
         branch = request.POST.get('branch', 'master')
 
-    develop = "false"
     if 'develop' in received_json_data:
         develop = received_json_data.get('develop', False)
 
@@ -442,7 +471,7 @@ def run_git_install_main(request, app_workspace):
     # Run command in new thread
     install_thread = threading.Thread(target=install_worker, name="InstallApps",
                                       args=(workspace_apps_path, statusfile_location, git_install_logger,
-                                            install_run_id, develop, app_workspace))
+                                            develop, app_workspace))
     # install_thread.setDaemon(True)
     install_thread.start()
 

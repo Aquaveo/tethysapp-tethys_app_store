@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 import shutil
 from pathlib import Path
+import json
 from tethys_apps.base import TethysAppBase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
@@ -176,13 +177,10 @@ def store_with_resources(resource, store):
 @pytest.fixture()
 def tethysapp_base(tmp_path):
     tethysapp_base_dir = tmp_path / "tethysapp-test_app"
-    tethysapp_base_dir.mkdir()
-
     tethysapp_dir = tethysapp_base_dir / "tethysapp"
-    tethysapp_dir.mkdir()
-
     app_dir = tethysapp_dir / "test_app"
-    app_dir.mkdir()
+
+    app_dir.mkdir(parents=True)
 
     return tethysapp_base_dir
 
@@ -306,3 +304,40 @@ def get_or_create_token():
         return token
 
     return _get_or_create_token
+
+
+@pytest.fixture
+def git_status_workspace(tmp_path, complex_tethysapp):
+    workspace = tmp_path / "workspaces"
+    workspace_apps = workspace / "apps" / "github_installed"
+    workspace_apps.mkdir(parents=True)
+
+    test_app_git = workspace_apps / "test_app"
+    shutil.copytree(complex_tethysapp, test_app_git)
+
+    workspace_logs = workspace / "logs" / "github_install"
+    workspace_logs.mkdir(parents=True)
+    install_status_dir = workspace / 'install_status' / 'github'
+    install_status_dir.mkdir(parents=True)
+    statusfile_data = {
+        'installID': "abc123",
+        'githubURL': 'githubURL',
+        'workspacePath': str(test_app_git),
+        'installComplete': False,
+        'status': {
+            "installStarted": True,
+            "conda": "Pending",
+            "pip": "Pending",
+            "setupPy": "Pending",
+            "dbSync": "Pending",
+            "post": "Pending"
+        },
+        'installStartTime': '2024-01-01T00:00:00.0000'
+    }
+    statusfile_json = install_status_dir / "abc123.json"
+    with open(statusfile_json, 'w') as outfile:
+        json.dump(statusfile_data, outfile)
+    statusfile_log = workspace_logs / "abc123.log"
+    statusfile_log.touch()
+
+    return workspace
