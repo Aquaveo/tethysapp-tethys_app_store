@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 import shutil
 from pathlib import Path
 from tethys_apps.base import TethysAppBase
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 
 class TestApp(TethysAppBase):
@@ -260,21 +262,47 @@ def install_pip_bash(test_files_dir):
 
 
 @pytest.fixture()
-def mock_admin_request(rf, admin_user):
-    def _mock_admin_request(url, request_body=None, headers=None):
-        request = rf.get(url, request_body, headers)
+def mock_admin_get_request(rf, admin_user):
+    def _mock_admin_get_request(url):
+        request = rf.get(url)
         request.user = admin_user
         return request
 
-    return _mock_admin_request
+    return _mock_admin_get_request
 
 
 @pytest.fixture()
-def mock_no_permission_request(rf, django_user_model):
-    def _mock_no_permission_request(url, request_body=None, headers=None):
-        request = rf.get(url, request_body, headers)
+def mock_admin_api_request(rf, admin_user, get_or_create_token):
+    def _mock_admin_api_request(url, data=None, auth_header=False):
+        client = APIClient()
+
+        if auth_header:
+            token = get_or_create_token(user=admin_user)
+            client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        else:
+            client.credentials()
+
+        response = client.post(url, data, format='json')
+        return response
+
+    return _mock_admin_api_request
+
+
+@pytest.fixture()
+def mock_no_permission_get_request(rf, django_user_model):
+    def _mock_no_permission_get_request(url):
+        request = rf.get(url)
         new_user = django_user_model.objects.create(username="someone", password="something")
         request.user = new_user
         return request
 
-    return _mock_no_permission_request
+    return _mock_no_permission_get_request
+
+
+@pytest.fixture
+def get_or_create_token():
+    def _get_or_create_token(user):
+        token, _ = Token.objects.get_or_create(user=user)
+        return token
+
+    return _get_or_create_token

@@ -68,12 +68,13 @@ def send_notification(msg, channel_layer):
         msg (str): Message to send to the django channel layer
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
     """
-    async_to_sync(channel_layer.group_send)(
-        "notifications", {
-            "type": "install_notifications",
-            "message": msg
-        }
-    )
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)(
+            "notifications", {
+                "type": "install_notifications",
+                "message": msg
+            }
+        )
 
 
 def apply_template(template_location, data, output_location):

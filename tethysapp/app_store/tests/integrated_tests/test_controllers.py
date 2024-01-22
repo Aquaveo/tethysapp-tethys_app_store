@@ -3,8 +3,8 @@ from unittest.mock import call, MagicMock
 import json
 
 
-def test_home_stores(mocker, tmp_path, store, mock_admin_request):
-    request = mock_admin_request('/apps/app-store')
+def test_home_stores(mocker, tmp_path, store, mock_admin_get_request):
+    request = mock_admin_get_request('/apps/app-store')
     active_store = store('active_default')
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
@@ -22,8 +22,8 @@ def test_home_stores(mocker, tmp_path, store, mock_admin_request):
     ])
 
 
-def test_home_no_stores(mocker, tmp_path, mock_admin_request):
-    request = mock_admin_request('/apps/app-store')
+def test_home_no_stores(mocker, tmp_path, mock_admin_get_request):
+    request = mock_admin_get_request('/apps/app-store')
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
     mocker.patch('tethysapp.app_store.controllers.get_conda_stores', return_value=[])
@@ -40,9 +40,9 @@ def test_home_no_stores(mocker, tmp_path, mock_admin_request):
     ])
 
 
-def test_home_no_access(mocker, mock_no_permission_request):
+def test_home_no_access(mocker, mock_no_permission_get_request):
     mock_messages = MagicMock()
-    request = mock_no_permission_request('/apps/app-store')
+    request = mock_no_permission_get_request('/apps/app-store')
     request._messages = mock_messages
     mocker.patch('tethys_apps.utilities.get_active_app')
     mock_render = mocker.patch('tethysapp.app_store.controllers.render')
@@ -53,8 +53,8 @@ def test_home_no_access(mocker, mock_no_permission_request):
     mock_messages.add.assert_called_with(30, "We're sorry, but the operation you requested cannot be found.", '')
 
 
-def test_get_available_stores(mocker, tmp_path, store, mock_admin_request):
-    request = mock_admin_request('/app-store/get_available_stores')
+def test_get_available_stores(mocker, tmp_path, store, mock_admin_get_request):
+    request = mock_admin_get_request('/app-store/get_available_stores')
     active_store = store('active_default')
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
@@ -65,9 +65,9 @@ def test_get_available_stores(mocker, tmp_path, store, mock_admin_request):
     assert json.loads(stores.content) == expected_stores
 
 
-def test_get_available_stores_no_access(mocker, mock_no_permission_request):
+def test_get_available_stores_no_access(mocker, mock_no_permission_get_request):
     mock_messages = MagicMock()
-    request = mock_no_permission_request('/app-store/get_available_stores')
+    request = mock_no_permission_get_request('/app-store/get_available_stores')
     request._messages = mock_messages
     mocker.patch('tethys_apps.utilities.get_active_app')
 
@@ -76,8 +76,8 @@ def test_get_available_stores_no_access(mocker, mock_no_permission_request):
     mock_messages.add.assert_called_with(30, "We're sorry, but the operation you requested cannot be found.", '')
 
 
-def test_get_merged_resources(store, resource, mocker, mock_admin_request, tmp_path):
-    request = mock_admin_request('/app-store/get_merged_resources')
+def test_get_merged_resources(store, resource, mocker, mock_admin_get_request, tmp_path):
+    request = mock_admin_get_request('/app-store/get_merged_resources')
     active_store = store('active_default', conda_labels=['main', 'dev'])
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
