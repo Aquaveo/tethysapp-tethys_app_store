@@ -3,7 +3,8 @@ import os
 import yaml
 from unittest.mock import MagicMock, call
 from tethysapp.app_store.git_install_handlers import (clear_github_cache_list, update_status_file, run_pending_installs,
-                                                      CACHE_KEY, install_worker)
+                                                      CACHE_KEY, install_worker, install_packages, write_logs,
+                                                      continue_install)
 
 
 def test_clear_github_cache_list(mocker):
@@ -42,7 +43,8 @@ def test_run_pending_installs(git_status_workspace, mocker, caplog):
         'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
                          'pip': ['requests']}
     }
-    mock_continue.assert_called_with(mock_logger, str(git_status_file), install_options, "test_app",
+    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    mock_continue.assert_called_with(workspace_app, mock_logger, str(git_status_file), install_options, "test_app",
                                      mock_workspace)
 
 
@@ -76,6 +78,134 @@ def test_update_status_file_error(git_status_workspace, mocker):
     assert git_status["errorMessage"] == "conda failed"
 
 
+def test_install_packages(mocker, git_status_workspace):
+    mock_conda = mocker.patch('tethysapp.app_store.git_install_handlers.conda_run',
+                              return_value=["successful", "", 0])
+    conda_config = {'channels': 'conda-forge', 'packages': ['numpy', 'requests']}
+    mock_logger = MagicMock()
+    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+
+    install_packages(conda_config, mock_logger, str(status_file_path))
+
+    mock_conda.assert_called_with("install", "-c", conda_config['channels'], '--freeze-installed', 'numpy', 'requests',
+                                  use_exception_handler=False)
+    git_status = json.loads(status_file_path.read_text())
+    assert git_status['status']['conda']
+    assert call("Running conda installation tasks...") in mock_logger.info.mock_calls
+    assert call("successful") in mock_logger.info.mock_calls
+
+
+def test_install_packages_failed(mocker, git_status_workspace):
+    mock_datetime = mocker.patch('tethysapp.app_store.git_install_handlers.datetime')
+    mock_datetime.now().strftime.return_value = "2024-01-02T00:00:00:0000"
+    mock_conda = mocker.patch('tethysapp.app_store.git_install_handlers.conda_run',
+                              return_value=["failed", "", 1])
+    conda_config = {'channels': 'conda-forge', 'packages': ['numpy', 'requests']}
+    mock_logger = MagicMock()
+    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+
+    install_packages(conda_config, mock_logger, str(status_file_path))
+
+    mock_conda.assert_called_with("install", "-c", conda_config['channels'], '--freeze-installed', 'numpy', 'requests',
+                                  use_exception_handler=False)
+    err_msg = "Warning: Packages installation ran into an error. Please try again or a manual install"
+    git_status = json.loads(status_file_path.read_text())
+    assert not git_status['status']['conda']
+    assert git_status['errorDateTime'] == "2024-01-02T00:00:00:0000"
+    assert git_status["errorMessage"] == err_msg
+    assert call("Running conda installation tasks...") in mock_logger.info.mock_calls
+    assert call(err_msg) in mock_logger.error.mock_calls
+
+
+def test_write_logs():
+    mock_logger = MagicMock()
+    mock_output = MagicMock()
+    mock_output.readline.side_effect = [b"Simulating output", b"Final output"]
+    subHeading = "Testing : "
+
+    write_logs(mock_logger, mock_output, subHeading)
+
+    assert call(subHeading + "Simulating output") in mock_logger.info.mock_calls
+    assert call(subHeading + "Final output") in mock_logger.info.mock_calls
+
+
+def test_continue_install(git_status_workspace, mocker):
+    mock_popen = mocker.patch('tethysapp.app_store.git_install_handlers.Popen')
+    mock_popen().wait.return_value = 0
+    mock_popen().communicate.return_value = ["processed"]
+    mock_pipe = mocker.patch('tethysapp.app_store.git_install_handlers.PIPE')
+    mock_stdout = mocker.patch('tethysapp.app_store.git_install_handlers.STDOUT')
+    mock_stdout.side_effect = [b"Simulating output", b"Final output"]
+    mock_restart_server = mocker.patch('tethysapp.app_store.git_install_handlers.restart_server')
+    mock_clear_github_cache_list = mocker.patch('tethysapp.app_store.git_install_handlers.clear_github_cache_list')
+    mocker.patch('tethysapp.app_store.git_install_handlers.write_logs')
+    mock_logger = MagicMock()
+    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    install_options = {
+        'version': 1.0, 'name': 'test_app', 'post': ['post_script.sh'], 'tethys_version': '>=4.0',
+        'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
+                         'pip': ['requests']}
+    }
+    app_name = install_options['name']
+    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+
+    continue_install(workspace_app, mock_logger, str(status_file_path), install_options, app_name,
+                     str(git_status_workspace))
+
+    git_status = json.loads(status_file_path.read_text())
+    assert git_status['status']['dbSync']
+    assert git_status['status']['post']
+    assert git_status['status']['setupPy']
+    assert call(['tethys', 'db', 'sync'], stdout=mock_pipe, stderr=mock_stdout) in mock_popen.mock_calls
+    assert call("Running post installation tasks...") in mock_logger.info.mock_calls
+    assert call("Post Script Result: processed") in mock_logger.info.mock_calls
+    assert call("Install completed") in mock_logger.info.mock_calls
+    mock_clear_github_cache_list.assert_called()
+    mock_restart_server.assert_called_with({"restart_type": "github_install", "name": app_name},
+                                           channel_layer=None, app_workspace=str(git_status_workspace))
+
+
+def test_continue_install_fail_db_sync(git_status_workspace, mocker):
+    mock_datetime = mocker.patch('tethysapp.app_store.git_install_handlers.datetime')
+    mock_datetime.now().strftime.return_value = "2024-01-02T00:00:00:0000"
+    mock_popen = mocker.patch('tethysapp.app_store.git_install_handlers.Popen')
+    mock_popen().wait.return_value = 1
+    mock_popen().communicate.return_value = ["processed"]
+    mock_pipe = mocker.patch('tethysapp.app_store.git_install_handlers.PIPE')
+    mock_stdout = mocker.patch('tethysapp.app_store.git_install_handlers.STDOUT')
+    mock_stdout.side_effect = [b"Simulating output", b"Final output"]
+    mock_restart_server = mocker.patch('tethysapp.app_store.git_install_handlers.restart_server')
+    mock_clear_github_cache_list = mocker.patch('tethysapp.app_store.git_install_handlers.clear_github_cache_list')
+    mocker.patch('tethysapp.app_store.git_install_handlers.write_logs')
+    mock_logger = MagicMock()
+    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    install_options = {
+        'version': 1.0, 'name': 'test_app', 'post': ['post_script.sh'], 'tethys_version': '>=4.0',
+        'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
+                         'pip': ['requests']}
+    }
+    app_name = install_options['name']
+    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+
+    continue_install(workspace_app, mock_logger, str(status_file_path), install_options, app_name,
+                     str(git_status_workspace))
+
+    err_msg = "Error while running DBSync. Please check logs"
+    git_status = json.loads(status_file_path.read_text())
+    assert not git_status['status']['dbSync']
+    assert git_status['errorDateTime'] == "2024-01-02T00:00:00:0000"
+    assert git_status["errorMessage"] == err_msg
+    assert git_status['status']['post']
+    assert git_status['status']['setupPy']
+    assert call(['tethys', 'db', 'sync'], stdout=mock_pipe, stderr=mock_stdout) in mock_popen.mock_calls
+    assert call("Running post installation tasks...") in mock_logger.info.mock_calls
+    assert call("Post Script Result: processed") in mock_logger.info.mock_calls
+    assert call("Install completed") in mock_logger.info.mock_calls
+    mock_clear_github_cache_list.assert_called()
+    mock_restart_server.assert_called_with({"restart_type": "github_install", "name": app_name},
+                                           channel_layer=None, app_workspace=str(git_status_workspace))
+
+
 def test_install_worker(git_status_workspace, mocker):
     mock_logger = MagicMock()
     workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
@@ -103,7 +233,7 @@ def test_install_worker(git_status_workspace, mocker):
         'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
                          'pip': ['requests']}
     }
-    mock_continue.assert_called_with(mock_logger, str(status_file_path), install_options, "test_app",
+    mock_continue.assert_called_with(workspace_app, mock_logger, str(status_file_path), install_options, "test_app",
                                      str(git_status_workspace))
     assert call("Installing dependencies...") in mock_logger.info.mock_calls
     assert call("Running pip installation tasks...") in mock_logger.info.mock_calls
@@ -144,7 +274,7 @@ def test_install_worker_skip_package(git_status_workspace, mocker):
         'version': 1.0, 'name': 'test_app', 'post': None, 'tethys_version': '>=4.0',
         'requirements': {'skip': True, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']}, 'pip': ['requests']}
     }
-    mock_continue.assert_called_with(mock_logger, str(status_file_path), install_options, "test_app",
+    mock_continue.assert_called_with(workspace_app, mock_logger, str(status_file_path), install_options, "test_app",
                                      str(git_status_workspace))
     assert call("Installing dependencies...") in mock_logger.info.mock_calls
     assert call("Running pip installation tasks...") not in mock_logger.info.mock_calls

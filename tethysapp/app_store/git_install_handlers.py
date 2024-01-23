@@ -2,6 +2,7 @@ import os
 import git
 import threading
 import time
+import stat
 import logging
 import uuid
 import json
@@ -80,8 +81,8 @@ def run_pending_installs():
                     if "name" in install_options:
                         app_name = install_options['name']
 
-                    continue_install(git_install_logger,
-                                     file_path, install_options, app_name, app_workspace)
+                    continue_install(data["workspacePath"], git_install_logger, file_path, install_options, app_name,
+                                     app_workspace)
 
 
 def update_status_file(path, status, status_key, error_msg=""):
@@ -116,14 +117,20 @@ def update_status_file(path, status, status_key, error_msg=""):
 
 
 def install_packages(conda_config, logger, status_file_path):
-    # Compile channels arguments
+    """Install conda packages using the conda CLI
+
+    Args:
+        conda_config (dict): Dictionary containing conda information and key/value pairs for channels and packages
+        logger (Logger): Logger for the git install
+        status_file_path (str): Path to the file tracking the app installation process
+    """
     install_args = []
     if validate_schema('channels', conda_config):
         channels = conda_config['channels']
+        channels = [channels] if isinstance(channels, str) else channels
         for channel in channels:
             install_args.extend(['-c', channel])
 
-    # Install all Packages
     if validate_schema('packages', conda_config):
         install_args.extend(['--freeze-installed'])
         install_args.extend(conda_config['packages'])
@@ -139,32 +146,52 @@ def install_packages(conda_config, logger, status_file_path):
 
 
 def write_logs(logger, output, subHeading):
+    """Iterates through a standard output and logs the information for each line with a specified prefix
+
+    Args:
+        logger (Logger): Logger for the git install
+        output (IO BufferedReader): Standard output for a subprocess or other function
+        subHeading (str): Prefix string for the standard output before logging
+    """
     with output:
         for line in iter(output.readline, b''):
             cleaned_line = line.decode("utf-8").replace("\n", "")
             logger.info(subHeading + cleaned_line)
 
 
-def continue_install(logger, status_file_path, install_options, app_name, app_workspace):
+def continue_install(workspace_apps_path, logger, status_file_path, install_options, app_name, app_workspace):
+    """Continues the application install by running a database sync command and any post scripts
+
+    Args:
+        workspace_apps_path (str): Path to the application being installed from the app store workspace
+        logger (Logger): Logger for the git install
+        status_file_path (str): Path to the file tracking the app installation process
+        install_options (dict): Dictionary containing the information for the application install
+        app_name (str): Name of the application that is being installed
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     process = Popen(['tethys', 'db', 'sync'], stdout=PIPE, stderr=STDOUT)
     write_logs(logger, process.stdout, 'Tethys DB Sync : ')
     exitcode = process.wait()
     if exitcode == 0:
         update_status_file(status_file_path, True, "dbSync")
     else:
-        update_status_file(status_file_path, False, "dbSync",
-                           "Error while running DBSync. Please check logs")
+        update_status_file(status_file_path, False, "dbSync", "Error while running DBSync. Please check logs")
 
     # Check to see if any extra scripts need to be run
     if validate_schema('post', install_options):
         logger.info("Running post installation tasks...")
-        for post in install_options["post"]:
-            # TODO: Verify that this works
-            path_to_post = status_file_path.resolve().parent / post
-            # Attempting to run processes.
+        post_scripts = install_options["post"]
+        post_scripts = [post_scripts] if isinstance(post_scripts, str) else post_scripts
+        for post in post_scripts:
+            path_to_post = os.path.join(workspace_apps_path, post)
+            # Update permissions so the script can be run
+            st = os.stat(path_to_post)
+            os.chmod(path_to_post, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
             process = Popen(str(path_to_post), shell=True, stdout=PIPE)
             stdout = process.communicate()[0]
-            logger.info("Post Script Result: {}".format(stdout))
+            logger.info(f"Post Script Result: {stdout}")
 
     update_status_file(status_file_path, True, "post")
     update_status_file(status_file_path, True, "setupPy")
@@ -225,7 +252,7 @@ def install_worker(workspace_apps_path, status_file_path, logger, develop, app_w
     logger.info("Python Application install exited with: " + str(exitcode))
 
     # This step might cause a server restart and will not have the rest of the code execute.
-    continue_install(logger, status_file_path, install_options, app_name, app_workspace)
+    continue_install(workspace_apps_path, logger, status_file_path, install_options, app_name, app_workspace)
 
 
 def get_log_file(id, app_workspace):
@@ -366,7 +393,6 @@ def run_git_install_main(request, app_workspace):
     Returns:
         _type_: _description_
     """
-    breakpoint()
     if not has_permission(request, 'use_app_store'):
         return HttpResponse('Unauthorized', status=401)
 

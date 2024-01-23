@@ -207,6 +207,10 @@ def tethysapp_base_with_application_files(tethysapp_base, app_files_dir, test_fi
     tethysapp_setup_helper = tethysapp_base / "setup.py"
     shutil.copy(setup_helper, tethysapp_setup_helper)
 
+    post_script = test_files_dir / "post_script.sh"
+    tethysapp_post_script = tethysapp_base / "post_script.sh"
+    shutil.copy(post_script, tethysapp_post_script)
+
     setup_helper = test_files_dir / "install_pip.sh"
     tethysapp_scripts = tethysapp_base / "tethysapp" / "test_app" / "scripts"
     tethysapp_scripts.mkdir(parents=True)
