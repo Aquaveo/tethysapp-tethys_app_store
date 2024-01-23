@@ -66,10 +66,7 @@ def run_pending_installs():
                     logger.info("Continuing Install for " + data["installID"])
                     # Create logging handler
                     workspace_directory = app_workspace.path
-                    install_logs_dir = os.path.join(
-                        workspace_directory, 'logs', 'github_install')
-                    logfile_location = os.path.join(
-                        install_logs_dir, data["installID"] + '.log')
+                    logfile_location = get_log_file(data["installID"], workspace_directory)
                     fh = logging.FileHandler(logfile_location)
                     fh.setFormatter(logger_formatter)
                     fh.setLevel(logging.DEBUG)
@@ -255,28 +252,89 @@ def install_worker(workspace_apps_path, status_file_path, logger, develop, app_w
     continue_install(workspace_apps_path, logger, status_file_path, install_options, app_name, app_workspace)
 
 
-def get_log_file(id, app_workspace):
-    # Find LogFile
-    workspace_directory = app_workspace.path
-    install_logs_dir = os.path.join(
-        workspace_directory, 'logs', 'github_install')
-    os.path.join(install_logs_dir, id + '.log')
+def get_log_file(install_id, workspace_directory):
+    """Get the log file for a specific installation ID
+
+    Args:
+        install_id (str): ID of the app installation process
+        workspace_directory (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        _type_: _description_
+    """
+    log_file = os.path.join(workspace_directory, 'logs', 'github_install', f'{install_id}.log')
+
+    return log_file
+
+
+def get_status_file(install_id, workspace_directory):
+    """Get the log file for a specific installation ID
+
+    Args:
+        install_id (str): ID of the app installation process
+        workspace_directory (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        _type_: _description_
+    """
+    status_file = os.path.join(workspace_directory, 'install_status', 'github', f'{install_id}.json')
+
+    return status_file
 
 
 def get_status_main(request, app_workspace):
+    """Get the status of the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Raises:
+        ValidationError: install_id is not passed to the request or is None
+        Http404: install_id does not exist
+
+    Returns:
+        JsonResponse: Json containing the install status of the given ID
+    """
     install_id = request.GET.get('install_id')
     if install_id is None:
         raise ValidationError({"install_id": "Missing Value"})
 
     # Find the file in the
-    status_file_path = os.path.join(
-        app_workspace.path, 'install_status', 'github', install_id + '.json')
+    status_file_path = get_status_file(install_id, app_workspace.path)
     if os.path.exists(status_file_path):
         with open(status_file_path, "r") as jsonFile:
             data = json.load(jsonFile)
         return JsonResponse(data)
     else:
-        raise Http404("No Install with id: " + install_id + " exists")
+        raise Http404(f"No Install with id {install_id} exists")
+
+
+def get_logs_main(request, app_workspace):
+    """Get the logs for the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Raises:
+        ValidationError: install_id is not passed to the request or is None
+        Http404: install_id does not exist
+
+    Returns:
+        HttpResponse: HttpResponse containing the install logs for the given ID
+    """
+    install_id = request.GET.get('install_id')
+    if install_id is None:
+        raise ValidationError({"install_id": "Missing Value"})
+
+    # Find the file in the
+    file_path = get_log_file(install_id, app_workspace.path)
+    if os.path.exists(file_path):
+        with open(file_path, "r") as logFile:
+            return HttpResponse(logFile, content_type='text/plain')
+    else:
+        raise Http404(f"No Install with id {install_id} exists")
 
 
 @controller(
@@ -314,21 +372,6 @@ def get_status_override(request):
         return get_status_main(request)
     else:
         return HttpResponse('Unauthorized', status=401)
-
-
-def get_logs_main(request, app_workspace):
-    install_id = request.GET.get('install_id')
-    if install_id is None:
-        raise ValidationError({"install_id": "Missing Value"})
-
-    # Find the file in the
-    file_path = os.path.join(app_workspace.path, 'logs',
-                             'github_install', install_id + '.log')
-    if os.path.exists(file_path):
-        with open(file_path, "r") as logFile:
-            return HttpResponse(logFile, content_type='text/plain')
-    else:
-        raise Http404("No Install with id: " + install_id + " exists")
 
 
 @controller(
@@ -430,8 +473,7 @@ def run_git_install_main(request, app_workspace):
 
     install_run_id = str(uuid.uuid4())
 
-    # Create new logFile
-    logfile_location = os.path.join(install_logs_dir, install_run_id + '.log')
+    logfile_location = get_log_file(install_run_id, workspace_directory)
     fh = logging.FileHandler(logfile_location)
     fh.setFormatter(logger_formatter)
     fh.setLevel(logging.DEBUG)
@@ -440,10 +482,7 @@ def run_git_install_main(request, app_workspace):
     workspace_apps_path = os.path.join(
         workspace_directory, 'apps', 'github_installed', url_end)
 
-    # Create new statusFile
-
-    statusfile_location = os.path.join(
-        install_status_dir, install_run_id + '.json')
+    statusfile_location = get_status_file(install_run_id, workspace_directory)
     statusfile_data = {
         'installID': install_run_id,
         'githubURL': repo_url,

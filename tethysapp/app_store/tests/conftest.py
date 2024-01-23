@@ -265,8 +265,9 @@ def install_pip_bash(test_files_dir):
 
 @pytest.fixture()
 def mock_admin_get_request(rf, admin_user):
-    def _mock_admin_get_request(url):
-        request = rf.get(url)
+    def _mock_admin_get_request(url, data=None):
+        data = data if data else {}
+        request = rf.get(url, data)
         request.user = admin_user
         return request
 
@@ -292,8 +293,9 @@ def mock_admin_api_request(rf, admin_user, get_or_create_token):
 
 @pytest.fixture()
 def mock_no_permission_get_request(rf, django_user_model):
-    def _mock_no_permission_get_request(url):
-        request = rf.get(url)
+    def _mock_no_permission_get_request(url, data=None):
+        data = data if data else {}
+        request = rf.get(url, data)
         new_user = django_user_model.objects.create(username="someone", password="something")
         request.user = new_user
         return request

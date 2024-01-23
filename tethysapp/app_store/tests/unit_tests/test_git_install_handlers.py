@@ -1,10 +1,14 @@
 import json
 import os
 import yaml
+import pytest
+from rest_framework.exceptions import ValidationError
 from unittest.mock import MagicMock, call
+from django.http import Http404
 from tethysapp.app_store.git_install_handlers import (clear_github_cache_list, update_status_file, run_pending_installs,
                                                       CACHE_KEY, install_worker, install_packages, write_logs,
-                                                      continue_install)
+                                                      continue_install, get_log_file, get_status_file, get_status_main,
+                                                      get_logs_main)
 
 
 def test_clear_github_cache_list(mocker):
@@ -281,3 +285,79 @@ def test_install_worker_skip_package(git_status_workspace, mocker):
     assert call("PIP Install exited with: 0") not in mock_logger.info.mock_calls
     assert call("Running application install....") in mock_logger.info.mock_calls
     assert call("Python Application install exited with: 0") in mock_logger.info.mock_calls
+
+
+def test_get_log_file(git_status_workspace):
+    log_file = get_log_file("abc123", str(git_status_workspace))
+
+    assert log_file == str(git_status_workspace / 'logs' / 'github_install' / "abc123.log")
+
+
+def test_get_status_file(git_status_workspace):
+    status_file = get_status_file("abc123", str(git_status_workspace))
+
+    assert status_file == str(git_status_workspace / 'install_status' / 'github' / "abc123.json")
+
+
+def test_get_status_main(git_status_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(git_status_workspace))
+    request = mock_admin_get_request("logs", {"install_id": "abc123"})
+
+    status = get_status_main(request, mock_workspace)
+
+    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    git_status = json.loads(status_file_path.read_text())
+    assert git_status == json.loads(status.content)
+
+
+def test_get_status_main_no_id(git_status_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(git_status_workspace))
+    request = mock_admin_get_request("logs", {})
+
+    with pytest.raises(ValidationError) as e:
+        get_status_main(request, mock_workspace)
+
+    assert e.value.args[0] == {"install_id": "Missing Value"}
+
+
+def test_get_status_missing_id(git_status_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(git_status_workspace))
+    request = mock_admin_get_request("logs", {"install_id": "foobar"})
+
+    with pytest.raises(Http404) as e:
+        get_status_main(request, mock_workspace)
+
+    assert e.value.args[0] == 'No Install with id foobar exists'
+
+
+def test_get_logs_main(git_status_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(git_status_workspace))
+    request = mock_admin_get_request("logs", {"install_id": "abc123"})
+    log_path = git_status_workspace / 'logs' / 'github_install' / "abc123.log"
+    with open(log_path, "w") as log_file:
+        log_file.write("This is a log")
+
+    status = get_logs_main(request, mock_workspace)
+
+    log_path = git_status_workspace / 'logs' / 'github_install' / "abc123.log"
+    assert status.content.decode() == log_path.read_text()
+
+
+def test_get_logs_main_no_id(git_status_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(git_status_workspace))
+    request = mock_admin_get_request("logs", {})
+
+    with pytest.raises(ValidationError) as e:
+        get_logs_main(request, mock_workspace)
+
+    assert e.value.args[0] == {"install_id": "Missing Value"}
+
+
+def test_get_logs_main_missing_id(git_status_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(git_status_workspace))
+    request = mock_admin_get_request("logs", {"install_id": "foobar"})
+
+    with pytest.raises(Http404) as e:
+        get_logs_main(request, mock_workspace)
+
+    assert e.value.args[0] == 'No Install with id foobar exists'
