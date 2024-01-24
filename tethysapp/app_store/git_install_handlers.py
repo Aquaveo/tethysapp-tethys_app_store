@@ -2,33 +2,32 @@ import os
 import git
 import threading
 import time
+import stat
 import logging
 import uuid
 import json
 
-from tethys_cli.install_commands import (open_file, validate_schema)
+from tethys_cli.install_commands import open_file, validate_schema
 from tethys_sdk.routing import controller
 from tethys_sdk.workspaces import get_app_workspace
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny
+from tethys_sdk.permissions import has_permission
 
 from django.http import JsonResponse, Http404, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from django.core.cache import cache
 from pathlib import Path
-from subprocess import (Popen, PIPE, STDOUT)
+from subprocess import Popen, PIPE, STDOUT
 from datetime import datetime
 
 from conda.cli.python_api import run_command as conda_run, Commands
 from .app import AppStore as app
-from .helpers import get_override_key, logger
+from .helpers import get_override_key, logger, CACHE_KEY
 from .installation_handlers import restart_server
 
 FNULL = open(os.devnull, 'w')
-CACHE_KEY = "warehouse_github_app_resources"
 
 git_install_logger = logging.getLogger("warehouse_git_install_logger")
 git_install_logger.setLevel(logging.DEBUG)
@@ -36,15 +35,15 @@ logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
 
 
 def clear_github_cache_list():
-    # This method clears out the stored cache of GitHub installed apps.
+    """Clears out the stored cache of GitHub installed apps.
+    """
     cache.delete(CACHE_KEY)
 
 
 def run_pending_installs():
-    # This function is run when this module gets loaded at reboots
-    # Picks up on any pending installs based on the status files
-    # Sleep for 10 s. This could just be a restart attempt and in case it is, we don't want to continue until
-    # it's completely done and the server is ready.
+    """On server reboots, check for pending installs based on the status file and continue with installation if any
+    exist
+    """
     time.sleep(10)
     logger.info("Checking for Pending Installs")
 
@@ -66,10 +65,7 @@ def run_pending_installs():
                     logger.info("Continuing Install for " + data["installID"])
                     # Create logging handler
                     workspace_directory = app_workspace.path
-                    install_logs_dir = os.path.join(
-                        workspace_directory, 'logs', 'github_install')
-                    logfile_location = os.path.join(
-                        install_logs_dir, data["installID"] + '.log')
+                    logfile_location = get_log_file(data["installID"], workspace_directory)
                     fh = logging.FileHandler(logfile_location)
                     fh.setFormatter(logger_formatter)
                     fh.setLevel(logging.DEBUG)
@@ -81,12 +77,19 @@ def run_pending_installs():
                     if "name" in install_options:
                         app_name = install_options['name']
 
-                    continue_install(git_install_logger,
-                                     file_path, install_options, app_name, app_workspace)
+                    continue_install(data["workspacePath"], git_install_logger, file_path, install_options, app_name,
+                                     app_workspace)
 
 
 def update_status_file(path, status, status_key, error_msg=""):
+    """Updates a status file for the git install
 
+    Args:
+        path (str): Path to the git install status file
+        status (str): Status of the install step. i.e. Pending, Running, False, or True
+        status_key (str): Install step. i.e. conda, pip, setupPy, dbSync, and post
+        error_msg (str, optional): Error message to add to the file. Defaults to "".
+    """
     with open(path, "r") as json_file:
         data = json.load(json_file)
 
@@ -110,14 +113,20 @@ def update_status_file(path, status, status_key, error_msg=""):
 
 
 def install_packages(conda_config, logger, status_file_path):
-    # Compile channels arguments
+    """Install conda packages using the conda CLI
+
+    Args:
+        conda_config (dict): Dictionary containing conda information and key/value pairs for channels and packages
+        logger (Logger): Logger for the git install
+        status_file_path (str): Path to the file tracking the app installation process
+    """
     install_args = []
     if validate_schema('channels', conda_config):
         channels = conda_config['channels']
+        channels = [channels] if isinstance(channels, str) else channels
         for channel in channels:
             install_args.extend(['-c', channel])
 
-    # Install all Packages
     if validate_schema('packages', conda_config):
         install_args.extend(['--freeze-installed'])
         install_args.extend(conda_config['packages'])
@@ -133,32 +142,52 @@ def install_packages(conda_config, logger, status_file_path):
 
 
 def write_logs(logger, output, subHeading):
+    """Iterates through a standard output and logs the information for each line with a specified prefix
+
+    Args:
+        logger (Logger): Logger for the git install
+        output (IO BufferedReader): Standard output for a subprocess or other function
+        subHeading (str): Prefix string for the standard output before logging
+    """
     with output:
         for line in iter(output.readline, b''):
             cleaned_line = line.decode("utf-8").replace("\n", "")
             logger.info(subHeading + cleaned_line)
 
 
-def continue_install(logger, status_file_path, install_options, app_name, app_workspace):
+def continue_install(workspace_apps_path, logger, status_file_path, install_options, app_name, app_workspace):
+    """Continues the application install by running a database sync command and any post scripts
+
+    Args:
+        workspace_apps_path (str): Path to the application being installed from the app store workspace
+        logger (Logger): Logger for the git install
+        status_file_path (str): Path to the file tracking the app installation process
+        install_options (dict): Dictionary containing the information for the application install
+        app_name (str): Name of the application that is being installed
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     process = Popen(['tethys', 'db', 'sync'], stdout=PIPE, stderr=STDOUT)
     write_logs(logger, process.stdout, 'Tethys DB Sync : ')
     exitcode = process.wait()
     if exitcode == 0:
         update_status_file(status_file_path, True, "dbSync")
     else:
-        update_status_file(status_file_path, False, "dbSync",
-                           "Error while running DBSync. Please check logs")
+        update_status_file(status_file_path, False, "dbSync", "Error while running DBSync. Please check logs")
 
     # Check to see if any extra scripts need to be run
     if validate_schema('post', install_options):
         logger.info("Running post installation tasks...")
-        for post in install_options["post"]:
-            # TODO: Verify that this works
-            path_to_post = status_file_path.resolve().parent / post
-            # Attempting to run processes.
+        post_scripts = install_options["post"]
+        post_scripts = [post_scripts] if isinstance(post_scripts, str) else post_scripts
+        for post in post_scripts:
+            path_to_post = os.path.join(workspace_apps_path, post)
+            # Update permissions so the script can be run
+            st = os.stat(path_to_post)
+            os.chmod(path_to_post, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
             process = Popen(str(path_to_post), shell=True, stdout=PIPE)
             stdout = process.communicate()[0]
-            logger.info("Post Script Result: {}".format(stdout))
+            logger.info(f"Post Script Result: {stdout}")
 
     update_status_file(status_file_path, True, "post")
     update_status_file(status_file_path, True, "setupPy")
@@ -168,8 +197,16 @@ def continue_install(logger, status_file_path, install_options, app_name, app_wo
                    app_workspace=app_workspace)
 
 
-def install_worker(workspace_apps_path, status_file_path, logger, install_run_id, develop, app_workspace):
-    # Install Dependencies
+def install_worker(workspace_apps_path, status_file_path, logger, develop, app_workspace):
+    """A worker function that installs application dependencies and the application itself from the app store workspace
+
+    Args:
+        workspace_apps_path (str): Path to the application being installed from the app store workspace
+        status_file_path (str): Path to the file tracking the app installation process
+        logger (Logger): Logger for the git install
+        develop (boolean): True if running installing in dev mode. False if installing in production mode
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     logger.info("Installing dependencies...")
     file_path = Path(os.path.join(workspace_apps_path, 'install.yml'))
     install_options = open_file(file_path)
@@ -195,7 +232,7 @@ def install_worker(workspace_apps_path, status_file_path, logger, install_run_id
                     ['pip', 'install', *requirements_config["pip"]], stdout=PIPE, stderr=STDOUT)
                 write_logs(logger, process.stdout, 'PIP Install: ')
                 exitcode = process.wait()
-                logger.info("PIP Install exited with: " + str(exitcode))
+                logger.info(f"PIP Install exited with: {str(exitcode)}")
 
     update_status_file(status_file_path, True, "conda")
     update_status_file(status_file_path, True, "pip")
@@ -203,9 +240,7 @@ def install_worker(workspace_apps_path, status_file_path, logger, install_run_id
 
     # Run Setup.py
     logger.info("Running application install....")
-    command = "install"
-    if develop:
-        command = "develop"
+    command = "develop" if develop else "install"
     process = Popen(['python', 'setup.py', command],
                     cwd=workspace_apps_path, stdout=PIPE, stderr=STDOUT)
     write_logs(logger, process.stdout, 'Python Install SubProcess: ')
@@ -213,121 +248,232 @@ def install_worker(workspace_apps_path, status_file_path, logger, install_run_id
     logger.info("Python Application install exited with: " + str(exitcode))
 
     # This step might cause a server restart and will not have the rest of the code execute.
-    continue_install(logger, status_file_path, install_options, app_name, app_workspace)
+    continue_install(workspace_apps_path, logger, status_file_path, install_options, app_name, app_workspace)
 
 
-def get_log_file(id, app_workspace):
-    # Find LogFile
-    workspace_directory = app_workspace.path
-    install_logs_dir = os.path.join(
-        workspace_directory, 'logs', 'github_install')
-    os.path.join(install_logs_dir, id + '.log')
+def get_log_file(install_id, workspace_directory):
+    """Get the log file for a specific installation ID
+
+    Args:
+        install_id (str): ID of the app installation process
+        workspace_directory (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        _type_: _description_
+    """
+    log_file = os.path.join(workspace_directory, 'logs', 'github_install', f'{install_id}.log')
+
+    return log_file
+
+
+def get_status_file(install_id, workspace_directory):
+    """Get the log file for a specific installation ID
+
+    Args:
+        install_id (str): ID of the app installation process
+        workspace_directory (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        _type_: _description_
+    """
+    status_file = os.path.join(workspace_directory, 'install_status', 'github', f'{install_id}.json')
+
+    return status_file
 
 
 def get_status_main(request, app_workspace):
+    """Get the status of the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Raises:
+        ValidationError: install_id is not passed to the request or is None
+        Http404: install_id does not exist
+
+    Returns:
+        JsonResponse: Json containing the install status of the given ID
+    """
     install_id = request.GET.get('install_id')
     if install_id is None:
         raise ValidationError({"install_id": "Missing Value"})
 
     # Find the file in the
-    status_file_path = os.path.join(
-        app_workspace.path, 'install_status', 'github', install_id + '.json')
+    status_file_path = get_status_file(install_id, app_workspace.path)
     if os.path.exists(status_file_path):
         with open(status_file_path, "r") as jsonFile:
             data = json.load(jsonFile)
         return JsonResponse(data)
     else:
-        raise Http404("No Install with id: " + install_id + " exists")
-
-
-@api_view(['GET'])
-@authentication_classes((TokenAuthentication,))
-@controller(
-    name='git_get_status',
-    url='app-store/install/git/status',
-    app_workspace=True,
-)
-def get_status(request, app_workspace):
-    # This method is a wrapper function to protect the actual method from being accessed without auth
-    get_status_main(request, app_workspace)
-
-
-@api_view(['GET'])
-@csrf_exempt
-@controller(
-    name='git_get_status_override',
-    url='app-store/install/git/status_override',
-)
-def get_status_override(request):
-    # This method is an override to the get status method. It allows for installation
-    # based on a custom key set in the custom settings.
-    # This allows app nursery to use the same code to process the request
-    override_key = get_override_key()
-    if (request.GET.get('custom_key') == override_key):
-        return get_status_main(request)
-    else:
-        return HttpResponse('Unauthorized', status=401)
+        raise Http404(f"No Install with id {install_id} exists")
 
 
 def get_logs_main(request, app_workspace):
+    """Get the logs for the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Raises:
+        ValidationError: install_id is not passed to the request or is None
+        Http404: install_id does not exist
+
+    Returns:
+        HttpResponse: HttpResponse containing the install logs for the given ID
+    """
     install_id = request.GET.get('install_id')
     if install_id is None:
         raise ValidationError({"install_id": "Missing Value"})
 
     # Find the file in the
-    file_path = os.path.join(app_workspace.path, 'logs',
-                             'github_install', install_id + '.log')
+    file_path = get_log_file(install_id, app_workspace.path)
     if os.path.exists(file_path):
         with open(file_path, "r") as logFile:
             return HttpResponse(logFile, content_type='text/plain')
     else:
-        raise Http404("No Install with id: " + install_id + " exists")
+        raise Http404(f"No Install with id {install_id} exists")
 
 
+@controller(
+    name='git_get_status',
+    url='app-store/install/git/status',
+    app_workspace=True,
+    login_required=False
+)
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
+def get_status(request, app_workspace):
+    """Get the status of the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        Web Resonse/Exception: Output of get_status_main
+    """
+    if not has_permission(request, 'use_app_store'):
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
+
+    # This method is a wrapper function to protect the actual method from being accessed without auth
+    return get_status_main(request, app_workspace)
+
+
+@controller(
+    name='git_get_status_override',
+    url='app-store/install/git/status_override',
+    login_required=False
+)
+@api_view(['GET'])
+def get_status_override(request):
+    """This method is an override to the get status method. It allows for installation based on a custom key set in the
+    custom settings. This allows app store to process the request without a user token
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+
+    Returns:
+        Web Resonse/Exception: Output of get_status_main if no auth errors
+    """
+    override_key = get_override_key()
+    if not override_key:
+        return JsonResponse({'message': 'API not usable. No override key has been set'}, status=500)
+
+    if (request.GET.get('custom_key') == override_key):
+        app_workspace = get_app_workspace(app)
+        return get_status_main(request, app_workspace)
+    else:
+        return JsonResponse({'message': 'Invalid override key provided'}, status=401)
+
+
 @controller(
     name='git_get_logs',
     url='app-store/install/git/logs',
     app_workspace=True,
+    login_required=False
 )
-def get_logs(request, app_workspace):
-    get_logs_main(request, app_workspace)
-
-
 @api_view(['GET'])
-@csrf_exempt
+@authentication_classes((TokenAuthentication,))
+def get_logs(request, app_workspace):
+    """Get the log of the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        Web Resonse/Exception: Output of get_logs_main
+    """
+    if not has_permission(request, 'use_app_store'):
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
+
+    return get_logs_main(request, app_workspace)
+
+
 @controller(
     name='git_get_logs_override',
     url='app-store/install/git/logs_override',
+    login_required=False
 )
+@api_view(['GET'])
 def get_logs_override(request):
-    # This method is an override to the get status method. It allows for installation
-    # based on a custom key set in the custom settings.
-    # This allows app nursery to use the same code to process the request
+    """This method is an override to the get logs method. It allows for installation based on a custom key set in the
+    custom settings. This allows app store to process the request without a user token
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+
+    Returns:
+        Web Resonse/Exception: Output of get_status_main if no auth errors
+    """
     override_key = get_override_key()
+    if not override_key:
+        return JsonResponse({'message': 'API not usable. No override key has been set'}, status=500)
+
     if (request.GET.get('custom_key') == override_key):
-        return get_logs_main(request)
+        app_workspace = get_app_workspace(app)
+        return get_logs_main(request, app_workspace)
     else:
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Invalid override key provided'}, status=401)
 
 
 @controller(
     name='install_git',
     url='app-store/install/git',
     app_workspace=True,
+    login_required=False
 )
 @api_view(['POST'])
 @authentication_classes((TokenAuthentication,))
 def run_git_install_main(request, app_workspace):
+    """POST API call to install an application from a github url. If app already exists, do a git pull and continue
+    install
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Input JSON Object:
+
+    {
+                url: "https://github.com/app_url",
+                branch: "master",
+                develop: "true|false"
+    }
+
+    Returns:
+        _type_: _description_
+    """
+    if not has_permission(request, 'use_app_store'):
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
+
     workspace_directory = app_workspace.path
     install_logs_dir = os.path.join(
         workspace_directory, 'logs', 'github_install')
     install_status_dir = os.path.join(
         workspace_directory, 'install_status', 'github')
-
-    # Set InstallRunning File in workspace directory
-    # This file prevents the file-watcher from restarting the container in case this is running in the App Nursery
 
     if not os.path.exists(install_status_dir):
         os.makedirs(install_status_dir)
@@ -335,28 +481,19 @@ def run_git_install_main(request, app_workspace):
     Path(os.path.join(workspace_directory, 'install_status', 'installRunning')).touch()
 
     received_json_data = json.loads(request.body)
-    if 'url' in received_json_data:
-        repo_url = received_json_data.get('url', '')
-        branch = received_json_data.get('branch', 'master')
-    else:
-        # Try formData
-        repo_url = request.POST.get('url', '')
-        branch = request.POST.get('branch', 'master')
+    develop = True if received_json_data.get('develop', True) is True else False
 
-    develop = "false"
-    if 'develop' in received_json_data:
-        develop = received_json_data.get('develop', False)
+    repo_url = received_json_data.get('url', request.POST.get('url', ''))
+    branch = received_json_data.get('branch', request.POST.get('branch', 'master'))
 
-    url_end = repo_url.split("/")[-1]
-    url_end = url_end.replace(".git", "")
+    url_end = repo_url.split("/")[-1].replace(".git", "")
 
     if not os.path.exists(install_logs_dir):
         os.makedirs(install_logs_dir)
 
     install_run_id = str(uuid.uuid4())
 
-    # Create new logFile
-    logfile_location = os.path.join(install_logs_dir, install_run_id + '.log')
+    logfile_location = get_log_file(install_run_id, workspace_directory)
     fh = logging.FileHandler(logfile_location)
     fh.setFormatter(logger_formatter)
     fh.setLevel(logging.DEBUG)
@@ -365,10 +502,7 @@ def run_git_install_main(request, app_workspace):
     workspace_apps_path = os.path.join(
         workspace_directory, 'apps', 'github_installed', url_end)
 
-    # Create new statusFile
-
-    statusfile_location = os.path.join(
-        install_status_dir, install_run_id + '.json')
+    statusfile_location = get_status_file(install_run_id, workspace_directory)
     statusfile_data = {
         'installID': install_run_id,
         'githubURL': repo_url,
@@ -388,66 +522,62 @@ def run_git_install_main(request, app_workspace):
         json.dump(statusfile_data, outfile)
 
     git_install_logger.addHandler(fh)
-    git_install_logger.info(
-        "Starting GitHub Install. Installation ID: " + install_run_id)
+    git_install_logger.info("Starting GitHub Install. Installation ID: " + install_run_id)
     git_install_logger.info("Input URL: " + repo_url)
     git_install_logger.info("Assumed App Name: " + url_end)
-
     git_install_logger.info("Application Install Path: " + workspace_apps_path)
 
-    # Create Dir if it doesn't exist
     if not os.path.exists(workspace_apps_path):
-        git_install_logger.info(
-            "App folder Directory does not exist. Creating one.")
+        git_install_logger.info("App folder Directory does not exist. Creating one.")
         os.makedirs(workspace_apps_path)
-        # Clone Directory into this path
+
         repo = git.Repo.init(workspace_apps_path)
         origin = repo.create_remote('origin', repo_url)
         origin.fetch()
 
-        # Git has changed the default branch name to main so this next command might fail with git.exc.GitCommandError
         try:
             repo.git.checkout(branch, "-f")
-        except git.exc.GitCommandError:
-            git_install_logger.info(
-                "Couldn't check out " + branch + " branch. Attempting to checkout main")
+        except Exception as e:
+            git_install_logger.info(str(e))
+            git_install_logger.info(f"Couldn't check out {branch} branch. Attempting to checkout main")
             repo.git.checkout("main", "-f")
     else:
-        # The Dir Exists. This app is possibly already installed.
-        # Do A Pull and Continue
         git_install_logger.info("Git Repo exists locally. Doing a pull to get the latest")
         g = git.cmd.Git(workspace_apps_path)
         g.pull()
 
-    # Run command in new thread
     install_thread = threading.Thread(target=install_worker, name="InstallApps",
                                       args=(workspace_apps_path, statusfile_location, git_install_logger,
-                                            install_run_id, develop, app_workspace))
-    # install_thread.setDaemon(True)
+                                            develop, app_workspace))
     install_thread.start()
 
-    return JsonResponse({'status': "InstallRunning", 'install_id': install_run_id})
+    return JsonResponse({'status': "InstallRunning", 'install_id': install_run_id}, status=200)
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@csrf_exempt
 @controller(
     name='install_git_override',
     url='app-store/install/git_override',
+    login_required=False
 )
+@api_view(['POST'])
 def run_git_install_override(request):
-    # This method is an override to the install method. It allows for installation
-    # based on a custom key set in the custom settings. This allows app nursery to use the same code to process the
-    # request
     override_key = get_override_key()
-    if (request.GET.get('custom_key') == override_key):
-        return run_git_install_main(request)
+    if not override_key:
+        return JsonResponse({'message': 'API not usable. No override key has been set'}, status=500)
+
+    received_json_data = json.loads(request.body)
+    if (received_json_data.get('custom_key') == override_key):
+        app_workspace = get_app_workspace(app)
+        return run_git_install_main(request, app_workspace)
     else:
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Invalid override key provided'}, status=401)
 
 
-resume_thread = threading.Thread(
-    target=run_pending_installs, name="ResumeGitInstalls")
-resume_thread.setDaemon(True)
-resume_thread.start()
+def resume_pending_installs():
+    resume_thread = threading.Thread(
+        target=run_pending_installs, name="ResumeGitInstalls")
+    resume_thread.setDaemon(True)
+    resume_thread.start()
+
+
+resume_pending_installs()

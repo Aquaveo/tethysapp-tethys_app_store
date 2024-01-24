@@ -71,7 +71,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
         os.remove(scaffold_running_path)
 
     manage_path = get_manage_path({})
-    if data["restart_type"] in ["install", "update", "github_install"]:
+    if data["restart_type"] in ["install", "update", "github_install", "scaffold_install"]:
         # Run SyncStores
         logger.info("Running Syncstores for app: " + data["name"])
         send_notification("Running Syncstores for app: " + data["name"], channel_layer)
@@ -87,7 +87,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
             f.write(f'print("{data["name"]} installed in dev mode")')
             f.write("\n")
     else:
-        if run_collect_all and data["restart_type"] in ["install", "update", "github_install"]:
+        if run_collect_all and data["restart_type"] in ["install", "update", "github_install", "scaffold_install"]:
 
             logger.info("Running Tethys Collectall")
             send_notification("Running Tethys Collectall for app: " + data["name"], channel_layer)

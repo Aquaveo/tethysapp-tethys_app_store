@@ -2,7 +2,10 @@ import pytest
 from unittest.mock import MagicMock
 import shutil
 from pathlib import Path
+import json
 from tethys_apps.base import TethysAppBase
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 
 class TestApp(TethysAppBase):
@@ -174,13 +177,10 @@ def store_with_resources(resource, store):
 @pytest.fixture()
 def tethysapp_base(tmp_path):
     tethysapp_base_dir = tmp_path / "tethysapp-test_app"
-    tethysapp_base_dir.mkdir()
-
     tethysapp_dir = tethysapp_base_dir / "tethysapp"
-    tethysapp_dir.mkdir()
-
     app_dir = tethysapp_dir / "test_app"
-    app_dir.mkdir()
+
+    app_dir.mkdir(parents=True)
 
     return tethysapp_base_dir
 
@@ -206,6 +206,10 @@ def tethysapp_base_with_application_files(tethysapp_base, app_files_dir, test_fi
     setup_helper = test_files_dir / "setup.py"
     tethysapp_setup_helper = tethysapp_base / "setup.py"
     shutil.copy(setup_helper, tethysapp_setup_helper)
+
+    post_script = test_files_dir / "post_script.sh"
+    tethysapp_post_script = tethysapp_base / "post_script.sh"
+    shutil.copy(post_script, tethysapp_post_script)
 
     setup_helper = test_files_dir / "install_pip.sh"
     tethysapp_scripts = tethysapp_base / "tethysapp" / "test_app" / "scripts"
@@ -260,21 +264,103 @@ def install_pip_bash(test_files_dir):
 
 
 @pytest.fixture()
-def mock_admin_request(rf, admin_user):
-    def _mock_admin_request(url, request_body=None, headers=None):
-        request = rf.get(url, request_body, headers)
+def mock_admin_get_request(rf, admin_user):
+    def _mock_admin_get_request(url, data=None):
+        data = data if data else {}
+        request = rf.get(url, data)
         request.user = admin_user
         return request
 
-    return _mock_admin_request
+    return _mock_admin_get_request
 
 
 @pytest.fixture()
-def mock_no_permission_request(rf, django_user_model):
-    def _mock_no_permission_request(url, request_body=None, headers=None):
-        request = rf.get(url, request_body, headers)
+def mock_admin_api_get_request(admin_user, get_or_create_token):
+    def _mock_admin_api_get_request(url, data=None, auth_header=False):
+        client = APIClient()
+
+        if auth_header:
+            token = get_or_create_token(user=admin_user)
+            client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        else:
+            client.credentials()
+
+        response = client.get(url, data)
+        return response
+
+    return _mock_admin_api_get_request
+
+
+@pytest.fixture()
+def mock_admin_api_post_request(admin_user, get_or_create_token):
+    def _mock_admin_api_post_request(url, data=None, auth_header=False):
+        client = APIClient()
+
+        if auth_header:
+            token = get_or_create_token(user=admin_user)
+            client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        else:
+            client.credentials()
+
+        response = client.post(url, data, format='json')
+        return response
+
+    return _mock_admin_api_post_request
+
+
+@pytest.fixture()
+def mock_no_permission_get_request(rf, django_user_model):
+    def _mock_no_permission_get_request(url, data=None):
+        data = data if data else {}
+        request = rf.get(url, data)
         new_user = django_user_model.objects.create(username="someone", password="something")
         request.user = new_user
         return request
 
-    return _mock_no_permission_request
+    return _mock_no_permission_get_request
+
+
+@pytest.fixture
+def get_or_create_token():
+    def _get_or_create_token(user):
+        token, _ = Token.objects.get_or_create(user=user)
+        return token
+
+    return _get_or_create_token
+
+
+@pytest.fixture
+def git_status_workspace(tmp_path, complex_tethysapp):
+    workspace = tmp_path / "workspaces"
+    workspace_apps = workspace / "apps" / "github_installed"
+    workspace_apps.mkdir(parents=True)
+
+    test_app_git = workspace_apps / "test_app"
+    shutil.copytree(complex_tethysapp, test_app_git)
+
+    workspace_logs = workspace / "logs" / "github_install"
+    workspace_logs.mkdir(parents=True)
+    install_status_dir = workspace / 'install_status' / 'github'
+    install_status_dir.mkdir(parents=True)
+    statusfile_data = {
+        'installID': "abc123",
+        'githubURL': 'githubURL',
+        'workspacePath': str(test_app_git),
+        'installComplete': False,
+        'status': {
+            "installStarted": True,
+            "conda": "Pending",
+            "pip": "Pending",
+            "setupPy": "Pending",
+            "dbSync": "Pending",
+            "post": "Pending"
+        },
+        'installStartTime': '2024-01-01T00:00:00.0000'
+    }
+    statusfile_json = install_status_dir / "abc123.json"
+    with open(statusfile_json, 'w') as outfile:
+        json.dump(statusfile_data, outfile)
+    statusfile_log = workspace_logs / "abc123.log"
+    statusfile_log.touch()
+
+    return workspace

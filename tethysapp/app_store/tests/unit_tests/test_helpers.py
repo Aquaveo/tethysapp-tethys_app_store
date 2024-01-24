@@ -2,7 +2,24 @@ import pytest
 import shutil
 from unittest.mock import MagicMock
 from tethysapp.app_store.helpers import (parse_setup_py, get_conda_stores, check_all_present, run_process,
-                                         send_notification, apply_template, get_github_install_metadata)
+                                         send_notification, apply_template, get_github_install_metadata,
+                                         get_override_key)
+
+
+def test_get_override_key(mocker):
+    mocker.patch('tethysapp.app_store.helpers.settings', GITHUB_OVERRIDE_VALUE="override_key")
+
+    key = get_override_key()
+
+    assert key == "override_key"
+
+
+def test_get_override_key_dne(mocker):
+    mocker.patch('tethysapp.app_store.helpers.settings', spec=[])
+
+    key = get_override_key()
+
+    assert key is None
 
 
 @pytest.mark.parametrize(

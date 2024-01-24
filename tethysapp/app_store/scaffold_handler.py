@@ -8,19 +8,26 @@ from subprocess import (Popen, PIPE, STDOUT)
 from pathlib import Path
 
 from .git_install_handlers import write_logs
-from .helpers import logger, get_override_key, run_process
+from .helpers import logger
 from tethys_cli.scaffold_commands import APP_PATH, APP_PREFIX, get_random_color, render_path, TEMPLATE_SUFFIX
-from tethys_cli.cli_helpers import get_manage_path
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, authentication_classes
+from tethys_sdk.permissions import has_permission
+from rest_framework.authentication import TokenAuthentication
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from tethys_sdk.routing import controller
+from .installation_handlers import restart_server
 
 
-def install_app(app_path):
+def install_app(app_path, project_name, app_workspace):
+    """Run tethys install and other necessary tethys commands through the restart server command
+
+    Args:
+        app_path (str): Path to the scaffolded application
+        project_name (str): Name of the project
+        app_workspace (str): Path pointing to the app workspace within the app store
+    """
     logger.info("Running scaffolded application install....")
     process = Popen(['tethys', 'install', "-d", "-q"],
                     cwd=app_path, stdout=PIPE, stderr=STDOUT)
@@ -28,19 +35,19 @@ def install_app(app_path):
     exitcode = process.wait()
     logger.info("Python Application install exited with: " + str(exitcode))
 
-    manage_path = get_manage_path({})
-    logger.info("Running Tethys Collectall")
-    intermediate_process = ['python', manage_path, 'pre_collectstatic']
-    run_process(intermediate_process)
-    # Setup for main collectstatic
-    intermediate_process = ['python', manage_path, 'collectstatic', '--noinput']
-    run_process(intermediate_process)
-    # Run collectworkspaces command
-    intermediate_process = ['python', manage_path, 'collectworkspaces', '--force']
-    run_process(intermediate_process)
+    restart_data = {"restart_type": "scaffold_install", "name": project_name}
+    restart_server(data=restart_data, channel_layer=None, app_workspace=app_workspace)
 
 
 def get_develop_dir(app_workspace):
+    """Create if needed and retrieve the develop directory where the app will be scaffolded
+
+    Args:
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        str: Path to the develop directory where the scaffolded app resides
+    """
     workspace_directory = app_workspace.path
     dev_dir = os.path.join(workspace_directory, 'develop')
     if not os.path.exists(dev_dir):
@@ -50,8 +57,15 @@ def get_develop_dir(app_workspace):
 
 
 def proper_name_validator(value, default):
-    """
-    Validate proper_name user input.
+    """Validate proper_name user input.
+
+    Args:
+        value (str): User inputted name for the application
+        default (str): Pre formatted inputted name for the application
+
+    Returns:
+        bool: Is the given input name valid
+        str: the app name to use for the application
     """
     # Check for default
     if value == default:
@@ -74,18 +88,22 @@ def proper_name_validator(value, default):
     return True, value
 
 
-@api_view(['POST'])
-@permission_classes((AllowAny,))
-@csrf_exempt
 @controller(
     name='scaffold_app',
     url='app-store/scaffold',
-    app_workspace=True,
+    login_required=False,
+    app_workspace=True
 )
+@api_view(['POST'])
+@authentication_classes((TokenAuthentication,))
 def scaffold_command(request, app_workspace):
     """
-    Create a new Tethys app projects in the workspace dir. based on an API Call to the app store
-    Need to have the custom GitHub API Key present
+    Create a new Tethys app projects in the workspace dir and install the app. After installing, the server will
+    restart to get the new app working. User must provide an authenticated token to use
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
 
     Input JSON Object:
 
@@ -101,22 +119,8 @@ def scaffold_command(request, app_workspace):
     }
 
     """
-
-    override_key = get_override_key()
-    if (request.GET.get('custom_key') != override_key):
-        return HttpResponse('Unauthorized', status=401)
-
-    # Set ScaffoldRunning file to prevent auto restart from the filewatchers
-    workspace_directory = app_workspace.path
-
-    install_status_dir = os.path.join(workspace_directory, 'install_status')
-
-    if not os.path.exists(install_status_dir):
-        os.makedirs(install_status_dir)
-
-    Path(os.path.join(workspace_directory, 'install_status', 'scaffoldRunning')).touch()
-
-    received_json_data = json.loads(request.body)
+    if not has_permission(request, 'use_app_store'):
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
 
     # Get template dirs
     logger.debug('APP_PATH: {}'.format(APP_PATH))
@@ -127,21 +131,11 @@ def scaffold_command(request, app_workspace):
 
     # Validate template
     if not os.path.isdir(template_root):
-        return JsonResponse({'status': 'false', 'message': 'Error: "{}" is not a valid template.'.format(
-            template_name)}, status=400)
+        return JsonResponse({'status': 'false', 'message': f'Error: "{template_name}" is not a valid template.'},
+                            status=500)
 
-    # Validate project name
-    project_name = received_json_data.get('name')
-
-    # Only lowercase
-    contains_uppers = False
-    for letter in project_name:
-        if letter.isupper():
-            contains_uppers = True
-            break
-
-    if contains_uppers:
-        project_name = project_name.lower()
+    received_json_data = json.loads(request.body)
+    project_name = received_json_data.get('name').lower()
 
     # Check for valid characters name
     project_error_regex = re.compile(r'^[a-zA-Z0-9_]+$')
@@ -154,7 +148,7 @@ def scaffold_command(request, app_workspace):
             project_name = project_name.replace('-', '_')
         # Otherwise, throw error
         else:
-            error_msg = 'Error: Invalid characters in project name "{0}".Only letters, numbers, and underscores.'.format(project_name) # noqa E501
+            error_msg = f'Error: Invalid characters in project name "{project_name}". Only letters, numbers, and underscores.'  # noqa E501
             return JsonResponse({'status': 'false', 'message': error_msg}, status=400)
 
     # Project name derivatives
@@ -168,7 +162,6 @@ def scaffold_command(request, app_workspace):
     proper_name = received_json_data.get("proper_name", default_proper_name)
 
     # Validate Proper Name
-
     is_name_valid, proper_name = proper_name_validator(proper_name, default_proper_name)
     if not is_name_valid:
         error_msg = 'Error: Proper name can only contain letters and numbers and spaces.'
@@ -189,6 +182,14 @@ def scaffold_command(request, app_workspace):
         'license_name': received_json_data.get("license_name", "")
     }
 
+    workspace_directory = app_workspace.path
+    install_status_dir = os.path.join(workspace_directory, 'install_status')
+
+    if not os.path.exists(install_status_dir):
+        os.makedirs(install_status_dir)
+
+    Path(os.path.join(workspace_directory, 'install_status', 'scaffoldRunning')).touch()
+
     logger.debug('Template context: {}'.format(context))
 
     # Create root directory
@@ -203,14 +204,12 @@ def scaffold_command(request, app_workspace):
             try:
                 shutil.rmtree(project_root)
             except OSError:
-                error_msg = ('Error: Unable to overwrite "{}". '
-                             'Please remove the directory and try again.'.format(project_root))
-                return JsonResponse({'status': 'false', 'message': error_msg}, status=400)
+                error_msg = (f'Error: Unable to overwrite {project_root}. Please remove the directory and try again.')
+                return JsonResponse({'status': 'false', 'message': error_msg}, status=500)
         else:
-            error_msg = ('Error: App directory exists "{}". '
-                         'and Overwrite was not permitted. Please remove the directory and try again.'.format(
-                             project_root))
-            return JsonResponse({'status': 'false', 'message': error_msg}, status=400)
+            error_msg = (f'Error: App directory exists {project_root} and Overwrite was not permitted. '
+                         'Please remove the directory and try again.')
+            return JsonResponse({'status': 'false', 'message': error_msg}, status=500)
 
     # Walk the template directory, creating the templates and directories in the new project as we go
     for curr_template_root, _dirs, template_files in os.walk(template_root):
@@ -244,11 +243,8 @@ def scaffold_command(request, app_workspace):
                 with open(project_file_path, 'w') as pfp:
                     pfp.write(template.render(context))
 
-    install_app(project_root)
-
-    # Check if Scaffold Running file is present and delete it
-    scaffold_running_path = os.path.join(workspace_directory, 'install_status', 'scaffoldRunning')
-    if os.path.exists(scaffold_running_path):
-        os.remove(scaffold_running_path)
-
-    return JsonResponse({'status': 'true', 'message': "App Scaffolded"}, status=200)
+    try:
+        install_app(project_root, project_name, app_workspace)
+        return JsonResponse({'status': 'true', 'message': "App scaffold Succeeded."}, status=200)
+    except Exception:
+        return JsonResponse({'status': 'false', 'message': "App scaffold failed. Check logs."}, status=500)

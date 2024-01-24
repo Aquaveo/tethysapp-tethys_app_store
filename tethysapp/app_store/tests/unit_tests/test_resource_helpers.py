@@ -632,9 +632,10 @@ def test_fetch_resources_non_zero_code(tmp_path, mocker):
     conda_search_rep = json.dumps({})
     mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_search_rep, None, 9])
 
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(Exception) as e:
         fetch_resources(tmp_path, "test_channel")
-        assert e_info.message == "ERROR: Couldn't search packages in the conda_channel channel"
+
+    assert e.value.args[0] == "ERROR: Couldn't search packages in the test_channel channel"
 
 
 def test_fetch_resources_cached(tmp_path, mocker, resource, caplog):
