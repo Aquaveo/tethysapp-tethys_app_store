@@ -11,9 +11,8 @@ from .utilities import decrypt
 from .app import AppStore as app
 
 logger = logging.getLogger('tethys.apps.app_store')
-# Ensure that this logger is putting everything out.
-# @TODO: Change this back to the default later
 logger.setLevel(logging.INFO)
+logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
 
 CACHE_KEY = "warehouse_github_app_resources"
 

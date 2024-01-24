@@ -24,11 +24,10 @@ from datetime import datetime
 
 from conda.cli.python_api import run_command as conda_run, Commands
 from .app import AppStore as app
-from .helpers import get_override_key, logger
+from .helpers import get_override_key, logger, CACHE_KEY
 from .installation_handlers import restart_server
 
 FNULL = open(os.devnull, 'w')
-CACHE_KEY = "warehouse_github_app_resources"
 
 git_install_logger = logging.getLogger("warehouse_git_install_logger")
 git_install_logger.setLevel(logging.DEBUG)
@@ -346,11 +345,20 @@ def get_logs_main(request, app_workspace):
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 def get_status(request, app_workspace):
+    """Get the status of the given install according to the ID
+
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        Web Resonse/Exception: Output of get_status_main
+    """
     if not has_permission(request, 'use_app_store'):
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
 
     # This method is a wrapper function to protect the actual method from being accessed without auth
-    get_status_main(request, app_workspace)
+    return get_status_main(request, app_workspace)
 
 
 @controller(
@@ -359,19 +367,25 @@ def get_status(request, app_workspace):
     login_required=False
 )
 @api_view(['GET'])
-@authentication_classes((TokenAuthentication,))
 def get_status_override(request):
-    if not has_permission(request, 'use_app_store'):
-        return HttpResponse('Unauthorized', status=401)
+    """This method is an override to the get status method. It allows for installation based on a custom key set in the
+    custom settings. This allows app store to process the request without a user token
 
-    # This method is an override to the get status method. It allows for installation
-    # based on a custom key set in the custom settings.
-    # This allows app nursery to use the same code to process the request
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+
+    Returns:
+        Web Resonse/Exception: Output of get_status_main if no auth errors
+    """
     override_key = get_override_key()
+    if not override_key:
+        return JsonResponse({'message': 'API not usable. No override key has been set'}, status=500)
+
     if (request.GET.get('custom_key') == override_key):
-        return get_status_main(request)
+        app_workspace = get_app_workspace(app)
+        return get_status_main(request, app_workspace)
     else:
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Invalid override key provided'}, status=401)
 
 
 @controller(
@@ -383,10 +397,19 @@ def get_status_override(request):
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 def get_logs(request, app_workspace):
-    if not has_permission(request, 'use_app_store'):
-        return HttpResponse('Unauthorized', status=401)
+    """Get the log of the given install according to the ID
 
-    get_logs_main(request, app_workspace)
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+        app_workspace (str): Path pointing to the app workspace within the app store
+
+    Returns:
+        Web Resonse/Exception: Output of get_logs_main
+    """
+    if not has_permission(request, 'use_app_store'):
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
+
+    return get_logs_main(request, app_workspace)
 
 
 @controller(
@@ -395,19 +418,25 @@ def get_logs(request, app_workspace):
     login_required=False
 )
 @api_view(['GET'])
-@authentication_classes((TokenAuthentication,))
 def get_logs_override(request):
-    if not has_permission(request, 'use_app_store'):
-        return HttpResponse('Unauthorized', status=401)
+    """This method is an override to the get logs method. It allows for installation based on a custom key set in the
+    custom settings. This allows app store to process the request without a user token
 
-    # This method is an override to the get status method. It allows for installation
-    # based on a custom key set in the custom settings.
-    # This allows app nursery to use the same code to process the request
+    Args:
+        request (Django Request): Django request object containing information about the user and user request
+
+    Returns:
+        Web Resonse/Exception: Output of get_status_main if no auth errors
+    """
     override_key = get_override_key()
+    if not override_key:
+        return JsonResponse({'message': 'API not usable. No override key has been set'}, status=500)
+
     if (request.GET.get('custom_key') == override_key):
-        return get_logs_main(request)
+        app_workspace = get_app_workspace(app)
+        return get_logs_main(request, app_workspace)
     else:
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Invalid override key provided'}, status=401)
 
 
 @controller(
@@ -419,7 +448,8 @@ def get_logs_override(request):
 @api_view(['POST'])
 @authentication_classes((TokenAuthentication,))
 def run_git_install_main(request, app_workspace):
-    """POST API call to install an application from a github url
+    """POST API call to install an application from a github url. If app already exists, do a git pull and continue
+    install
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
@@ -429,7 +459,7 @@ def run_git_install_main(request, app_workspace):
 
     {
                 url: "https://github.com/app_url",
-                brach: "master",
+                branch: "master",
                 develop: "true|false"
     }
 
@@ -437,7 +467,7 @@ def run_git_install_main(request, app_workspace):
         _type_: _description_
     """
     if not has_permission(request, 'use_app_store'):
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Missing required permissions'}, status=401)
 
     workspace_directory = app_workspace.path
     install_logs_dir = os.path.join(
@@ -445,28 +475,18 @@ def run_git_install_main(request, app_workspace):
     install_status_dir = os.path.join(
         workspace_directory, 'install_status', 'github')
 
-    # Set InstallRunning File in workspace directory
-    # This file prevents the file-watcher from restarting the container in case this is running in the App Nursery
-
     if not os.path.exists(install_status_dir):
         os.makedirs(install_status_dir)
 
     Path(os.path.join(workspace_directory, 'install_status', 'installRunning')).touch()
 
     received_json_data = json.loads(request.body)
-    if 'url' in received_json_data:
-        repo_url = received_json_data.get('url', '')
-        branch = received_json_data.get('branch', 'master')
-    else:
-        # Try formData
-        repo_url = request.POST.get('url', '')
-        branch = request.POST.get('branch', 'master')
+    develop = True if received_json_data.get('develop', True) is True else False
 
-    if 'develop' in received_json_data:
-        develop = received_json_data.get('develop', False)
+    repo_url = received_json_data.get('url', request.POST.get('url', ''))
+    branch = received_json_data.get('branch', request.POST.get('branch', 'master'))
 
-    url_end = repo_url.split("/")[-1]
-    url_end = url_end.replace(".git", "")
+    url_end = repo_url.split("/")[-1].replace(".git", "")
 
     if not os.path.exists(install_logs_dir):
         os.makedirs(install_logs_dir)
@@ -502,45 +522,36 @@ def run_git_install_main(request, app_workspace):
         json.dump(statusfile_data, outfile)
 
     git_install_logger.addHandler(fh)
-    git_install_logger.info(
-        "Starting GitHub Install. Installation ID: " + install_run_id)
+    git_install_logger.info("Starting GitHub Install. Installation ID: " + install_run_id)
     git_install_logger.info("Input URL: " + repo_url)
     git_install_logger.info("Assumed App Name: " + url_end)
-
     git_install_logger.info("Application Install Path: " + workspace_apps_path)
 
-    # Create Dir if it doesn't exist
     if not os.path.exists(workspace_apps_path):
-        git_install_logger.info(
-            "App folder Directory does not exist. Creating one.")
+        git_install_logger.info("App folder Directory does not exist. Creating one.")
         os.makedirs(workspace_apps_path)
-        # Clone Directory into this path
+
         repo = git.Repo.init(workspace_apps_path)
         origin = repo.create_remote('origin', repo_url)
         origin.fetch()
 
-        # Git has changed the default branch name to main so this next command might fail with git.exc.GitCommandError
         try:
             repo.git.checkout(branch, "-f")
-        except git.exc.GitCommandError:
-            git_install_logger.info(
-                "Couldn't check out " + branch + " branch. Attempting to checkout main")
+        except Exception as e:
+            git_install_logger.info(str(e))
+            git_install_logger.info(f"Couldn't check out {branch} branch. Attempting to checkout main")
             repo.git.checkout("main", "-f")
     else:
-        # The Dir Exists. This app is possibly already installed.
-        # Do A Pull and Continue
         git_install_logger.info("Git Repo exists locally. Doing a pull to get the latest")
         g = git.cmd.Git(workspace_apps_path)
         g.pull()
 
-    # Run command in new thread
     install_thread = threading.Thread(target=install_worker, name="InstallApps",
                                       args=(workspace_apps_path, statusfile_location, git_install_logger,
                                             develop, app_workspace))
-    # install_thread.setDaemon(True)
     install_thread.start()
 
-    return JsonResponse({'status': "InstallRunning", 'install_id': install_run_id})
+    return JsonResponse({'status': "InstallRunning", 'install_id': install_run_id}, status=200)
 
 
 @controller(
@@ -549,22 +560,24 @@ def run_git_install_main(request, app_workspace):
     login_required=False
 )
 @api_view(['POST'])
-@authentication_classes((TokenAuthentication,))
 def run_git_install_override(request):
-    if not has_permission(request, 'use_app_store'):
-        return HttpResponse('Unauthorized', status=401)
-
-    # This method is an override to the install method. It allows for installation
-    # based on a custom key set in the custom settings. This allows app nursery to use the same code to process the
-    # request
     override_key = get_override_key()
-    if (request.GET.get('custom_key') == override_key):
-        return run_git_install_main(request)
+    if not override_key:
+        return JsonResponse({'message': 'API not usable. No override key has been set'}, status=500)
+
+    received_json_data = json.loads(request.body)
+    if (received_json_data.get('custom_key') == override_key):
+        app_workspace = get_app_workspace(app)
+        return run_git_install_main(request, app_workspace)
     else:
-        return HttpResponse('Unauthorized', status=401)
+        return JsonResponse({'message': 'Invalid override key provided'}, status=401)
 
 
-resume_thread = threading.Thread(
-    target=run_pending_installs, name="ResumeGitInstalls")
-resume_thread.setDaemon(True)
-resume_thread.start()
+def resume_pending_installs():
+    resume_thread = threading.Thread(
+        target=run_pending_installs, name="ResumeGitInstalls")
+    resume_thread.setDaemon(True)
+    resume_thread.start()
+
+
+resume_pending_installs()

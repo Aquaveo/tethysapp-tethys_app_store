@@ -5,12 +5,12 @@ from django.urls import reverse
 
 
 @pytest.mark.django_db
-def test_scaffold_command_no_token(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_no_token(mock_admin_api_post_request, mocker, tmp_path):
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     url = reverse('app_store:scaffold_app')
     data = {}
 
-    api_response = mock_admin_api_request(auth_header=False, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=False, url=url, data=data)
 
     assert api_response.status_code == 401
     json_response = json.loads(api_response.content)
@@ -18,13 +18,13 @@ def test_scaffold_command_no_token(mock_admin_api_request, mocker, tmp_path):
 
 
 @pytest.mark.django_db
-def test_scaffold_command_no_permission(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_no_permission(mock_admin_api_post_request, mocker, tmp_path):
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethysapp.app_store.scaffold_handler.has_permission', side_effect=[False])
     url = reverse('app_store:scaffold_app')
     data = {}
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 401
     json_response = json.loads(api_response.content)
@@ -32,7 +32,7 @@ def test_scaffold_command_no_permission(mock_admin_api_request, mocker, tmp_path
 
 
 @pytest.mark.django_db
-def test_scaffold_command(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app')
@@ -49,7 +49,7 @@ def test_scaffold_command(mock_admin_api_request, mocker, tmp_path):
         "overwrite": True
     }
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 200
     json_response = json.loads(api_response.content)
@@ -65,7 +65,7 @@ def test_scaffold_command(mock_admin_api_request, mocker, tmp_path):
 
 
 @pytest.mark.django_db
-def test_scaffold_command_template_error(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_template_error(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app')
@@ -83,7 +83,7 @@ def test_scaffold_command_template_error(mock_admin_api_request, mocker, tmp_pat
         "overwrite": True
     }
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 500
     json_response = json.loads(api_response.content)
@@ -92,7 +92,7 @@ def test_scaffold_command_template_error(mock_admin_api_request, mocker, tmp_pat
 
 
 @pytest.mark.django_db
-def test_scaffold_command_bad_project_name(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_bad_project_name(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app')
@@ -109,7 +109,7 @@ def test_scaffold_command_bad_project_name(mock_admin_api_request, mocker, tmp_p
         "overwrite": True
     }
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 400
     json_response = json.loads(api_response.content)
@@ -119,7 +119,7 @@ def test_scaffold_command_bad_project_name(mock_admin_api_request, mocker, tmp_p
 
 
 @pytest.mark.django_db
-def test_scaffold_command_bad_proper_name(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_bad_proper_name(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app')
@@ -136,7 +136,7 @@ def test_scaffold_command_bad_proper_name(mock_admin_api_request, mocker, tmp_pa
         "overwrite": True
     }
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 400
     json_response = json.loads(api_response.content)
@@ -145,7 +145,7 @@ def test_scaffold_command_bad_proper_name(mock_admin_api_request, mocker, tmp_pa
 
 
 @pytest.mark.django_db
-def test_scaffold_command_unable_to_overwrite(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_unable_to_overwrite(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app')
@@ -166,7 +166,7 @@ def test_scaffold_command_unable_to_overwrite(mock_admin_api_request, mocker, tm
     project_root = tmp_path / "develop" / f'tethysapp-{app_name}'
     project_root.mkdir(parents=True)
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 500
     json_response = json.loads(api_response.content)
@@ -176,7 +176,7 @@ def test_scaffold_command_unable_to_overwrite(mock_admin_api_request, mocker, tm
 
 
 @pytest.mark.django_db
-def test_scaffold_command_overwrite_false(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_overwrite_false(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app')
@@ -197,7 +197,7 @@ def test_scaffold_command_overwrite_false(mock_admin_api_request, mocker, tmp_pa
     project_root = tmp_path / "develop" / f'tethysapp-{app_name}'
     project_root.mkdir(parents=True)
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 500
     json_response = json.loads(api_response.content)
@@ -208,7 +208,7 @@ def test_scaffold_command_overwrite_false(mock_admin_api_request, mocker, tmp_pa
 
 
 @pytest.mark.django_db
-def test_scaffold_command_install_failed(mock_admin_api_request, mocker, tmp_path):
+def test_scaffold_command_install_failed(mock_admin_api_post_request, mocker, tmp_path):
     mock_workspace = MagicMock(path=str(tmp_path))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.scaffold_handler.install_app', side_effect=[Exception])
@@ -225,7 +225,7 @@ def test_scaffold_command_install_failed(mock_admin_api_request, mocker, tmp_pat
         "overwrite": True
     }
 
-    api_response = mock_admin_api_request(auth_header=True, url=url, data=data)
+    api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 500
     json_response = json.loads(api_response.content)

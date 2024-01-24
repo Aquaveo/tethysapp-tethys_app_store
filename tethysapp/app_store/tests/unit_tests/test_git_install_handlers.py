@@ -8,7 +8,7 @@ from django.http import Http404
 from tethysapp.app_store.git_install_handlers import (clear_github_cache_list, update_status_file, run_pending_installs,
                                                       CACHE_KEY, install_worker, install_packages, write_logs,
                                                       continue_install, get_log_file, get_status_file, get_status_main,
-                                                      get_logs_main)
+                                                      get_logs_main, resume_pending_installs)
 
 
 def test_clear_github_cache_list(mocker):
@@ -361,3 +361,13 @@ def test_get_logs_main_missing_id(git_status_workspace, mock_admin_get_request):
         get_logs_main(request, mock_workspace)
 
     assert e.value.args[0] == 'No Install with id foobar exists'
+
+
+def test_resume_pending_installs(mocker):
+    mock_threading = mocker.patch('tethysapp.app_store.git_install_handlers.threading')
+
+    resume_pending_installs()
+
+    mock_threading.Thread.assert_called_with(target=run_pending_installs, name="ResumeGitInstalls")
+    mock_threading.Thread().setDaemon.assert_called_with(True)
+    mock_threading.Thread().start.assert_called()

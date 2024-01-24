@@ -275,8 +275,25 @@ def mock_admin_get_request(rf, admin_user):
 
 
 @pytest.fixture()
-def mock_admin_api_request(rf, admin_user, get_or_create_token):
-    def _mock_admin_api_request(url, data=None, auth_header=False):
+def mock_admin_api_get_request(admin_user, get_or_create_token):
+    def _mock_admin_api_get_request(url, data=None, auth_header=False):
+        client = APIClient()
+
+        if auth_header:
+            token = get_or_create_token(user=admin_user)
+            client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        else:
+            client.credentials()
+
+        response = client.get(url, data)
+        return response
+
+    return _mock_admin_api_get_request
+
+
+@pytest.fixture()
+def mock_admin_api_post_request(admin_user, get_or_create_token):
+    def _mock_admin_api_post_request(url, data=None, auth_header=False):
         client = APIClient()
 
         if auth_header:
@@ -288,7 +305,7 @@ def mock_admin_api_request(rf, admin_user, get_or_create_token):
         response = client.post(url, data, format='json')
         return response
 
-    return _mock_admin_api_request
+    return _mock_admin_api_post_request
 
 
 @pytest.fixture()
