@@ -16,6 +16,8 @@ logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
 
 CACHE_KEY = "warehouse_github_app_resources"
 
+html_label_styles = ["blue", "indigo", "pink", "red", "teal", "cyan", "white", "gray", "gray-dark", "purple"]
+
 
 def get_override_key():
     """Returns a github override value if set
@@ -176,7 +178,7 @@ def get_github_install_metadata(app_workspace):
     return github_installed_apps_list
 
 
-def get_conda_stores(active_only=False, conda_channels="all"):
+def get_conda_stores(active_only=False, conda_channels="all", sensitive_info=False):
     """Get the conda stores from the custom settings and decrypt tokens as well
 
     Args:
@@ -199,6 +201,10 @@ def get_conda_stores(active_only=False, conda_channels="all"):
         available_stores = [store for store in available_stores if store['conda_channel'] in conda_channels]
 
     for store in available_stores:
-        store['github_token'] = decrypt(store['github_token'], encryption_key)
+        if not sensitive_info:
+            del store['github_token']
+            del store['github_organization']
+        else:
+            store['github_token'] = decrypt(store['github_token'], encryption_key)
 
     return available_stores

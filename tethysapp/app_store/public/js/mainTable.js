@@ -174,8 +174,8 @@ function checkInstalledInAvailable(row,value){
     for(channel in row['installedVersion']){
       for(label in row['installedVersion'][channel]){
         htmlStr += `<span class="labels_container" style="display: inline-block;"> `
-        htmlStr += `<span class="custom-label label-color-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
-        htmlStr += `<span class="custom-label label-color-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
+        htmlStr += `<span class="custom-label label-color-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
+        htmlStr += `<span class="custom-label label-color-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
         htmlStr += `<span class="custom-label label-outline-xs label-color-gray">${row['installedVersion'][channel][label]}</span>`
         htmlStr += `</span>`
       }
@@ -196,9 +196,9 @@ function mergedFieldsFormatter(value, row, index){
     for (label in value[channel]){
       if (value[channel][label] !== null && value[channel][label] !== ""){
         if(!wasAdded){
-          html_str += `<div class="channels_container"> <div><span class="store_label btn label-outline-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span></div><span class="labels_container"> `;
+          html_str += `<div class="channels_container"> <div><span class="store_label btn label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span></div><span class="labels_container"> `;
         }
-        html_str += `<div><span class="custom-label label-outline-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span></div><div><span class="label-outline-xs label-color-gray">${value[channel][label]}</span></div>`
+        html_str += `<div><span class="custom-label label-outline-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span></div><div><span class="label-outline-xs label-color-gray">${value[channel][label]}</span></div>`
         wasAdded = true
       }
     }
@@ -241,7 +241,7 @@ function mergedOperateFormatter(value, row, index){
   return html_str
   // var html_str = '<div class="actions_channel_container">';
   // for(channel in value){
-  //   html_str += `<div class="channels_container"> <div class="channels_centered"><span class="store_label custom-label label-outline-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span></div><div> `;
+  //   html_str += `<div class="channels_container"> <div class="channels_centered"><span class="store_label custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span></div><div> `;
   //   for (label in value[channel]){
   //     var github_url =''
   //     if (value[channel][label] !== null ){
@@ -266,7 +266,7 @@ function mergedOperateFormatter(value, row, index){
   //         color_icon = 'danger';
   //       }
 
-  //       html_str += `<div class="actions_label_container"><div><span class="label_label custom-label label-outline-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span></div>
+  //       html_str += `<div class="actions_label_container"><div><span class="label_label custom-label label-outline-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span></div>
   //       <span>
   //         <p class="store_label_val">
   //           <a class="github_type button-spaced" href="${github_url}" target="_blank" title="Github">
@@ -298,8 +298,8 @@ function mergedDetailFormatter(value, row, index){
         for (label in row[key][channel]){
           // table_header += `<th scope="col">${channel}-${label}</th>`
           table_header += `<th scope="col"><div style="display:flex;justify-content: center;">`;
-          table_header +=  `<span class="store_label custom-label label-outline-${labels_style_dict[channel]} label-outline-xs"><i class="bi bi-shop"></i>${channel}</span>`;
-          table_header +=  `<span class="label_label custom-label label-outline-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span>`;
+          table_header +=  `<span class="store_label custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"><i class="bi bi-shop"></i>${channel}</span>`;
+          table_header +=  `<span class="label_label custom-label label-outline-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span>`;
           table_header += `<div></th>`
           try{
             var normal_json = row[key][channel][label];
@@ -436,8 +436,8 @@ function get_channel_label_from_id(e){
 function chooseVersion(app_name,channel,label,version,div_element){
   var htmlLatestVersion=''
   htmlLatestVersion += `<span class="labels_container" style="display: inline-block;"> `
-  htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
-  htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
+  htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
+  htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
   htmlLatestVersion += `<span class="custom-label label-outline-xs label-color-gray">${version}</span>`
   htmlLatestVersion += `</span>`
 
@@ -528,15 +528,15 @@ window.operateEvents = {
       for(label in row['installedVersion'][channel]){
         let htmlCurrentVersion = '';
         htmlCurrentVersion += `<span class="labels_container" style="display: inline-block;"> `
-        htmlCurrentVersion += `<span class="custom-label label-color-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
-        htmlCurrentVersion += `<span class="custom-label label-color-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
+        htmlCurrentVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
+        htmlCurrentVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
         htmlCurrentVersion += `<span class="custom-label label-outline-xs label-color-gray">${row['installedVersion'][channel][label]}</span>`
         htmlCurrentVersion += `</span>`
 
         let htmlLatestVersion = '<span>';
         htmlLatestVersion += `<span class="labels_container" style="display: inline-block;"> `
-        htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
-        htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
+        htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
+        htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
         htmlLatestVersion += `<span class="custom-label label-outline-xs label-color-gray">${row['latestVersion'][channel][label]}</span>`
         htmlLatestVersion += `</span>`
         htmlLatestVersion += `<button class="custom-label label-outline-xs label-outline-success pull-right" id="choose-version-update" onClick="chooseVersion('${row['name']}','${channel}','${label}','${row['latestVersion'][channel][label]}','update-app-notice')" >Choose Version</button>`
