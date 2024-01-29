@@ -316,12 +316,12 @@ def get_or_create_token():
 def app_store_workspace(tmp_path, complex_tethysapp):
     conda_channel = "test_channel"
     workspace = tmp_path / "workspaces"
-    
+
     workspace_apps = workspace / "apps" / "github_installed"
     workspace_apps.mkdir(parents=True)
     test_app_git = workspace_apps / "test_app"
     shutil.copytree(complex_tethysapp, test_app_git)
-    
+
     gitsubmission_channel = workspace / "gitsubmission" / conda_channel
     gitsubmission_channel.mkdir(parents=True)
     gitsubmission_channel_app = gitsubmission_channel / "test_app"

@@ -11,7 +11,6 @@ import re
 from github.GithubException import UnknownObjectException, BadCredentialsException
 
 from pathlib import Path
-from .app import AppStore as app
 from .helpers import logger, send_notification, apply_template, parse_setup_py, get_conda_stores
 
 CHANNEL_NAME = 'tethysapp'
@@ -123,13 +122,23 @@ def initialize_local_repo_for_active_stores(install_data, channel_layer, app_wor
 
 
 def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
+    """Creates (if needed) the conda channel gitsubmission folder and returns the directory for the app in said folder.
+
+    Args:
+        app_workspace (str): Path pointing to the app workspace within the app store
+        app_name (str): Name of the application that is being installed
+        conda_channel (str): Name of the conda channel to use for app discovery
+
+    Returns:
+        str: Path to the submitted application
+    """
     github_dir = os.path.join(app_workspace.path, 'gitsubmission', conda_channel)
 
     if not os.path.exists(github_dir):
         os.makedirs(github_dir)
-        
+
     return os.path.join(github_dir, app_name)
-    
+
 
 def initialize_local_repo(github_url, active_store, channel_layer, app_workspace):
     """Create and initialize a local github repo with a path for a specific conda channel. Once a repo is initialized,
@@ -557,7 +566,7 @@ def process_branch(install_data, channel_layer, app_workspace):
     app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
     repo = git.Repo(app_github_dir)
     setup_py = os.path.join(app_github_dir, 'setup.py')
-    
+
     # 2. Get sensitive information for store
     conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]
     github_organization = conda_store["github_organization"]

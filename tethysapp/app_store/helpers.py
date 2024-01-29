@@ -229,7 +229,7 @@ def get_color_label_dict(stores):
         store['conda_labels'] = [{"label_name": label} for label in store['conda_labels']]
         conda_labels = store['conda_labels']
         color_store_dict[conda_channel] = {'channel_style': '', 'label_styles': {}}
-        
+
         color_store_dict[conda_channel]['channel_style'] = html_label_styles[index_style]
         store['channel_style'] = html_label_styles[index_style]
         index_style += 1
@@ -242,7 +242,7 @@ def get_color_label_dict(stores):
                 label['active'] = True
             else:
                 label['active'] = False
-        
+
             index_style += 1
 
     return color_store_dict, stores

@@ -15,7 +15,7 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      push_to_warehouse_release_remote_branch,
                                                      create_head_current_version, create_tags_for_current_version,
                                                      get_workflow_job_url, process_branch, validate_git_credentials,
-                                                     validate_git_organization)
+                                                     validate_git_organization, get_gitsubmission_app_dir)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -513,7 +513,7 @@ def test_process_branch(mocker, app_store_workspace, basic_tethysapp):
         "conda_labels": ["main", "dev"],
         "conda_channel": "test_channel"
     }]
-    
+
     install_data = {
         "app_name": "test_app",
         "dev_url": dev_url,
@@ -614,3 +614,14 @@ def test_validate_git_organization_bad_token(mocker):
     }
     mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)
     assert e.value.args[0] == 'Could not connect to organization. Check store settings.'
+
+
+def test_get_gitsubmission_app_dir(tmp_path):
+    mock_workspace = MagicMock(path=str(tmp_path))
+    app_name = "test_app"
+    conda_channel = "test_channel"
+
+    github_app_dir = get_gitsubmission_app_dir(mock_workspace, app_name, conda_channel)
+
+    assert github_app_dir == str(tmp_path / "gitsubmission" / conda_channel / app_name)
+    assert (tmp_path / "gitsubmission" / conda_channel).is_dir()
