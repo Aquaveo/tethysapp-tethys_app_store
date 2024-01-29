@@ -1,12 +1,13 @@
 const addModalHelper = {
-  validationResults: (validationData,content, completeMessage, ws ) =>{
+  validationResults: (validationData, content, completeMessage, ws ) =>{
     if(!validationData.metadata['next_move']){
       // $("#failMessage").html(validationData.mssge_string)
       // $("#failMessage").show()
 
 
-      $(`#${addData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#${addData.conda_channel}_failMessage`).show()
+      $(`#${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
+      $(`#${validationData.conda_channel}_failMessage`).show()
+      $(`#${validationData.conda_channel}_spinner`).hide();
       $("#loaderEllipsis").hide()
       $("#loadingTextAppSubmit").text("")
       $("#fetchRepoButton").prop("disabled", false)
@@ -14,8 +15,8 @@ const addModalHelper = {
     else{
       // $("#failMessage").html(validationData.mssge_string)
       // $("#failMessage").show()
-      $(`#${addData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#${addData.conda_channel}_failMessage`).show()
+      $(`#${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
+      $(`#${validationData.conda_channel}_failMessage`).show()
       notification_ws.send(
           JSON.stringify({
               data: {
@@ -33,33 +34,32 @@ const addModalHelper = {
     $("#loaderEllipsis").hide()
     $("#fetchRepoButton").hide()
     $("#loadingTextAppSubmit").text("")
+    disableModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
 
     if (!("branches" in branchesData)) {
       sendNotification(
-        "Error while checking the repo for branches. Please ensure the repo is public.",
-        // $("#branchesList")
-        $(".branchesList")
-
+        "Error while checking the repo for branches. Please ensure the repo is public.", $(".branchesList")
       )
       return
     }
 
-    if (branchesData["branches"].length == 1) {
-      $(`#${branchesData["conda_channel"]}_spinner`).show(); 
+    let branches = branchesData["branches"]
+    let conda_channel = branchesData["conda_channel"]
+    let conda_labels = branchesData["conda_labels"]
+    let app_name = branchesData["app_name"]
+
+    if (branches.length == 1) {
+      $(`#${conda_channel}_spinner`).show(); 
 
       sendNotification(
-        `One branch found. Continuing packaging with ${
-          branchesData["branches"][0]
-        } branch.`,
+        `One branch found. Continuing packaging with ${branches[0]} branch.`,
         // $("#branchesList")
         $(".branchesList")
 
       )
       $("#loaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
-      $("#loadingTextAppSubmit").text(
-        `Please wait. Processing branch: ${branchesData["branches"][0]}`
-      )
+      $("#loadingTextAppSubmit").text(`Please wait. Processing branch: ${branches[0]}`)
 
       // notification_ws.send(
       //   JSON.stringify({
@@ -73,12 +73,10 @@ const addModalHelper = {
       notification_ws.send(
         JSON.stringify({
           data: {
-            branch: branchesData["branches"][0],
-            conda_channel: branchesData["conda_channel"],
-            github_dir: branchesData["github_dir"],
-            github_token: branchesData["github_token"],
-            conda_labels: branchesData["conda_labels"],
-            github_organization: branchesData["github_organization"],
+            branch: branches[0],
+            app_name: app_name,
+            conda_channel: conda_channel,
+            conda_labels: conda_labels,
             email: $("#notifEmail").val(),
             dev_url: $("#githubURL").val()
 
@@ -90,32 +88,26 @@ const addModalHelper = {
     }
 
     // More than one branch available. Ask user for option:
-    let branchesHTML = htmlHelpers.getBranches(branchesData["conda_channel"], branchesData["branches"])
+    let branchesHTML = htmlHelpers.getBranches(conda_channel, branches)
     // $("#branchesList").append(branchesHTML)
-    $(`#${branchesData["conda_channel"]}_branchesList`).append(branchesHTML)
+    $(`#${conda_channel}_branchesList`).append(branchesHTML)
 
     $("#processBranchButton").click((e) => {
-      $(`#${branchesData["conda_channel"]}_spinner`).show(); 
+      $(`#${conda_channel}_spinner`).show();
 
-      let branchName = $(`#${branchesData["conda_channel"]}_add_branch`).val()
-      // let branchName = $("#add_branch").val()
+      let branchName = $(`#${conda_channel}_add_branch`).val()
 
       $("#loaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
-      $("#loadingTextAppSubmit").text(
-        `Please wait. Processing branch: ${branchName}`
-      )
+      $("#loadingTextAppSubmit").text( `Please wait. Processing branch: ${branchName}`)
 
       notification_ws.send(
         JSON.stringify({
           data: {
             branch: branchName,
-
-            conda_channel: branchesData["conda_channel"],
-            github_dir: branchesData["github_dir"],
-            github_token: branchesData["github_token"],
-            conda_labels: branchesData["conda_labels"],
-            github_organization: branchesData["github_organization"],
+            app_name: app_name,
+            conda_channel: conda_channel,
+            conda_labels: conda_labels,
             email: $("#notifEmail").val(),
             dev_url: $("#githubURL").val()
           },
@@ -125,7 +117,7 @@ const addModalHelper = {
     })
     $("#processBranchButton").show()
     // $("#failMessage").hide()
-    $(`#${branchesData["conda_channel"]}_failMessage`).hide()
+    $(`#${conda_channel}_failMessage`).hide()
 
 
   },
@@ -150,12 +142,160 @@ const addModalHelper = {
 
     }
     $("#doneAddButton").show()
-    // $("#successMessage").show()
+    $("#submitNewButton").show()
     $(`#${addData.conda_channel}_successMessage`).show();
-
-    // $("#failMessage").hide()
     $(`#${addData.conda_channel}_failMessage`).hide()
-
-    $(`#${addData["conda_channel"]}_spinner`).hide(); 
+    $(`#${addData.conda_channel}_spinner`).hide(); 
   }
 }
+
+const getModalInput = () => {
+  let githubURL = $("#githubURL")[0].value
+
+  let notifEmail = $("#notifEmail")[0].value
+
+  let active_stores = []
+  availableStores = $("#availableStores").children(".row_store_submission")
+  for (let i = 0; i < availableStores.length; i++) {
+    let input_store = {"conda_channel": "", "conda_labels": []}
+    let store = availableStores[i]
+    let channel_checkbox = $(store).find(".conda-channel-list-item")[0]
+    if (!channel_checkbox.checked) {
+      break;
+    }
+    input_store["conda_channel"] = channel_checkbox.value
+
+    let labels_checkboxes = $(store).find(".conda-label-list-item")
+    for (let x = 0; x < labels_checkboxes.length; x++) {
+      let label_checkbox = labels_checkboxes[x]
+      if (!label_checkbox.checked) {
+        break;
+      }
+      input_store["conda_labels"].push(label_checkbox.value)
+    }
+
+    active_stores.push(input_store)
+  }
+
+  return [githubURL, notifEmail, active_stores]
+}
+
+const disableModalInput = (disable_email=false, disable_gihuburl=false, disable_channels=false, disable_labels=false, disable_branches=false) => {
+
+  if (disable_email) {
+    $("#notifEmail").prop("disabled", true)
+    $("#notifEmail").css('opacity', '.5');
+  }
+
+  if (disable_gihuburl) {
+    $("#githubURL").prop("disabled", true)
+    $("#githubURL").css('opacity', '.5');
+  }
+  
+  if (disable_channels) {
+    $(".conda-channel-list-item").each(function() {
+      $(this).prop("disabled", true)
+    })
+    
+    $(".conda-channel-list-item-custom-checkbox").each(function() {
+      $(this).css('background-color', 'lightgray');
+      $(this).css('opacity', '.5');
+    })
+  }
+
+  if (disable_labels) {
+    $(".conda-label-list-item").each(function() {
+      $(this).prop("disabled", true)
+    })
+    
+    $(".conda-label-list-item-custom-checkbox").each(function() {
+      $(this).css('background-color', 'lightgray');
+      $(this).css('opacity', '.5');
+    })
+  }
+
+  if (disable_branches) {
+    $(".add_branch").each(function() {
+      $(this).prop("disabled", true)
+      $(this).css('opacity', '.5');
+    })
+  }
+}
+
+const getRepoForAdd = () => {
+  $("#notifEmail_failMessage").hide()
+  $("#githubURL_failMessage").hide()
+  $(".label_failMessage").hide()
+  $('#channel_failMessage').hide()
+  let [githubURL, notifEmail, active_stores] = getModalInput()
+
+  let errors = false
+  if (!githubURL) {
+    $("#githubURL_failMessage").show()
+    errors = true
+  }
+
+  if (!notifEmail) {
+    $("#notifEmail_failMessage").show()
+    errors = true
+  }
+
+  if (active_stores.length == 0) {
+    $('#channel_failMessage').show()
+    errors = true
+  } else {
+    for (let i = 0; i < active_stores.length; i++) {
+      if (active_stores[i].conda_labels.length == 0) {
+        $(`#${active_stores[i].conda_channel}_label_failMessage`).show()
+        errors = true
+      }
+    }
+  }
+
+  if (errors) {
+    return
+  }
+
+  $("#loaderEllipsis").show()
+  $("#fetchRepoButton").prop("disabled", true)
+  $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
+  
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              url: githubURL,
+              stores: active_stores
+          },
+          type: `initialize_local_repo_for_active_stores`
+      })
+  )
+}
+
+$(document).on('click', ".anchor", function() {
+  let checkList = $(this).parents(".dropdown-check-list")[0]
+  if (checkList.classList.contains('visible')){
+    checkList.classList.remove('visible');
+  }
+  else{
+    checkList.classList.add('visible');
+  }
+})
+
+$(document).on('change', ".conda-channel-list-item", function() {
+  let conda_channel = this.id;
+  let branch_select = $(`#${conda_channel}_branchesList`)[0];
+  let label_select = $(`#${conda_channel}_labels`)[0];
+  if(this.checked){
+    label_select.classList.remove('d-none')
+    branch_select.classList.remove('d-none')
+  } else {
+    label_select.classList.add('d-none')
+    branch_select.classList.add('d-none')
+  }
+})
+
+$(document).on('hidden.bs.modal', '#add-app-modal', function() {
+  $('#add-app-modal').remove();
+  var originalAddModalClone = originalAddModal.clone();
+  $('body').append(originalAddModalClone);
+});

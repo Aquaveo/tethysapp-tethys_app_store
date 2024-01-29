@@ -3,7 +3,7 @@ import shutil
 import os
 import filecmp
 from unittest.mock import call, MagicMock
-from github.GithubException import UnknownObjectException
+from github.GithubException import UnknownObjectException, BadCredentialsException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
                                                      generate_label_strings, create_tethysapp_warehouse_release,
@@ -14,7 +14,8 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      create_current_tag_version, check_if_organization_in_remote,
                                                      push_to_warehouse_release_remote_branch,
                                                      create_head_current_version, create_tags_for_current_version,
-                                                     get_workflow_job_url, process_branch)
+                                                     get_workflow_job_url, process_branch, validate_git_credentials,
+                                                     validate_git_organization, get_gitsubmission_app_dir)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -88,9 +89,7 @@ def test_repo_does_not_exist(mocker, caplog):
 
 @pytest.mark.parametrize(
     "stores, expected_call_count", [
-        (pytest.lazy_fixture("all_active_stores"), 2),
-        (pytest.lazy_fixture("mix_active_inactive_stores"), 1),
-        (pytest.lazy_fixture("all_inactive_stores"), 0)])
+        (pytest.lazy_fixture("all_active_stores"), 2)])
 def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mocker):
     install_data = {
         "url": "https://github.com/notrealorg/fakeapp",
@@ -286,13 +285,14 @@ def test_get_keywords_and_email(setup_py_data, expected_keywords, expected_email
 
 
 def test_create_template_data_for_install(complex_tethysapp):
-    install_data = {'github_dir': complex_tethysapp, "dev_url": "https://github.com/notrealorg/fakeapp"}
+    github_dir = complex_tethysapp
+    dev_url = "https://github.com/notrealorg/fakeapp"
     setup_py_data = {
         'name': 'release_package', 'version': '0.0.1', 'description': 'example',
         'long_description': 'This is just an example for testing', 'keywords': 'example,test',
         'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3'
     }
-    template_data = create_template_data_for_install(install_data, setup_py_data)
+    template_data = create_template_data_for_install(github_dir, dev_url, setup_py_data)
 
     expected_template_data = {
         'metadataObj': "{'name': 'release_package', 'version': '0.0.1', 'description': 'example', "
@@ -316,9 +316,9 @@ def test_fix_setup(test_files_dir, tmp_path):
 
 
 def test_remove_init_file(tethysapp_base_with_application_files):
-    install_data = {"github_dir": tethysapp_base_with_application_files}
+    github_dir = tethysapp_base_with_application_files
 
-    remove_init_file(install_data)
+    remove_init_file(github_dir)
 
     init_file = tethysapp_base_with_application_files / "__init__.py"
     init_file.is_file()
@@ -326,14 +326,14 @@ def test_remove_init_file(tethysapp_base_with_application_files):
 
 def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
     rel_package = "test_app"
-    install_data = {"email": "test@email.com"}
+    email = "test@email.com"
     mock_apply_template = mocker.patch('tethysapp.app_store.submission_handlers.apply_template')
-    apply_main_yml_template(app_files_dir, tmp_path, rel_package, install_data)
+    apply_main_yml_template(app_files_dir, tmp_path, rel_package, email)
 
     source = os.path.join(app_files_dir, 'main_template.yaml')
     template_data = {
         'subject': "Tethys App Store: Build complete for " + rel_package,
-        'email': install_data['email'],
+        'email': email,
         'buildMsg': """
         Your Tethys App has been successfully built and is now available on the Tethys App Store.
         This is an auto-generated email and this email is not monitored for replies.
@@ -504,13 +504,18 @@ def test_get_workflow_job_url_not_found(mocker):
     assert job_url is None
 
 
-def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
+def test_process_branch(mocker, app_store_workspace, basic_tethysapp):
     dev_url = "https://github.com/notrealorg/fakeapp"
-    install_data = {
+    mock_workspace = MagicMock(path=str(app_store_workspace))
+    conda_stores = [{
         "github_organization": "fake_org",
         "github_token": "fake_token",
-        "github_dir": str(basic_tethysapp),
-        "stores": mix_active_inactive_stores,
+        "conda_labels": ["main", "dev"],
+        "conda_channel": "test_channel"
+    }]
+
+    install_data = {
+        "app_name": "test_app",
         "dev_url": dev_url,
         "email": "test@email.com",
         "conda_labels": ["main", "dev"],
@@ -518,13 +523,14 @@ def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
         "branch": "test_branch"
     }
     mock_channel = MagicMock()
+    mock_github = mocker.patch('tethysapp.app_store.submission_handlers.get_conda_stores', return_value=conda_stores)
     mock_github = mocker.patch('tethysapp.app_store.submission_handlers.github')
     mock_github.Github().get_organization().get_repo().git_url.replace.return_value = dev_url
     mocker.patch('tethysapp.app_store.submission_handlers.git')
     mocker.patch('tethysapp.app_store.submission_handlers.get_workflow_job_url', return_value="job_url")
     mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
 
-    process_branch(install_data, mock_channel)
+    process_branch(install_data, mock_channel, mock_workspace)
 
     expected_data_json = {
         "data": {
@@ -536,3 +542,86 @@ def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
         "helper": "addModalHelper"
     }
     mock_send_notification.assert_called_with(expected_data_json, mock_channel)
+
+
+def test_validate_git_credentials(mocker):
+    github_token = 'github_token'
+    conda_channel = 'conda_channel'
+    channel_layer = 'channel_layer'
+    mock_git_object = MagicMock()
+    mocker.patch('tethysapp.app_store.submission_handlers.github.Github', return_value=mock_git_object)
+
+    git_object = validate_git_credentials(github_token, conda_channel, channel_layer)
+
+    assert git_object == mock_git_object
+
+
+def test_validate_git_credentials_bad_token(mocker):
+    github_token = 'github_token'
+    conda_channel = 'conda_channel'
+    mock_channel = MagicMock()
+    mocker.patch('tethysapp.app_store.submission_handlers.github.Github', side_effect=[BadCredentialsException("")])
+    mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    with pytest.raises(Exception) as e:
+        validate_git_credentials(github_token, conda_channel, mock_channel)
+
+    expected_get_data_json = {
+        "data": {
+            "mssge_string": "Invalid git credentials. Could not connect to github. Check store settings.",
+            "metadata": {"next_move": False},
+            "conda_channel": conda_channel
+        },
+        "jsHelperFunction": "validationResults",
+        "helper": "addModalHelper"
+    }
+    mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)
+    assert e.value.args[0] == 'Invalid git credentials. Could not connect to github. Check store settings.'
+
+
+def test_validate_git_organization():
+    mock_github = MagicMock()
+    mock_org = MagicMock()
+    mock_github.get_organization.return_value = mock_org
+    github_organization = 'github_organization'
+    conda_channel = 'conda_channel'
+    channel_layer = 'channel_layer'
+
+    git_org = validate_git_organization(mock_github, github_organization, conda_channel, channel_layer)
+
+    assert mock_org == git_org
+
+
+def test_validate_git_organization_bad_token(mocker):
+    mock_github = MagicMock()
+    mock_github.get_organization.side_effect = [BadCredentialsException("")]
+    github_organization = 'github_organization'
+    conda_channel = 'conda_channel'
+    mock_channel = MagicMock()
+    mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    with pytest.raises(Exception) as e:
+        validate_git_organization(mock_github, github_organization, conda_channel, mock_channel)
+
+    expected_get_data_json = {
+        "data": {
+            "mssge_string": 'Could not connect to organization. Check store settings.',
+            "metadata": {"next_move": False},
+            "conda_channel": conda_channel
+        },
+        "jsHelperFunction": "validationResults",
+        "helper": "addModalHelper"
+    }
+    mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)
+    assert e.value.args[0] == 'Could not connect to organization. Check store settings.'
+
+
+def test_get_gitsubmission_app_dir(tmp_path):
+    mock_workspace = MagicMock(path=str(tmp_path))
+    app_name = "test_app"
+    conda_channel = "test_channel"
+
+    github_app_dir = get_gitsubmission_app_dir(mock_workspace, app_name, conda_channel)
+
+    assert github_app_dir == str(tmp_path / "gitsubmission" / conda_channel / app_name)
+    assert (tmp_path / "gitsubmission" / conda_channel).is_dir()

@@ -61,7 +61,6 @@ def store():
             'github_token': f'fake_token_{id}',
             'conda_channel': f'conda_channel_{id}',
             'github_organization': f'org_{id}',
-            'conda_style': 'blue',
             'active': active
         }
     return _store
@@ -72,22 +71,6 @@ def all_active_stores(store):
     return {
         "active_default": store("active_default"),
         "active_not_default": store("active_not_default", default=False)
-    }
-
-
-@pytest.fixture
-def mix_active_inactive_stores(store):
-    return {
-        "active_default": store("active_default"),
-        "inactive_not_default": store("inactive_not_default", default=False, active=False)
-    }
-
-
-@pytest.fixture
-def all_inactive_stores(store):
-    return {
-        "inactive_default": store("inactive_default", active=False),
-        "inactive_not_default": store("inactive_not_default", default=False, active=False)
     }
 
 
@@ -330,13 +313,19 @@ def get_or_create_token():
 
 
 @pytest.fixture
-def git_status_workspace(tmp_path, complex_tethysapp):
+def app_store_workspace(tmp_path, complex_tethysapp):
+    conda_channel = "test_channel"
     workspace = tmp_path / "workspaces"
+
     workspace_apps = workspace / "apps" / "github_installed"
     workspace_apps.mkdir(parents=True)
-
     test_app_git = workspace_apps / "test_app"
     shutil.copytree(complex_tethysapp, test_app_git)
+
+    gitsubmission_channel = workspace / "gitsubmission" / conda_channel
+    gitsubmission_channel.mkdir(parents=True)
+    gitsubmission_channel_app = gitsubmission_channel / "test_app"
+    shutil.copytree(complex_tethysapp, gitsubmission_channel_app)
 
     workspace_logs = workspace / "logs" / "github_install"
     workspace_logs.mkdir(parents=True)

@@ -11,6 +11,7 @@ var installedApps = {}
 var updateData = {}
 var tethysVersion = ""
 var storesDataList = []
+var originalAddModal = ""
 // End Vars
 const settingsHelper = {
     processCustomSettings: (settingsData, n_content, completeMessage, ws) => {
@@ -264,15 +265,15 @@ const getVersionsHTML_dropdown = (app,checkIfNeeded,isUpdate) => {
         for (channel in versions_obj){
             string_dropdown += `<li class="dropdown dropend">`;
             string_dropdown +=`<a class="dropdown-item dropdown-toggle" href="#" id="${channel}_${app['name']}}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">`
-            string_dropdown +=`<span class="label_dropdown custom-label label-outline-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`;
+            string_dropdown +=`<span class="label_dropdown custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`;
             string_dropdown += `</a>`
             string_dropdown += `<ul class="dropdown-menu position-fixed" aria-labelledby="${channel}_${app['name']}}">`
 
             for (label in versions_obj[channel]){
                 string_dropdown += `<li class="dropdown dropend">`;
                 string_dropdown +=`<a class="dropdown-item dropdown-toggle" href="#" id="${channel}_${label}_${app['name']}}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">`
-                // string_dropdown +=`<span class="store_label custom-label label-outline-${labels_style_dict[channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`;
-                string_dropdown +=`<span class="label_dropdown custom-label label-outline-${labels_style_dict[label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span>`
+                // string_dropdown +=`<span class="store_label custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`;
+                string_dropdown +=`<span class="label_dropdown custom-label label-outline-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span>`
                 string_dropdown += `</a>`
                 string_dropdown += `<ul class="dropdown-menu position-fixed drop_down_scroll" aria-labelledby="${channel}_${label}_${app['name']}}">`
                 for (sinlge_version in versions_obj[channel][label]){
@@ -396,38 +397,6 @@ function dismissAddRelatedObjectPopup(win, newId, newRepr) {
     )
 }
 
-const getRepoForAdd = () => {
-    let githubURL = $("#githubURL").val()
-    if (githubURL) {
-        // Disable UI Elements and showloading
-        $("#loaderEllipsis").show()
-        $("#fetchRepoButton").prop("disabled", true)
-        $("#githubURL").prop("disabled", true)
-        $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
-
-        // notification_ws.send(
-        //     JSON.stringify({
-        //         data: {
-        //             url: githubURL
-        //         },
-        //         type: `validate_git_repo`
-        //     })
-        // )
-
-        notification_ws.send(
-            JSON.stringify({
-                data: {
-                    url: githubURL,
-                    stores: active_stores
-                },
-                type: `initialize_local_repo_for_active_stores`
-            })
-        )
-    } else {
-        //@TODO: Show error here that url is missing.
-    }
-}
-
 const uninstall = () => {
     // Hide Elements
     $("#uninstallingAppNotice").hide()
@@ -501,7 +470,7 @@ const get_resources_for_channel= (default_store) => {
 const get_merged_resources = (store) => {
 
     $.ajax({
-        url: `${warehouseHomeUrl}get_merged_resources`,
+        url: `${warehouseHomeUrl}get_merged_resources/`,
         dataType: "json",
         data: store
     })
@@ -523,84 +492,26 @@ const get_merged_resources = (store) => {
 }
 
 
+function label_styles(index) {
+    return list_styles[index]
+}
+
 $(document).ready(function() {
     // Hide the nav
     $("#app-content-wrapper").removeClass('show-nav');
     $(".toggle-nav").removeClass('toggle-nav');
-    // create ajax function to get the stores now and call the get_resources for each one of the stores, you will need to send channel as a parameter :/
-    storesDataList = []
-    $.ajax({
-        url: `${warehouseHomeUrl}get_available_stores`,
-        dataType: "json"
-    }).done(function(data){
-        console.log(data)
-        storesDataList = data['stores']
-        console.log(storesDataList)
-        labels_style_dict = get_color_label_dict(storesDataList)
-        create_request_obj(storesDataList)
 
-        let storessMenuHtml = createStoresMenusHtml(storesDataList)
-        $("#storeList").html(storessMenuHtml)
+    list_styles = JSON.parse(document.getElementById('list_styles').textContent);
+    labels_style_dict = JSON.parse(document.getElementById('labels_style_dict').textContent);
+    storesDataList = JSON.parse(document.getElementById('storesDataList').textContent);
+    availableApps = JSON.parse(document.getElementById('availableAppsList').textContent);
+    installedApps = JSON.parse(document.getElementById('installedAppsList').textContent);
+    incompatibleApps = JSON.parse(document.getElementById('incompatibleAppsList').textContent);
+    tethysVersion = JSON.parse(document.getElementById('tethysVersion').textContent);
+    
+    $("#mainAppLoader").hide()
+    initMainTables()
 
-        addFunctionalityStores(storesDataList)
-
-        var default_store = storesDataList.filter((x) => x.default == true)[0]
-        console.log(default_store)
-        active_store = default_store['github_organization']
-        var stores_list = []
-        // console.log("current_channel", default_conda_channel)
-        // Get Main Data and load the table
-        storesDataList.forEach(function(store_single){
-            stores_list.push(store_single['conda_channel']);
-            $(`#pills-${store_single['conda_channel']}-tab`).click(function(){
-
-                active_store = store_single['conda_channel']
-
-                // get_resources_for_channel(store_single)
-                // get_merged_resources({'active_store': store_single['conda_channel']})
-                get_merged_resources({'active_store':active_store})
-
-            })
-        })
-        
-        $(`#pills-all-tab`).click(function(){
-            active_store = "all"
-            get_merged_resources({'active_store': active_store})
-        })
-        console.log(stores_list)
-        // get_resources_for_channel(default_store)
-        active_store = "all"
-        get_merged_resources({'active_store': active_store})
-        // $.ajax({
-        //     url: `${warehouseHomeUrl}get_resources`,
-        //     dataType: "json",
-        //     data: default_store
-        // })
-        //     .done(function(data) {
-        //         availableApps = data.availableApps
-        //         installedApps = data.installedApps
-        //         incompatibleApps = data.incompatibleApps
-        //         tethysVersion = data.tethysVersion
-        //         // storesDataList = data.storesDataList
-        //         // console.log(storesData)
-        //         $("#mainAppLoader").hide()
-        //         initMainTables()
-        //         // create_content_for_channel(storesDataList)
-        //     })
-        //     .fail(function(err) {
-        //         console.log(err)
-        //         location.reload()
-        //     })
-
-
-    }).fail(function(err) {
-        storesDataList = []
-        console.log(err)
-    })
-    // console.log(storesDataList)
-
-
-    let n_div = $("#notification")
     let n_content = $("#notification .lead")
     hideLoader()
     let protocol = "ws"
@@ -608,8 +519,6 @@ $(document).ready(function() {
         protocol = "wss"
     }
     let ws_url = `${protocol}://${window.location.host}`
-    // let new_temp = '/apps/app-store/'
-    // ws_url = `${ws_url}${new_temp}install/notifications/ws/`
 
     ws_url = `${ws_url}${warehouseHomeUrl}install/notifications/ws/`
     startWS(ws_url, n_content)
@@ -629,6 +538,8 @@ $(document).ready(function() {
         sendNotification("Services Setup Skipped", n_content)
         sendNotification("install_complete", n_content)
     })
+    
+    originalAddModal = $('#add-app-modal').clone()
 
     $("#doneInstallButton").click(() => reloadCacheRefresh())
     $("#doneUninstallButton").click(() => reloadCacheRefresh())

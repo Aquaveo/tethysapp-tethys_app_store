@@ -5,7 +5,7 @@ from django.shortcuts import render
 from tethys_sdk.routing import controller
 
 from .resource_helpers import get_stores_reformatted
-from .helpers import get_conda_stores
+from .helpers import get_conda_stores, html_label_styles, get_color_label_dict
 ALL_RESOURCES = []
 CACHE_KEY = "warehouse_app_resources"
 
@@ -13,9 +13,10 @@ CACHE_KEY = "warehouse_app_resources"
 @controller(
     name='home',
     url='app-store',
-    permissions_required='use_app_store'
+    permissions_required='use_app_store',
+    app_workspace=True
 )
-def home(request):
+def home(request, app_workspace):
     """Created the context for the home page of the app store
 
     Args:
@@ -25,10 +26,28 @@ def home(request):
         object: Rendered html Django object
     """
     available_stores = get_conda_stores()
+    labels_style_dict, available_stores = get_color_label_dict(available_stores)
+
+    object_stores_formatted_by_label_and_channel = get_stores_reformatted(app_workspace, refresh=False,
+                                                                          conda_channels="all")
+
+    tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
+    object_stores_formatted_by_label_and_channel['tethysVersion'] = tethys_version_regex
+
+    availableApps = object_stores_formatted_by_label_and_channel['availableApps']
+    installedApps = object_stores_formatted_by_label_and_channel['installedApps']
+    incompatibleApps = object_stores_formatted_by_label_and_channel['incompatibleApps']
+    tethysVersion = object_stores_formatted_by_label_and_channel['tethysVersion']
 
     context = {
         'storesData': available_stores,
-        'show_stores': True if len(available_stores) > 0 else False
+        'show_stores': True if len(available_stores) > 0 else False,
+        'list_styles': html_label_styles,
+        'labels_style_dict': labels_style_dict,
+        'availableApps': availableApps,
+        'installedApps': installedApps,
+        'incompatibleApps': incompatibleApps,
+        'tethysVersion': tethysVersion
     }
 
     return render(request, 'app_store/home.html', context)
