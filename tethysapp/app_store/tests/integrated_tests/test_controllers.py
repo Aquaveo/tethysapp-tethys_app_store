@@ -1,21 +1,41 @@
 from tethysapp.app_store.controllers import (home, get_available_stores, get_merged_resources)
+from tethysapp.app_store.helpers import html_label_styles
 from unittest.mock import call, MagicMock
 import json
 
 
-def test_home_stores(mocker, tmp_path, store, mock_admin_get_request):
+def test_home_stores(mocker, tmp_path, store, mock_admin_get_request, resource):
     request = mock_admin_get_request('/apps/app-store')
     active_store = store('active_default')
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
     mocker.patch('tethysapp.app_store.controllers.get_conda_stores', return_value=[active_store])
+    object_stores = {
+        'availableApps': [resource("test_app", active_store['conda_channel'], active_store['conda_labels'][0])],
+        'installedApps': [],
+        'incompatibleApps': []
+    }
+    mocker.patch('tethysapp.app_store.controllers.get_stores_reformatted', return_value=object_stores)
     mock_render = mocker.patch('tethysapp.app_store.controllers.render')
+    mocker.patch('tethysapp.app_store.controllers.tethys_version', "4.0.0")
 
     home(request)
 
+    expected_styles = {'conda_channel_active_default': {'channel_style': 'blue', 'label_styles': {'main': 'indigo'}}}
+    expected_stores = [{
+        'default': True, 'conda_labels': [{'label_name': 'main', 'label_style': 'indigo', 'active': True}],
+        'github_token': 'fake_token_active_default', 'conda_channel': 'conda_channel_active_default',
+        'github_organization': 'org_active_default', 'active': True, 'channel_style': 'blue'
+    }]
     expected_context = {
-        'storesData': [active_store],
-        'show_stores': True
+        'storesData': expected_stores,
+        'show_stores': True,
+        'list_styles': html_label_styles,
+        'labels_style_dict': expected_styles,
+        'availableApps': object_stores['availableApps'],
+        'installedApps': object_stores['installedApps'],
+        'incompatibleApps': object_stores['incompatibleApps'],
+        'tethysVersion': "4.0.0"
     }
     mock_render.assert_has_calls([
         call(request, 'app_store/home.html', expected_context)
@@ -27,13 +47,26 @@ def test_home_no_stores(mocker, tmp_path, mock_admin_get_request):
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
     mocker.patch('tethysapp.app_store.controllers.get_conda_stores', return_value=[])
+    object_stores = {
+        'availableApps': [],
+        'installedApps': [],
+        'incompatibleApps': []
+    }
+    mocker.patch('tethysapp.app_store.controllers.get_stores_reformatted', return_value=object_stores)
     mock_render = mocker.patch('tethysapp.app_store.controllers.render')
+    mocker.patch('tethysapp.app_store.controllers.tethys_version', "4.0.0")
 
     home(request)
 
     expected_context = {
         'storesData': [],
-        'show_stores': False
+        'show_stores': False,
+        'list_styles': html_label_styles,
+        'labels_style_dict': {},
+        'availableApps': [],
+        'installedApps': [],
+        'incompatibleApps': [],
+        'tethysVersion': "4.0.0"
     }
     mock_render.assert_has_calls([
         call(request, 'app_store/home.html', expected_context)

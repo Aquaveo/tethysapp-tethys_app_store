@@ -204,8 +204,8 @@ def test_install_git_no_permission(mock_admin_api_post_request, mocker, tmp_path
 
 
 @pytest.mark.django_db
-def test_install_git_already_exists(mock_admin_api_post_request, git_status_workspace, mocker, caplog):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_install_git_already_exists(mock_admin_api_post_request, app_store_workspace, mocker, caplog):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.git_install_handlers.has_permission', side_effect=[True])
     mock_git = mocker.patch('tethysapp.app_store.git_install_handlers.git')
@@ -214,17 +214,17 @@ def test_install_git_already_exists(mock_admin_api_post_request, git_status_work
     mock_git_install_logger = mocker.patch('tethysapp.app_store.git_install_handlers.git_install_logger')
     url = reverse('app_store:install_git')
     data = {"url": "https://github.com/test_app.git", "branch": "master", "develop": True}
-    shutil.rmtree(git_status_workspace / "install_status" / "github")
-    shutil.rmtree(git_status_workspace / "logs" / "github_install")
+    shutil.rmtree(app_store_workspace / "install_status" / "github")
+    shutil.rmtree(app_store_workspace / "logs" / "github_install")
 
     api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
 
     assert api_response.status_code == 200
     json_response = json.loads(api_response.content)
     install_id = json_response['install_id']
-    log_file = get_log_file(install_id, str(git_status_workspace))
-    status_file = get_status_file(install_id, str(git_status_workspace))
-    app_location = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    log_file = get_log_file(install_id, str(app_store_workspace))
+    status_file = get_status_file(install_id, str(app_store_workspace))
+    app_location = str(app_store_workspace / "apps" / "github_installed" / "test_app")
 
     assert Path(log_file).is_file()
     assert Path(status_file).is_file
@@ -241,8 +241,8 @@ def test_install_git_already_exists(mock_admin_api_post_request, git_status_work
 
 
 @pytest.mark.django_db
-def test_install_git_dne(mock_admin_api_post_request, git_status_workspace, mocker):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_install_git_dne(mock_admin_api_post_request, app_store_workspace, mocker):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.git_install_handlers.has_permission', side_effect=[True])
     mock_git = mocker.patch('tethysapp.app_store.git_install_handlers.git')
@@ -252,7 +252,7 @@ def test_install_git_dne(mock_admin_api_post_request, git_status_workspace, mock
     url = reverse('app_store:install_git')
     data = {"url": "https://github.com/test_app.git", "branch": "master", "develop": True}
 
-    workspace_app = git_status_workspace / "apps" / "github_installed" / "test_app"
+    workspace_app = app_store_workspace / "apps" / "github_installed" / "test_app"
     shutil.rmtree(workspace_app)
 
     api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
@@ -260,9 +260,9 @@ def test_install_git_dne(mock_admin_api_post_request, git_status_workspace, mock
     assert api_response.status_code == 200
     json_response = json.loads(api_response.content)
     install_id = json_response['install_id']
-    log_file = get_log_file(install_id, str(git_status_workspace))
-    status_file = get_status_file(install_id, str(git_status_workspace))
-    app_location = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    log_file = get_log_file(install_id, str(app_store_workspace))
+    status_file = get_status_file(install_id, str(app_store_workspace))
+    app_location = str(app_store_workspace / "apps" / "github_installed" / "test_app")
 
     assert Path(log_file).is_file()
     assert Path(status_file).is_file
@@ -281,8 +281,8 @@ def test_install_git_dne(mock_admin_api_post_request, git_status_workspace, mock
 
 
 @pytest.mark.django_db
-def test_install_git_dne_branch_error(mock_admin_api_post_request, git_status_workspace, mocker):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_install_git_dne_branch_error(mock_admin_api_post_request, app_store_workspace, mocker):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=mock_workspace)
     mocker.patch('tethysapp.app_store.git_install_handlers.has_permission', side_effect=[True])
     mock_git = mocker.patch('tethysapp.app_store.git_install_handlers.git')
@@ -294,7 +294,7 @@ def test_install_git_dne_branch_error(mock_admin_api_post_request, git_status_wo
     url = reverse('app_store:install_git')
     data = {"url": "https://github.com/test_app.git", "branch": "master", "develop": True}
 
-    workspace_app = git_status_workspace / "apps" / "github_installed" / "test_app"
+    workspace_app = app_store_workspace / "apps" / "github_installed" / "test_app"
     shutil.rmtree(workspace_app)
 
     api_response = mock_admin_api_post_request(auth_header=True, url=url, data=data)
@@ -302,9 +302,9 @@ def test_install_git_dne_branch_error(mock_admin_api_post_request, git_status_wo
     assert api_response.status_code == 200
     json_response = json.loads(api_response.content)
     install_id = json_response['install_id']
-    log_file = get_log_file(install_id, str(git_status_workspace))
-    status_file = get_status_file(install_id, str(git_status_workspace))
-    app_location = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    log_file = get_log_file(install_id, str(app_store_workspace))
+    status_file = get_status_file(install_id, str(app_store_workspace))
+    app_location = str(app_store_workspace / "apps" / "github_installed" / "test_app")
 
     assert Path(log_file).is_file()
     assert Path(status_file).is_file

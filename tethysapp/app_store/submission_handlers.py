@@ -368,21 +368,21 @@ def remove_init_file(app_github_dir):
         os.remove(init_path)
 
 
-def apply_main_yml_template(source_files_path, workflows_path, rel_package, install_data):
+def apply_main_yml_template(source_files_path, workflows_path, rel_package, email):
     """Creates a new main.yaml from the main_template.yaml and install data information
 
     Args:
         source_files_path (str): The directory path that contains additional templates needed for anaconda recipes
         workflows_path (str): The directory path that contains necessary files for github workflows
         rel_package (str): The name of the application packge
-        install_data (dict): Data from the application submission form by the user
+        email (dict): Email that will receive a notification from the github actions
     """
     source = os.path.join(source_files_path, 'main_template.yaml')
     destination = os.path.join(workflows_path, 'main.yaml')
     app_name = rel_package.replace("app_package", '').replace("=", '').replace("'", "").strip()
     template_data = {
         'subject': "Tethys App Store: Build complete for " + app_name,
-        'email': install_data['email'],
+        'email': email,
         'buildMsg': """
         Your Tethys App has been successfully built and is now available on the Tethys App Store.
         This is an auto-generated email and this email is not monitored for replies.
@@ -545,15 +545,16 @@ def get_workflow_job_url(repo, tethysapp_repo, current_tag_name):
     return job_url
 
 
-def process_branch(install_data, channel_layer):
+def process_branch(install_data, channel_layer, app_workspace):
     # 1. Get Variables
     app_name = install_data["app_name"]
     conda_labels = install_data["conda_labels"]
     conda_channel = install_data["conda_channel"]
     dev_url = install_data['dev_url']
+    input_user_email = install_data['email']
+    branch = install_data['branch']
     labels_string = generate_label_strings(conda_labels)
     files_changed = False
-    app_workspace = get_app_workspace(app)
     app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
     repo = git.Repo(app_github_dir)
     setup_py = os.path.join(app_github_dir, 'setup.py')
@@ -569,13 +570,13 @@ def process_branch(install_data, channel_layer):
 
     # 4. From the origin remote checkout the selected branch and pull
     origin = repo.remote(name='origin')
-    repo.git.checkout(install_data['branch'])
+    repo.git.checkout(branch)
     origin.pull()
     setup_py_data = parse_setup_py(setup_py)
     current_version = generate_current_version(setup_py_data)
 
     # 5. create head tethysapp_warehouse_release and checkout the head
-    create_tethysapp_warehouse_release(repo, install_data['branch'])
+    create_tethysapp_warehouse_release(repo, branch)
     repo.git.checkout('tethysapp_warehouse_release')
 
     # 6. Delete workflow directory if exits in the repo folder, and create the directory workflow.
@@ -619,7 +620,7 @@ def process_branch(install_data, channel_layer):
     update_anaconda_dependencies(app_github_dir, recipe_path, source_files_path, keywords, email)
 
     # 15. apply data to the main.yml for the github action
-    apply_main_yml_template(source_files_path, workflows_path, rel_package, install_data)
+    apply_main_yml_template(source_files_path, workflows_path, rel_package, input_user_email)
 
     # 16. remove __init__.py file if present at top level
     remove_init_file(app_github_dir)
@@ -649,7 +650,7 @@ def process_branch(install_data, channel_layer):
         "data": {
             "githubURL": tethysapp_repo.git_url.replace("git:", "https:"),
             "job_url": job_url,
-            "conda_channel": install_data['conda_channel']
+            "conda_channel": conda_channel
         },
         "jsHelperFunction": "addComplete",
         "helper": "addModalHelper"

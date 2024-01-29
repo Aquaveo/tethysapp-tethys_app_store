@@ -29,13 +29,13 @@ def test_run_pending_installs_dne(tmp_path, mocker, caplog):
     assert "Checking for Pending Installs" in caplog.messages
 
 
-def test_run_pending_installs(git_status_workspace, mocker, caplog):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_run_pending_installs(app_store_workspace, mocker, caplog):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     mocker.patch('tethysapp.app_store.git_install_handlers.time')
     mock_logger = mocker.patch('tethysapp.app_store.git_install_handlers.git_install_logger')
     mock_continue = mocker.patch('tethysapp.app_store.git_install_handlers.continue_install')
     mocker.patch('tethysapp.app_store.git_install_handlers.get_app_workspace', return_value=mock_workspace)
-    git_status_file = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    git_status_file = app_store_workspace / 'install_status' / 'github' / "abc123.json"
 
     update_status_file(git_status_file, "Running", "setupPy")
 
@@ -47,15 +47,15 @@ def test_run_pending_installs(git_status_workspace, mocker, caplog):
         'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
                          'pip': ['requests']}
     }
-    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    workspace_app = str(app_store_workspace / "apps" / "github_installed" / "test_app")
     mock_continue.assert_called_with(workspace_app, mock_logger, str(git_status_file), install_options, "test_app",
                                      mock_workspace)
 
 
-def test_update_status_file_install(git_status_workspace, mocker):
+def test_update_status_file_install(app_store_workspace, mocker):
     mock_datetime = mocker.patch('tethysapp.app_store.git_install_handlers.datetime')
     mock_datetime.now().strftime.return_value = "2024-01-02T00:00:00:0000"
-    git_status_file = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    git_status_file = app_store_workspace / 'install_status' / 'github' / "abc123.json"
 
     update_status_file(git_status_file, True, "conda")
     update_status_file(git_status_file, True, "pip")
@@ -69,10 +69,10 @@ def test_update_status_file_install(git_status_workspace, mocker):
     assert git_status["installComplete"]
 
 
-def test_update_status_file_error(git_status_workspace, mocker):
+def test_update_status_file_error(app_store_workspace, mocker):
     mock_datetime = mocker.patch('tethysapp.app_store.git_install_handlers.datetime')
     mock_datetime.now().strftime.return_value = "2024-01-02T00:00:00:0000"
-    git_status_file = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    git_status_file = app_store_workspace / 'install_status' / 'github' / "abc123.json"
 
     update_status_file(git_status_file, False, "conda", "conda failed")
 
@@ -82,12 +82,12 @@ def test_update_status_file_error(git_status_workspace, mocker):
     assert git_status["errorMessage"] == "conda failed"
 
 
-def test_install_packages(mocker, git_status_workspace):
+def test_install_packages(mocker, app_store_workspace):
     mock_conda = mocker.patch('tethysapp.app_store.git_install_handlers.conda_run',
                               return_value=["successful", "", 0])
     conda_config = {'channels': 'conda-forge', 'packages': ['numpy', 'requests']}
     mock_logger = MagicMock()
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
 
     install_packages(conda_config, mock_logger, str(status_file_path))
 
@@ -99,14 +99,14 @@ def test_install_packages(mocker, git_status_workspace):
     assert call("successful") in mock_logger.info.mock_calls
 
 
-def test_install_packages_failed(mocker, git_status_workspace):
+def test_install_packages_failed(mocker, app_store_workspace):
     mock_datetime = mocker.patch('tethysapp.app_store.git_install_handlers.datetime')
     mock_datetime.now().strftime.return_value = "2024-01-02T00:00:00:0000"
     mock_conda = mocker.patch('tethysapp.app_store.git_install_handlers.conda_run',
                               return_value=["failed", "", 1])
     conda_config = {'channels': 'conda-forge', 'packages': ['numpy', 'requests']}
     mock_logger = MagicMock()
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
 
     install_packages(conda_config, mock_logger, str(status_file_path))
 
@@ -133,7 +133,7 @@ def test_write_logs():
     assert call(subHeading + "Final output") in mock_logger.info.mock_calls
 
 
-def test_continue_install(git_status_workspace, mocker):
+def test_continue_install(app_store_workspace, mocker):
     mock_popen = mocker.patch('tethysapp.app_store.git_install_handlers.Popen')
     mock_popen().wait.return_value = 0
     mock_popen().communicate.return_value = ["processed"]
@@ -144,17 +144,17 @@ def test_continue_install(git_status_workspace, mocker):
     mock_clear_github_cache_list = mocker.patch('tethysapp.app_store.git_install_handlers.clear_github_cache_list')
     mocker.patch('tethysapp.app_store.git_install_handlers.write_logs')
     mock_logger = MagicMock()
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
     install_options = {
         'version': 1.0, 'name': 'test_app', 'post': ['post_script.sh'], 'tethys_version': '>=4.0',
         'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
                          'pip': ['requests']}
     }
     app_name = install_options['name']
-    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    workspace_app = str(app_store_workspace / "apps" / "github_installed" / "test_app")
 
     continue_install(workspace_app, mock_logger, str(status_file_path), install_options, app_name,
-                     str(git_status_workspace))
+                     str(app_store_workspace))
 
     git_status = json.loads(status_file_path.read_text())
     assert git_status['status']['dbSync']
@@ -166,10 +166,10 @@ def test_continue_install(git_status_workspace, mocker):
     assert call("Install completed") in mock_logger.info.mock_calls
     mock_clear_github_cache_list.assert_called()
     mock_restart_server.assert_called_with({"restart_type": "github_install", "name": app_name},
-                                           channel_layer=None, app_workspace=str(git_status_workspace))
+                                           channel_layer=None, app_workspace=str(app_store_workspace))
 
 
-def test_continue_install_fail_db_sync(git_status_workspace, mocker):
+def test_continue_install_fail_db_sync(app_store_workspace, mocker):
     mock_datetime = mocker.patch('tethysapp.app_store.git_install_handlers.datetime')
     mock_datetime.now().strftime.return_value = "2024-01-02T00:00:00:0000"
     mock_popen = mocker.patch('tethysapp.app_store.git_install_handlers.Popen')
@@ -182,17 +182,17 @@ def test_continue_install_fail_db_sync(git_status_workspace, mocker):
     mock_clear_github_cache_list = mocker.patch('tethysapp.app_store.git_install_handlers.clear_github_cache_list')
     mocker.patch('tethysapp.app_store.git_install_handlers.write_logs')
     mock_logger = MagicMock()
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
     install_options = {
         'version': 1.0, 'name': 'test_app', 'post': ['post_script.sh'], 'tethys_version': '>=4.0',
         'requirements': {'skip': False, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']},
                          'pip': ['requests']}
     }
     app_name = install_options['name']
-    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
+    workspace_app = str(app_store_workspace / "apps" / "github_installed" / "test_app")
 
     continue_install(workspace_app, mock_logger, str(status_file_path), install_options, app_name,
-                     str(git_status_workspace))
+                     str(app_store_workspace))
 
     err_msg = "Error while running DBSync. Please check logs"
     git_status = json.loads(status_file_path.read_text())
@@ -207,13 +207,13 @@ def test_continue_install_fail_db_sync(git_status_workspace, mocker):
     assert call("Install completed") in mock_logger.info.mock_calls
     mock_clear_github_cache_list.assert_called()
     mock_restart_server.assert_called_with({"restart_type": "github_install", "name": app_name},
-                                           channel_layer=None, app_workspace=str(git_status_workspace))
+                                           channel_layer=None, app_workspace=str(app_store_workspace))
 
 
-def test_install_worker(git_status_workspace, mocker):
+def test_install_worker(app_store_workspace, mocker):
     mock_logger = MagicMock()
-    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    workspace_app = str(app_store_workspace / "apps" / "github_installed" / "test_app")
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
     mocker.patch('tethysapp.app_store.git_install_handlers.write_logs')
     mock_popen = mocker.patch('tethysapp.app_store.git_install_handlers.Popen')
     mock_popen().wait.return_value = 0
@@ -222,7 +222,7 @@ def test_install_worker(git_status_workspace, mocker):
     mock_install_packages = mocker.patch('tethysapp.app_store.git_install_handlers.install_packages')
     mock_continue = mocker.patch('tethysapp.app_store.git_install_handlers.continue_install')
 
-    install_worker(workspace_app, str(status_file_path), mock_logger, True, str(git_status_workspace))
+    install_worker(workspace_app, str(status_file_path), mock_logger, True, str(app_store_workspace))
 
     conda_config = {'channels': 'conda-forge', 'packages': ['numpy']}
     mock_install_packages.assert_called_with(conda_config, mock_logger, str(status_file_path))
@@ -238,7 +238,7 @@ def test_install_worker(git_status_workspace, mocker):
                          'pip': ['requests']}
     }
     mock_continue.assert_called_with(workspace_app, mock_logger, str(status_file_path), install_options, "test_app",
-                                     str(git_status_workspace))
+                                     str(app_store_workspace))
     assert call("Installing dependencies...") in mock_logger.info.mock_calls
     assert call("Running pip installation tasks...") in mock_logger.info.mock_calls
     assert call("PIP Install exited with: 0") in mock_logger.info.mock_calls
@@ -246,10 +246,10 @@ def test_install_worker(git_status_workspace, mocker):
     assert call("Python Application install exited with: 0") in mock_logger.info.mock_calls
 
 
-def test_install_worker_skip_package(git_status_workspace, mocker):
+def test_install_worker_skip_package(app_store_workspace, mocker):
     mock_logger = MagicMock()
-    workspace_app = str(git_status_workspace / "apps" / "github_installed" / "test_app")
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    workspace_app = str(app_store_workspace / "apps" / "github_installed" / "test_app")
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
     mocker.patch('tethysapp.app_store.git_install_handlers.write_logs')
     mock_popen = mocker.patch('tethysapp.app_store.git_install_handlers.Popen')
     mock_popen().wait.return_value = 0
@@ -265,7 +265,7 @@ def test_install_worker_skip_package(git_status_workspace, mocker):
     with open(install_yml, "w") as yaml_file:
         yaml_file.write(yaml.dump(data, default_flow_style=False))
 
-    install_worker(workspace_app, str(status_file_path), mock_logger, False, str(git_status_workspace))
+    install_worker(workspace_app, str(status_file_path), mock_logger, False, str(app_store_workspace))
 
     mock_install_packages.assert_not_called()
     git_status = json.loads(status_file_path.read_text())
@@ -279,7 +279,7 @@ def test_install_worker_skip_package(git_status_workspace, mocker):
         'requirements': {'skip': True, 'conda': {'channels': 'conda-forge', 'packages': ['numpy']}, 'pip': ['requests']}
     }
     mock_continue.assert_called_with(workspace_app, mock_logger, str(status_file_path), install_options, "test_app",
-                                     str(git_status_workspace))
+                                     str(app_store_workspace))
     assert call("Installing dependencies...") in mock_logger.info.mock_calls
     assert call("Running pip installation tasks...") not in mock_logger.info.mock_calls
     assert call("PIP Install exited with: 0") not in mock_logger.info.mock_calls
@@ -287,31 +287,31 @@ def test_install_worker_skip_package(git_status_workspace, mocker):
     assert call("Python Application install exited with: 0") in mock_logger.info.mock_calls
 
 
-def test_get_log_file(git_status_workspace):
-    log_file = get_log_file("abc123", str(git_status_workspace))
+def test_get_log_file(app_store_workspace):
+    log_file = get_log_file("abc123", str(app_store_workspace))
 
-    assert log_file == str(git_status_workspace / 'logs' / 'github_install' / "abc123.log")
-
-
-def test_get_status_file(git_status_workspace):
-    status_file = get_status_file("abc123", str(git_status_workspace))
-
-    assert status_file == str(git_status_workspace / 'install_status' / 'github' / "abc123.json")
+    assert log_file == str(app_store_workspace / 'logs' / 'github_install' / "abc123.log")
 
 
-def test_get_status_main(git_status_workspace, mock_admin_get_request):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_get_status_file(app_store_workspace):
+    status_file = get_status_file("abc123", str(app_store_workspace))
+
+    assert status_file == str(app_store_workspace / 'install_status' / 'github' / "abc123.json")
+
+
+def test_get_status_main(app_store_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     request = mock_admin_get_request("logs", {"install_id": "abc123"})
 
     status = get_status_main(request, mock_workspace)
 
-    status_file_path = git_status_workspace / 'install_status' / 'github' / "abc123.json"
+    status_file_path = app_store_workspace / 'install_status' / 'github' / "abc123.json"
     git_status = json.loads(status_file_path.read_text())
     assert git_status == json.loads(status.content)
 
 
-def test_get_status_main_no_id(git_status_workspace, mock_admin_get_request):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_get_status_main_no_id(app_store_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     request = mock_admin_get_request("logs", {})
 
     with pytest.raises(ValidationError) as e:
@@ -320,8 +320,8 @@ def test_get_status_main_no_id(git_status_workspace, mock_admin_get_request):
     assert e.value.args[0] == {"install_id": "Missing Value"}
 
 
-def test_get_status_missing_id(git_status_workspace, mock_admin_get_request):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_get_status_missing_id(app_store_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     request = mock_admin_get_request("logs", {"install_id": "foobar"})
 
     with pytest.raises(Http404) as e:
@@ -330,21 +330,21 @@ def test_get_status_missing_id(git_status_workspace, mock_admin_get_request):
     assert e.value.args[0] == 'No Install with id foobar exists'
 
 
-def test_get_logs_main(git_status_workspace, mock_admin_get_request):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_get_logs_main(app_store_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     request = mock_admin_get_request("logs", {"install_id": "abc123"})
-    log_path = git_status_workspace / 'logs' / 'github_install' / "abc123.log"
+    log_path = app_store_workspace / 'logs' / 'github_install' / "abc123.log"
     with open(log_path, "w") as log_file:
         log_file.write("This is a log")
 
     status = get_logs_main(request, mock_workspace)
 
-    log_path = git_status_workspace / 'logs' / 'github_install' / "abc123.log"
+    log_path = app_store_workspace / 'logs' / 'github_install' / "abc123.log"
     assert status.content.decode() == log_path.read_text()
 
 
-def test_get_logs_main_no_id(git_status_workspace, mock_admin_get_request):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_get_logs_main_no_id(app_store_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     request = mock_admin_get_request("logs", {})
 
     with pytest.raises(ValidationError) as e:
@@ -353,8 +353,8 @@ def test_get_logs_main_no_id(git_status_workspace, mock_admin_get_request):
     assert e.value.args[0] == {"install_id": "Missing Value"}
 
 
-def test_get_logs_main_missing_id(git_status_workspace, mock_admin_get_request):
-    mock_workspace = MagicMock(path=str(git_status_workspace))
+def test_get_logs_main_missing_id(app_store_workspace, mock_admin_get_request):
+    mock_workspace = MagicMock(path=str(app_store_workspace))
     request = mock_admin_get_request("logs", {"install_id": "foobar"})
 
     with pytest.raises(Http404) as e:

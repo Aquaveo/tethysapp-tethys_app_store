@@ -26,7 +26,7 @@ def home(request, app_workspace):
         object: Rendered html Django object
     """
     available_stores = get_conda_stores()
-    labels_style_dict, available_store_styles = get_color_label_dict(available_stores)
+    labels_style_dict, available_stores = get_color_label_dict(available_stores)
 
     object_stores_formatted_by_label_and_channel = get_stores_reformatted(app_workspace, refresh=False,
                                                                           conda_channels="all")
@@ -41,7 +41,6 @@ def home(request, app_workspace):
 
     context = {
         'storesData': available_stores,
-        'storesStyles': available_store_styles,
         'show_stores': True if len(available_stores) > 0 else False,
         'list_styles': html_label_styles,
         'labels_style_dict': labels_style_dict,
@@ -96,8 +95,9 @@ def get_color_label_dict(stores):
     color_store_dict = {}
     index_style = 0
     for store in stores:
+        store['conda_labels'] = list(set(store['conda_labels']))  # remove duplicates
         conda_channel = store['conda_channel']
-        store['conda_labels'] = [{"label": label} for label in store['conda_labels']]
+        store['conda_labels'] = [{"label_name": label} for label in store['conda_labels']]
         conda_labels = store['conda_labels']
         color_store_dict[conda_channel] = {'channel_style': '', 'label_styles': {}}
         
@@ -106,15 +106,14 @@ def get_color_label_dict(stores):
         index_style += 1
 
         for label in conda_labels:
-            label_name = label['label']
-            if label_name not in color_store_dict[conda_channel]['label_styles']:
-                color_store_dict[conda_channel]['label_styles'][label_name] = html_label_styles[index_style]
-                label['label_style'] = html_label_styles[index_style]
-                if label_name in ['main', 'master']:
-                    label['active'] = True
-                else:
-                    label['active'] = True
-            
-                index_style += 1
+            label_name = label['label_name']
+            color_store_dict[conda_channel]['label_styles'][label_name] = html_label_styles[index_style]
+            label['label_style'] = html_label_styles[index_style]
+            if label_name in ['main', 'master']:
+                label['active'] = True
+            else:
+                label['active'] = False
+        
+            index_style += 1
 
     return color_store_dict, stores

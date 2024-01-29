@@ -53,9 +53,9 @@
                                 <ul class="items">
                                 {% for conda_label in store.conda_labels %}
                                     <li>
-                                        <input class="conda-label-list-item" id="{{ store.conda_channel }}_{{ conda_label.label }}_checkbox" type="checkbox" value='{{ conda_label.label }}' {% if conda_label.active %}checked{% endif %}/>
-                                        <label class="conda-label-list-item-label" id="{{ store.conda_channel }}_{{ conda_label.label }}_label" for="{{ store.conda_channel }}_{{ conda_label.label }}_checkbox">
-                                            <span>{{ conda_label.label }}</span>
+                                        <input class="conda-label-list-item" id="{{ store.conda_channel }}_{{ conda_label.label_name }}_checkbox" type="checkbox" value='{{ conda_label.label_name }}' {% if conda_label.active %}checked{% endif %}/>
+                                        <label class="conda-label-list-item-label" id="{{ store.conda_channel }}_{{ conda_label.label_name }}_label" for="{{ store.conda_channel }}_{{ conda_label.label_name }}_checkbox">
+                                            <span>{{ conda_label.label_name }}</span>
                                             <span class="conda-label-list-item-custom-checkbox"></span>
                                         </label>
                                     </li>

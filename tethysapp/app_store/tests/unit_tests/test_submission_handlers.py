@@ -88,9 +88,7 @@ def test_repo_does_not_exist(mocker, caplog):
 
 @pytest.mark.parametrize(
     "stores, expected_call_count", [
-        (pytest.lazy_fixture("all_active_stores"), 2),
-        (pytest.lazy_fixture("mix_active_inactive_stores"), 1),
-        (pytest.lazy_fixture("all_inactive_stores"), 0)])
+        (pytest.lazy_fixture("all_active_stores"), 2)])
 def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mocker):
     install_data = {
         "url": "https://github.com/notrealorg/fakeapp",
@@ -286,13 +284,14 @@ def test_get_keywords_and_email(setup_py_data, expected_keywords, expected_email
 
 
 def test_create_template_data_for_install(complex_tethysapp):
-    install_data = {'github_dir': complex_tethysapp, "dev_url": "https://github.com/notrealorg/fakeapp"}
+    github_dir = complex_tethysapp
+    dev_url = "https://github.com/notrealorg/fakeapp"
     setup_py_data = {
         'name': 'release_package', 'version': '0.0.1', 'description': 'example',
         'long_description': 'This is just an example for testing', 'keywords': 'example,test',
         'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3'
     }
-    template_data = create_template_data_for_install(install_data, setup_py_data)
+    template_data = create_template_data_for_install(github_dir, dev_url, setup_py_data)
 
     expected_template_data = {
         'metadataObj': "{'name': 'release_package', 'version': '0.0.1', 'description': 'example', "
@@ -316,9 +315,9 @@ def test_fix_setup(test_files_dir, tmp_path):
 
 
 def test_remove_init_file(tethysapp_base_with_application_files):
-    install_data = {"github_dir": tethysapp_base_with_application_files}
+    github_dir = tethysapp_base_with_application_files
 
-    remove_init_file(install_data)
+    remove_init_file(github_dir)
 
     init_file = tethysapp_base_with_application_files / "__init__.py"
     init_file.is_file()
@@ -326,14 +325,14 @@ def test_remove_init_file(tethysapp_base_with_application_files):
 
 def test_apply_main_yml_template(app_files_dir, tmp_path, mocker):
     rel_package = "test_app"
-    install_data = {"email": "test@email.com"}
+    email = "test@email.com"
     mock_apply_template = mocker.patch('tethysapp.app_store.submission_handlers.apply_template')
-    apply_main_yml_template(app_files_dir, tmp_path, rel_package, install_data)
+    apply_main_yml_template(app_files_dir, tmp_path, rel_package, email)
 
     source = os.path.join(app_files_dir, 'main_template.yaml')
     template_data = {
         'subject': "Tethys App Store: Build complete for " + rel_package,
-        'email': install_data['email'],
+        'email': email,
         'buildMsg': """
         Your Tethys App has been successfully built and is now available on the Tethys App Store.
         This is an auto-generated email and this email is not monitored for replies.
@@ -504,13 +503,18 @@ def test_get_workflow_job_url_not_found(mocker):
     assert job_url is None
 
 
-def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
+def test_process_branch(mocker, app_store_workspace, basic_tethysapp):
     dev_url = "https://github.com/notrealorg/fakeapp"
-    install_data = {
+    mock_workspace = MagicMock(path=str(app_store_workspace))
+    conda_stores = [{
         "github_organization": "fake_org",
         "github_token": "fake_token",
-        "github_dir": str(basic_tethysapp),
-        "stores": mix_active_inactive_stores,
+        "conda_labels": ["main", "dev"],
+        "conda_channel": "test_channel"
+    }]
+    
+    install_data = {
+        "app_name": "test_app",
         "dev_url": dev_url,
         "email": "test@email.com",
         "conda_labels": ["main", "dev"],
@@ -518,13 +522,14 @@ def test_process_branch(mix_active_inactive_stores, mocker, basic_tethysapp):
         "branch": "test_branch"
     }
     mock_channel = MagicMock()
+    mock_github = mocker.patch('tethysapp.app_store.submission_handlers.get_conda_stores', return_value=conda_stores)
     mock_github = mocker.patch('tethysapp.app_store.submission_handlers.github')
     mock_github.Github().get_organization().get_repo().git_url.replace.return_value = dev_url
     mocker.patch('tethysapp.app_store.submission_handlers.git')
     mocker.patch('tethysapp.app_store.submission_handlers.get_workflow_job_url', return_value="job_url")
     mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
 
-    process_branch(install_data, mock_channel)
+    process_branch(install_data, mock_channel, mock_workspace)
 
     expected_data_json = {
         "data": {

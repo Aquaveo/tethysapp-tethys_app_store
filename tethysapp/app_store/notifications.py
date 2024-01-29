@@ -62,7 +62,7 @@ class notificationsConsumer(AsyncWebsocketConsumer):
         module_name = sys.modules[__name__]
         args = [text_data_json['data'], self.channel_layer]
 
-        app_workspace_functions = ['begin_install', 'restart_server', 'get_log_file',
+        app_workspace_functions = ['begin_install', 'restart_server', 'get_log_file', 'process_branch'
                                    'initialize_local_repo_for_active_stores', 'update_app', 'uninstall_app']
         if function_name in app_workspace_functions:
             app_workspace = await sync_to_async(get_app_workspace, thread_sensitive=True)(app)
