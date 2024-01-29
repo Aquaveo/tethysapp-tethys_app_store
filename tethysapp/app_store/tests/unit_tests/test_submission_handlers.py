@@ -3,7 +3,7 @@ import shutil
 import os
 import filecmp
 from unittest.mock import call, MagicMock
-from github.GithubException import UnknownObjectException
+from github.GithubException import UnknownObjectException, BadCredentialsException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
                                                      generate_label_strings, create_tethysapp_warehouse_release,
@@ -14,7 +14,8 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      create_current_tag_version, check_if_organization_in_remote,
                                                      push_to_warehouse_release_remote_branch,
                                                      create_head_current_version, create_tags_for_current_version,
-                                                     get_workflow_job_url, process_branch)
+                                                     get_workflow_job_url, process_branch, validate_git_credentials,
+                                                     validate_git_organization)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -541,3 +542,75 @@ def test_process_branch(mocker, app_store_workspace, basic_tethysapp):
         "helper": "addModalHelper"
     }
     mock_send_notification.assert_called_with(expected_data_json, mock_channel)
+
+
+def test_validate_git_credentials(mocker):
+    github_token = 'github_token'
+    conda_channel = 'conda_channel'
+    channel_layer = 'channel_layer'
+    mock_git_object = MagicMock()
+    mocker.patch('tethysapp.app_store.submission_handlers.github.Github', return_value=mock_git_object)
+
+    git_object = validate_git_credentials(github_token, conda_channel, channel_layer)
+
+    assert git_object == mock_git_object
+
+
+def test_validate_git_credentials_bad_token(mocker):
+    github_token = 'github_token'
+    conda_channel = 'conda_channel'
+    mock_channel = MagicMock()
+    mocker.patch('tethysapp.app_store.submission_handlers.github.Github', side_effect=[BadCredentialsException("")])
+    mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    with pytest.raises(Exception) as e:
+        validate_git_credentials(github_token, conda_channel, mock_channel)
+
+    expected_get_data_json = {
+        "data": {
+            "mssge_string": "Invalid git credentials. Could not connect to github. Check store settings.",
+            "metadata": {"next_move": False},
+            "conda_channel": conda_channel
+        },
+        "jsHelperFunction": "validationResults",
+        "helper": "addModalHelper"
+    }
+    mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)
+    assert e.value.args[0] == 'Invalid git credentials. Could not connect to github. Check store settings.'
+
+
+def test_validate_git_organization():
+    mock_github = MagicMock()
+    mock_org = MagicMock()
+    mock_github.get_organization.return_value = mock_org
+    github_organization = 'github_organization'
+    conda_channel = 'conda_channel'
+    channel_layer = 'channel_layer'
+
+    git_org = validate_git_organization(mock_github, github_organization, conda_channel, channel_layer)
+
+    assert mock_org == git_org
+
+
+def test_validate_git_organization_bad_token(mocker):
+    mock_github = MagicMock()
+    mock_github.get_organization.side_effect = [BadCredentialsException("")]
+    github_organization = 'github_organization'
+    conda_channel = 'conda_channel'
+    mock_channel = MagicMock()
+    mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+
+    with pytest.raises(Exception) as e:
+        validate_git_organization(mock_github, github_organization, conda_channel, mock_channel)
+
+    expected_get_data_json = {
+        "data": {
+            "mssge_string": 'Could not connect to organization. Check store settings.',
+            "metadata": {"next_move": False},
+            "conda_channel": conda_channel
+        },
+        "jsHelperFunction": "validationResults",
+        "helper": "addModalHelper"
+    }
+    mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)
+    assert e.value.args[0] == 'Could not connect to organization. Check store settings.'

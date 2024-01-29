@@ -75,22 +75,6 @@ def all_active_stores(store):
 
 
 @pytest.fixture
-def mix_active_inactive_stores(store):
-    return {
-        "active_default": store("active_default"),
-        "inactive_not_default": store("inactive_not_default", default=False, active=False)
-    }
-
-
-@pytest.fixture
-def all_inactive_stores(store):
-    return {
-        "inactive_default": store("inactive_default", active=False),
-        "inactive_not_default": store("inactive_not_default", default=False, active=False)
-    }
-
-
-@pytest.fixture
 def fresh_resource():
     def _fresh_resource(app_name, conda_channel, conda_label):
         return {

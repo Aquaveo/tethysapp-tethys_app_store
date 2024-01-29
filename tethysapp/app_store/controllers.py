@@ -5,7 +5,7 @@ from django.shortcuts import render
 from tethys_sdk.routing import controller
 
 from .resource_helpers import get_stores_reformatted
-from .helpers import get_conda_stores, html_label_styles
+from .helpers import get_conda_stores, html_label_styles, get_color_label_dict
 ALL_RESOURCES = []
 CACHE_KEY = "warehouse_app_resources"
 
@@ -89,31 +89,3 @@ def get_merged_resources(request, app_workspace):
     object_stores_formatted_by_label_and_channel['tethysVersion'] = tethys_version_regex
 
     return JsonResponse(object_stores_formatted_by_label_and_channel)
-
-
-def get_color_label_dict(stores):
-    color_store_dict = {}
-    index_style = 0
-    for store in stores:
-        store['conda_labels'] = list(set(store['conda_labels']))  # remove duplicates
-        conda_channel = store['conda_channel']
-        store['conda_labels'] = [{"label_name": label} for label in store['conda_labels']]
-        conda_labels = store['conda_labels']
-        color_store_dict[conda_channel] = {'channel_style': '', 'label_styles': {}}
-        
-        color_store_dict[conda_channel]['channel_style'] = html_label_styles[index_style]
-        store['channel_style'] = html_label_styles[index_style]
-        index_style += 1
-
-        for label in conda_labels:
-            label_name = label['label_name']
-            color_store_dict[conda_channel]['label_styles'][label_name] = html_label_styles[index_style]
-            label['label_style'] = html_label_styles[index_style]
-            if label_name in ['main', 'master']:
-                label['active'] = True
-            else:
-                label['active'] = False
-        
-            index_style += 1
-
-    return color_store_dict, stores

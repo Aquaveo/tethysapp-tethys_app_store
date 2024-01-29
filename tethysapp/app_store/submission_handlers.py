@@ -11,7 +11,6 @@ import re
 from github.GithubException import UnknownObjectException, BadCredentialsException
 
 from pathlib import Path
-from tethys_sdk.workspaces import get_app_workspace
 from .app import AppStore as app
 from .helpers import logger, send_notification, apply_template, parse_setup_py, get_conda_stores
 
@@ -659,6 +658,19 @@ def process_branch(install_data, channel_layer, app_workspace):
 
 
 def validate_git_credentials(github_token, conda_channel, channel_layer):
+    """Validates the github token to make sure it authenticates
+
+    Args:
+        github_token (str): decrypted github token from the app settings
+        conda_channel (str): Name of the conda channel to use for app discovery
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+
+    Raises:
+        Exception: Raised when the github token is not valid
+
+    Returns:
+        github.Github: Authenticated github Github object
+    """
     try:
         return github.Github(github_token)
     except BadCredentialsException:
@@ -679,6 +691,20 @@ def validate_git_credentials(github_token, conda_channel, channel_layer):
 
 
 def validate_git_organization(github_account, github_organization, conda_channel, channel_layer):
+    """Validates the github organization to make sure it is accessible by the github user
+
+    Args:
+        github_account (github.Github): Authenticated github Github object
+        github_organization (str): name of the github organization
+        conda_channel (str): Name of the conda channel to use for app discovery
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+
+    Raises:
+        Exception: Raised when the github user cannot access the organization
+
+    Returns:
+        github.Github: Authenticated github Github object
+    """
     try:
         return github_account.get_organization(github_organization)
     except BadCredentialsException:
