@@ -1,9 +1,10 @@
 import pytest
 import shutil
+from pathlib import Path
 from unittest.mock import MagicMock
-from tethysapp.app_store.helpers import (parse_setup_py, get_conda_stores, check_all_present, run_process,
+from tethysapp.app_store.helpers import (parse_setup_file, get_conda_stores, check_all_present, run_process,
                                          send_notification, apply_template, get_github_install_metadata,
-                                         get_override_key, get_color_label_dict)
+                                         get_override_key, get_color_label_dict, get_setup_path)
 
 
 def test_get_override_key(mocker):
@@ -67,17 +68,39 @@ def test_apply_template(app_files_dir, tmp_path):
     assert output_location.read_text() == "anaconda upload --force --label main noarch/*.tar.bz2"
 
 
-def test_parse_setup_py(test_files_dir):
+def test_parse_setup_file_setup_py(test_files_dir):
     setup_py = test_files_dir / "setup.py"
 
-    parsed_data = parse_setup_py(setup_py)
+    parsed_data = parse_setup_file(str(setup_py))
 
     expected_data = {
-        'name': 'release_package', 'version': '0.0.1', 'description': 'example',
+        'name': 'tethysapp-test_app', 'version': '0.0.1', 'description': 'example',
         'long_description': 'This is just an example for testing', 'keywords': 'example,test',
         'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3'
     }
     assert parsed_data == expected_data
+
+
+def test_parse_setup_file_toml(test_files_dir):
+    project_toml = test_files_dir / "pyproject.toml"
+
+    parsed_data = parse_setup_file(str(project_toml))
+
+    expected_data = {
+        'name': 'test_app', 'version': '0.0.1', 'description': 'example',
+        'long_description': 'This is just an example for testing', 'keywords': ['example', 'test'],
+        'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3'
+    }
+    assert parsed_data == expected_data
+
+
+def test_parse_setup_file_bad_file(test_files_dir):
+    py_file = test_files_dir / "some_file.py"
+
+    with pytest.raises(Exception) as e:
+        parse_setup_file(str(py_file))
+
+    assert e.value.args[0] == 'A setup.py or .toml file must be provided'
 
 
 def test_get_github_install_metadata(tmp_path, test_files_dir, mocker):
@@ -91,7 +114,7 @@ def test_get_github_install_metadata(tmp_path, test_files_dir, mocker):
     installed_apps = get_github_install_metadata(mock_workspace)
 
     expected_apps = {
-        'name': 'release_package', 'installed': True, 'installedVersion': '0.0.1',
+        'name': 'tethysapp-test_app', 'installed': True, 'installedVersion': '0.0.1',
         'metadata': {'channel': 'tethysapp', 'license': 'BSD 3-Clause License', 'description': 'example'},
         'path': str(mock_installed_app), 'author': 'Tester', 'dev_url': ''
     }
@@ -102,7 +125,7 @@ def test_get_github_install_metadata(tmp_path, test_files_dir, mocker):
 def test_get_github_install_metadata_cached(mocker):
     mock_cache = mocker.patch('tethysapp.app_store.helpers.cache')
     apps = [{
-        'name': 'release_package', 'installed': True, 'installedVersion': '0.0.1',
+        'name': 'tethysapp-test_app', 'installed': True, 'installedVersion': '0.0.1',
         'metadata': {'channel': 'tethysapp', 'license': 'BSD 3-Clause License', 'description': 'example'},
         'path': 'app_path', 'author': 'Tester', 'dev_url': ''
     }]
@@ -227,3 +250,28 @@ def test_get_color_label_dict(store):
     }]
     assert color_store_dict == expected_color_store_dict
     assert updated_stores == expected_updated_stores
+
+
+def test_get_setup_path_setup_py(tethysapp_base_with_application_files):
+    setup_path = get_setup_path(str(tethysapp_base_with_application_files))
+
+    assert Path(setup_path).is_file()
+    assert setup_path == str(tethysapp_base_with_application_files / "setup.py")
+
+
+def test_get_setup_path_toml(tmp_path, test_files_dir):
+    setup_helper = test_files_dir / "pyproject.toml"
+    tethysapp_setup_helper = tmp_path / "pyproject.toml"
+    shutil.copy(setup_helper, tethysapp_setup_helper)
+
+    setup_path = get_setup_path(str(tmp_path))
+
+    assert tethysapp_setup_helper.is_file()
+    assert setup_path == str(tethysapp_setup_helper)
+
+
+def test_get_setup_path_missing_file(tmp_path):
+    with pytest.raises(Exception) as e:
+        get_setup_path(str(tmp_path))
+
+    assert e.value.args[0] == 'Unable to find a project file for application'

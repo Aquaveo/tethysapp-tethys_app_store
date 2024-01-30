@@ -1,5 +1,7 @@
 import logging
 import os
+import re
+import toml
 
 from django.conf import settings
 from django.core.cache import cache
@@ -94,7 +96,7 @@ def apply_template(template_location, data, output_location):
         f.write(result)
 
 
-def parse_setup_py(file_location):
+def parse_setup_file(file_location):
     """Parses a setup.py file to get the app metadata
 
     Args:
@@ -103,29 +105,53 @@ def parse_setup_py(file_location):
     Returns:
         dict: A dictionary of key value pairs of application metadata
     """
-    params = {}
-    found_setup = False
-    with open(file_location, "r") as f:
-        for line in f.readlines():
-            if ("setup(" in line):
-                found_setup = True
-                continue
-            if found_setup:
-                if (")" in line):
-                    found_setup = False
-                    break
-                else:
-                    parts = line.split("=")
-                    if len(parts) < 2:
-                        continue
-                    value = parts[1].strip()
-                    if (value[-1] == ","):
-                        value = value[:-1]
-                    if (value[0] == "'" or value[0] == '"'):
-                        value = value[1:]
-                    if (value[-1] == "'" or value[-1] == '"'):
-                        value = value[:-1]
-                    params[parts[0].strip()] = value
+    if file_location.endswith("setup.py"):
+        import setuptools
+        setuptools.setup = lambda *a, **k: 0
+
+        params = {}
+        found_setup = False
+        with open(file_location, "r") as f:
+            for line in f.readlines():
+                if ("setup(" in line):
+                    found_setup = True
+                    continue
+                if found_setup:
+                    if (")" in line):
+                        found_setup = False
+                        break
+                    else:
+                        parts = line.split("=")
+                        if len(parts) < 2:
+                            continue
+                        value = parts[1].strip()
+                        if (value[-1] == ","):
+                            value = value[:-1]
+                        if (value[0] == "'" or value[0] == '"'):
+                            value = value[1:]
+                        if (value[-1] == "'" or value[-1] == '"'):
+                            value = value[:-1]
+                        params[parts[0].strip()] = value
+
+        with open(file_location) as f:
+            c = f.read()
+
+        setup_helper_import = re.findall("(from .* import find_all_resource_files)", c)
+        if setup_helper_import:
+            c = c.replace(setup_helper_import[0], "from tethys_apps.app_installation import find_all_resource_files")
+
+        ns = {}
+        exec(compile(c, '__string__', 'exec'), {}, ns)
+        for key, value in params.items():
+            if value in ns:
+                params[key] = ns[value]
+    elif file_location.endswith(".toml"):
+        with open(file_location, 'r') as f:
+            config = toml.load(f)
+        params = config['project']
+    else:
+        raise Exception("A setup.py or .toml file must be provided")
+
     return params
 
 
@@ -165,17 +191,41 @@ def get_github_install_metadata(app_workspace):
             'installedVersion': '',
             'path': possible_app
         }
-        setup_path = os.path.join(possible_app, 'setup.py')
-        setup_py_data = parse_setup_py(setup_path)
-        installed_app["name"] = setup_py_data.get('name')
-        installed_app["installedVersion"] = setup_py_data.get('version')
-        installed_app["metadata"]["description"] = setup_py_data.get('description')
-        installed_app["author"] = setup_py_data.get('author')
-        installed_app["dev_url"] = setup_py_data.get('url')
+        setup_path = get_setup_path(possible_app)
+        setup_path_data = parse_setup_file(setup_path)
+        installed_app["name"] = setup_path_data.get('name')
+        installed_app["installedVersion"] = setup_path_data.get('version')
+        installed_app["metadata"]["description"] = setup_path_data.get('description')
+        installed_app["author"] = setup_path_data.get('author')
+        installed_app["dev_url"] = setup_path_data.get('url')
 
         github_installed_apps_list.append(installed_app)
     cache.set(CACHE_KEY, github_installed_apps_list)
     return github_installed_apps_list
+
+
+def get_setup_path(app_location):
+    """Returns a project file. Initially check for a setup.py file. Then check for a TOML file if a setup.py file was
+    not found. If neither of these files are found, raise an exception
+
+    Args:
+        app_location (_type_): _description_
+
+    Raises:
+        Exception: If a setup.py or toml file is not found, raise an exception
+
+    Returns:
+        str: Path to the project setup file, either a setup.py or a toml file
+    """
+    setup_path = os.path.join(app_location, 'setup.py')
+    if os.path.exists(setup_path):
+        return setup_path
+
+    for file in os.listdir(app_location):
+        if file.endswith("toml"):
+            return os.path.join(app_location, file)
+
+    raise Exception("Unable to find a project file for application")
 
 
 def get_conda_stores(active_only=False, conda_channels="all", sensitive_info=False):
