@@ -11,7 +11,7 @@ import re
 from github.GithubException import UnknownObjectException, BadCredentialsException
 
 from pathlib import Path
-from .helpers import logger, send_notification, apply_template, parse_setup_py, get_conda_stores
+from .helpers import logger, send_notification, apply_template, parse_setup_file, get_setup_path, get_conda_stores
 
 CHANNEL_NAME = 'tethysapp'
 
@@ -213,16 +213,16 @@ def create_tethysapp_warehouse_release(repo, branch):
         repo.git.merge(branch)
 
 
-def generate_current_version(setup_py_data):
-    """Get the app version from the setup.py data
+def generate_current_version(setup_path_data):
+    """Get the app version from the setup file data
 
     Args:
-        setup_py_data (dict): App metadata from setup.py
+        setup_path_data (dict): App metadata from setup file
 
     Returns:
-        current_version (str): App version from the setup.py data
+        current_version (str): App version from the setup file data
     """
-    current_version = setup_py_data["version"]
+    current_version = setup_path_data["version"]
 
     return current_version
 
@@ -276,35 +276,35 @@ def create_upload_command(labels_string, source_files_path, recipe_path):
                    label, os.path.join(recipe_path, 'upload_command.txt'))
 
 
-def get_keywords_and_email(setup_py_data):
-    """Parses the setup.py dictionary to extract the keywords and the email
+def get_keywords_and_email(setup_path_data):
+    """Parses the setup file dictionary to extract the keywords and the email
 
     Args:
-        setup_py_data (dict): Application metadata derived from setup.py
+        setup_path_data (dict): Application metadata derived from setup file
 
     Returns:
         [keywords(list), email(str)]: A list of keywords and the author email
     """
-    keywords = setup_py_data.get("keywords")
+    keywords = setup_path_data.get("keywords")
     if keywords:
         keywords = keywords.replace(' ', '').replace('"', '').replace("'", '').split(',')
     else:
         keywords = []
-        logger.warning("No keywords found in setup.py")
+        logger.warning("No keywords found in setup file")
 
-    email = setup_py_data.get("author_email", "")
+    email = setup_path_data.get("author_email", "")
     if not email:
-        logger.warning("No author email found in setup.py")
+        logger.warning("No author email found in setup file")
 
     return keywords, email
 
 
-def create_template_data_for_install(app_github_dir, dev_url, setup_py_data):
+def create_template_data_for_install(app_github_dir, dev_url, setup_path_data):
     """Join the install_data information with the setup_py information to create template data for conda install
 
     Args:
         install_data (dict): Data from the application submission form by the user
-        setup_py_data (dict): Application metadata from the cloned repository's setup.py
+        setup_path_data (dict): Application metadata from the cloned repository's setup file
 
     Returns:
         dict: master dictionary use for templates, specifically for conda install
@@ -312,7 +312,7 @@ def create_template_data_for_install(app_github_dir, dev_url, setup_py_data):
     install_yml = os.path.join(app_github_dir, 'install.yml')
     with open(install_yml) as f:
         install_yml_file = yaml.safe_load(f)
-        metadata_dict = {**setup_py_data, "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),
+        metadata_dict = {**setup_path_data, "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),
                          "dev_url": dev_url}
 
     template_data = {
@@ -565,7 +565,7 @@ def process_branch(install_data, channel_layer, app_workspace):
     files_changed = False
     app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
     repo = git.Repo(app_github_dir)
-    setup_py = os.path.join(app_github_dir, 'setup.py')
+    setup_path = get_setup_path(app_github_dir)
 
     # 2. Get sensitive information for store
     conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]
@@ -580,8 +580,8 @@ def process_branch(install_data, channel_layer, app_workspace):
     origin = repo.remote(name='origin')
     repo.git.checkout(branch)
     origin.pull()
-    setup_py_data = parse_setup_py(setup_py)
-    current_version = generate_current_version(setup_py_data)
+    setup_path_data = parse_setup_file(setup_path)
+    current_version = generate_current_version(setup_path_data)
 
     # 5. create head tethysapp_warehouse_release and checkout the head
     create_tethysapp_warehouse_release(repo, branch)
@@ -608,11 +608,11 @@ def process_branch(install_data, channel_layer, app_workspace):
     destination = os.path.join(recipe_path, 'meta.yaml')
     create_upload_command(labels_string, source_files_path, recipe_path)
 
-    # 10. Drop keywords from setup.py
-    keywords, email = get_keywords_and_email(setup_py_data)
+    # 10. Drop keywords from setup file
+    keywords, email = get_keywords_and_email(setup_path_data)
 
     # 11 get the data from the install.yml and create a metadata dict
-    template_data = create_template_data_for_install(app_github_dir, dev_url, setup_py_data)
+    template_data = create_template_data_for_install(app_github_dir, dev_url, setup_path_data)
     apply_template(source, template_data, destination)
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
@@ -622,7 +622,8 @@ def process_branch(install_data, channel_layer, app_workspace):
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
     # 13. Fix setup.py file to remove dependency on tethys
-    rel_package = fix_setup(setup_py)
+    if setup_path.endswith(".py"):
+        rel_package = fix_setup(setup_path)
 
     # 14. Update the dependencies of the package
     update_anaconda_dependencies(app_github_dir, recipe_path, source_files_path, keywords, email)

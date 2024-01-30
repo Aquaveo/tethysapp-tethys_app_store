@@ -288,14 +288,14 @@ def test_create_template_data_for_install(complex_tethysapp):
     github_dir = complex_tethysapp
     dev_url = "https://github.com/notrealorg/fakeapp"
     setup_py_data = {
-        'name': 'release_package', 'version': '0.0.1', 'description': 'example',
+        'name': 'tethysapp-test_app', 'version': '0.0.1', 'description': 'example',
         'long_description': 'This is just an example for testing', 'keywords': 'example,test',
         'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3'
     }
     template_data = create_template_data_for_install(github_dir, dev_url, setup_py_data)
 
     expected_template_data = {
-        'metadataObj': "{'name': 'release_package', 'version': '0.0.1', 'description': 'example', "
+        'metadataObj': "{'name': 'tethysapp-test_app', 'version': '0.0.1', 'description': 'example', "
         "'long_description': 'This is just an example for testing', 'keywords': 'example,test', "
         "'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3', "
         "'tethys_version': '>=4.0', 'dev_url': 'https://github.com/notrealorg/fakeapp'}"

@@ -1,0 +1,10 @@
+[project]
+name = "test_app"
+description = "example"
+long_description = "This is just an example for testing"
+license = "BSD-3"
+keywords = ["example", "test"]
+author = "Tester"
+author_email = "tester@email.com"
+version = "0.0.1"
+url = ""
