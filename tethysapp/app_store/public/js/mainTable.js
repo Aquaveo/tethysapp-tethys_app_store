@@ -476,15 +476,11 @@ window.operateEvents = {
     notifCount = 0
     // Setup Versions
     let appName = row['name'];
-    // let appName = getResourceValueByName("name", row.name, appList)
     $("#installingAppName").text(appName)
     installData["name"] = appName
     let channel_and_label = get_channel_label_from_id(e);
     let selectedVersion = e.target.innerText;
-    // let versionHTML = getVersionsHTML_new(row,channel_and_label[0],channel_and_label[1])
-    n_content.append(htmlHelpers.versions_new(appName,channel_and_label[0],channel_and_label[1],selectedVersion, isUsingIncompatible))
-    // n_content.find("#selectVersion").append(versionHTML)
-    // $("#versions").select2();
+    n_content.append(htmlHelpers.versions(appName,channel_and_label[0],channel_and_label[1],selectedVersion, isUsingIncompatible))
     writeTethysPlatformCompatibility_new(e, row, channel_and_label[0],channel_and_label[1])
   },
 
