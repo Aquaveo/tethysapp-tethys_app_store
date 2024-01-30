@@ -133,7 +133,7 @@ def parse_setup_file(file_location):
                             value = value[:-1]
                         params[parts[0].strip()] = value
 
-        with open(file_location) as f:
+        with open(file_location, "r") as f:
             c = f.read()
 
         setup_helper_import = re.findall("(from .* import find_all_resource_files)", c)
