@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Running Mamba Install"
-if hash mamba; then
+if hash micromamba; then
     MAMBA_COMMAND=micromamba
 else
     MAMBA_COMMAND=mamba

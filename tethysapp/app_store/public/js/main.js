@@ -330,27 +330,10 @@ const updateTethysPlatformCompatibility_new = (app, selectedVersion,channel,labe
     $("#tethysPlatformVersion").text('Tethys Platform Compatibility: ' + platform_compatibility)
 }
 
-
-// const startInstall = (appName) => {
-//     showLoader()
-//     let version = $("#versions").select2("data")[0].text
-//     installRunning = true
-//     installData["version"] = version
-
-//     notification_ws.send(
-//         JSON.stringify({
-//             data: {
-//                 name: appName,
-//                 version
-//             },
-//             type: `begin_install`
-//         })
-//     )
-// }
-
 const startInstall = (appName,channel_app,label_app,current_version) => {
     showLoader()
-    // let current_version = $("#versions").select2("data")[0].text
+    $(`#${appName}_installer`).prop("disabled", true)
+    $(`#${appName}_installer`).css('opacity', '.5');
     installRunning = true
     installData["version"] = current_version
 
@@ -422,8 +405,8 @@ const update = () => {
 
     var htmlStr = `<span>`
     htmlStr += `<span class="labels_container" style="display: inline-block;"> `
-    htmlStr += `<span class="custom-label label-color-${labels_style_dict[updateData.channel]} label-outline-xs"> <i class="bi bi-shop"></i> ${updateData.channel} </span>`
-    htmlStr += `<span class="custom-label label-color-${labels_style_dict[updateData.label]} label-outline-xs"><i class="bi bi-tags"></i> ${updateData.label}</span>`
+    htmlStr += `<span class="custom-label label-color-${labels_style_dict[updateData.channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${updateData.channel} </span>`
+    htmlStr += `<span class="custom-label label-color-${labels_style_dict[updateData.channel]["label_styles"][updateData.label]} label-outline-xs"><i class="bi bi-tags"></i> ${updateData.label}</span>`
     htmlStr += `<span class="custom-label label-outline-xs label-color-gray">${updateData.version}</span>`
     htmlStr += `</span>`
 

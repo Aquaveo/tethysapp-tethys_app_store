@@ -2,20 +2,11 @@
 
 const htmlHelpers = {}
 
-htmlHelpers.versions = (appName, isUsingIncompatible) => {
-    return `<div>Which version would you like to install: 
-                    <div id="selectVersion" style="display: inline-block; min-width:100px" onchange="updateTethysPlatformVersion('${appName}', '${isUsingIncompatible}')"></div>
-                    <a class="btn btn-primary" onclick="startInstall('${appName}')"> Go </a>
-                    <br>
-                    <br>
-                    <div id="tethysPlatformVersion" style="min-width:100px"></div>
-                </div>`
-}
-htmlHelpers.versions_new = (appName,channel, label,version,isUsingIncompatible) => {
+htmlHelpers.versions = (appName, channel, label, version, isUsingIncompatible) => {
     // <div id="selectVersion" style="display: inline-block; min-width:100px" onchange="updateTethysPlatformVersion('${appName}', '${isUsingIncompatible}')"></div>
 
     return `<div>Start installation: 
-                    <a class="btn btn-primary" onclick="startInstall('${appName}','${channel}', '${label}','${version}')"> Start </a>
+                    <button id="${appName}_installer" class="btn btn-primary" onclick="startInstall('${appName}','${channel}', '${label}','${version}')"> Start </button>
                     <br>
                     <br>
                     <div id="tethysPlatformVersion" style="min-width:100px"></div>
