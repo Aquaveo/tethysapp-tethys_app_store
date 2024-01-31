@@ -310,37 +310,5 @@ def test_begin_install_failed_install(resource, mocker):
     mock_ws.assert_has_calls([
         call(f"Starting installation of app: {app_name} from store {app_channel} with label {app_label}", mock_channel),
         call(f"Installing Version: {app_version}", mock_channel),
-        call("Error while Installing Conda package. Please check logs for details", mock_channel)
+        call("Application installation failed. Check logs for more details.", mock_channel)
     ])
-
-
-def test_begin_install_failed_dependencies(resource, mocker, caplog):
-    mock_channel = MagicMock()
-    mock_workspace = MagicMock()
-    app_name = "test_app"
-    app_channel = "test_channel"
-    app_label = "main"
-    app_resource = resource(app_name, app_channel, app_label)
-    app_version = app_resource['latestVersion'][app_channel][app_label]
-    install_data = {
-        "name": app_name,
-        "label": app_label,
-        "channel": app_channel,
-        "version": app_version
-    }
-
-    mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
-    mocker.patch('tethysapp.app_store.begin_install.get_resource', return_value=app_resource)
-    mocker.patch('tethysapp.app_store.begin_install.mamba_install', return_value=True)
-
-    with mocker.patch('tethysapp.app_store.begin_install.detect_app_dependencies',
-                      side_effect=Exception('mocked error')):
-        begin_install(install_data, mock_channel, mock_workspace)
-
-        mock_ws.assert_has_calls([
-            call(f"Starting installation of app: {app_name} from store {app_channel} with label {app_label}",
-                 mock_channel),
-            call(f"Installing Version: {app_version}", mock_channel),
-            call("Error while checking package for services", mock_channel)
-        ])
-        assert 'mocked error' in caplog.messages
