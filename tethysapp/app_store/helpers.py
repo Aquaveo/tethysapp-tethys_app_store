@@ -18,7 +18,7 @@ logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
 
 CACHE_KEY = "warehouse_github_app_resources"
 
-html_label_styles = ["blue", "indigo", "pink", "red", "teal", "cyan", "white", "gray", "gray-dark", "purple"]
+html_label_styles = ["blue", "indigo", "pink", "red", "teal", "cyan", "purple", "white", "gray", "gray-dark"]
 
 
 def get_override_key():

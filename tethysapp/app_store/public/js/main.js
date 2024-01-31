@@ -257,25 +257,25 @@ const getVersionsHTML_dropdown = (app,checkIfNeeded,isUpdate) => {
           color_icon = 'danger';
         }
         // let versions = app[versions].reverse()
-        let string_dropdown = `<div class="dropdown">`
-        string_dropdown += `<a class="custom-label label-color-info label-outline-xs dropdown-toggle install2" href="#" role="button" id="dropdownMenuLink_${app['name']}" data-bs-toggle="dropdown" aria-expanded="false"> <i class="bi bi-plus-lg"></i> Install </a>`
-        string_dropdown += `<ul class="dropdown-menu position-fixed" aria-labelledby="dropdownMenuLink_${app['name']}">`
+        let string_dropdown = `<div class="dropdown position-static">`
+        string_dropdown += `<a class="custom-label label-color-info label-outline-xs dropdown-toggle" href="#" role="button" id="dropdownMenuLink_${app['name']}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <i class="bi bi-plus-lg"></i> Install </a>`
+        string_dropdown += `<ul class="dropdown-menu" aria-labelledby="dropdownMenuLink_${app['name']}">`
         let versions_obj = app['versions'];
 
         for (channel in versions_obj){
-            string_dropdown += `<li class="dropdown dropend">`;
-            string_dropdown +=`<a class="dropdown-item dropdown-toggle" href="#" id="${channel}_${app['name']}}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">`
+            string_dropdown += `<li class="dropdown-submenu">`;
+            string_dropdown +=`<a class="dropdown-item dropdown-toggle" href="#" id="${channel}_${app['name']}">`
             string_dropdown +=`<span class="label_dropdown custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`;
             string_dropdown += `</a>`
-            string_dropdown += `<ul class="dropdown-menu position-fixed" aria-labelledby="${channel}_${app['name']}}">`
+            string_dropdown += `<ul class="dropdown-menu" aria-labelledby="${channel}_${app['name']}">`
 
             for (label in versions_obj[channel]){
-                string_dropdown += `<li class="dropdown dropend">`;
-                string_dropdown +=`<a class="dropdown-item dropdown-toggle" href="#" id="${channel}_${label}_${app['name']}}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">`
+                string_dropdown += `<li class="dropdown-submenu">`;
+                string_dropdown +=`<a class="dropdown-item dropdown-toggle" href="#" id="${channel}_${label}_${app['name']}">`
                 // string_dropdown +=`<span class="store_label custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`;
                 string_dropdown +=`<span class="label_dropdown custom-label label-outline-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span>`
                 string_dropdown += `</a>`
-                string_dropdown += `<ul class="dropdown-menu position-fixed drop_down_scroll" aria-labelledby="${channel}_${label}_${app['name']}}">`
+                string_dropdown += `<ul class="dropdown-menu drop_down_scroll" aria-labelledby="${channel}_${label}_${app['name']}">`
                 for (sinlge_version in versions_obj[channel][label]){
                     // string_dropdown += `<li><a class="dropdown-item" href="#">${versions_obj[channel][label][sinlge_version]}</a></li>`
                     string_dropdown +=`<li><a class="${class_html} button-spaced dropdown-item" href="javascript:void(0)" title="Install">

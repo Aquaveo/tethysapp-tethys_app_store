@@ -484,6 +484,30 @@
     border-color: var(--bs-gray);
 }
 
+/* teal color label */
+.label-color-teal {
+    color: var(--bs-white);
+    background-color: var(--bs-teal);
+    border-color: var(--bs-teal);
+}
+.label-color-teal:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-gray);
+    border-color: var(--bs-gray);
+}
+
+/* cyan color label */
+.label-color-cyan {
+    color: var(--bs-white);
+    background-color: var(--bs-cyan);
+    border-color: var(--bs-cyan);
+}
+.label-color-cyan:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-gray);
+    border-color: var(--bs-gray);
+}
+
 /* red color label */
 .label-color-red {
     color: var(--bs-white);
