@@ -197,15 +197,14 @@ def begin_install(installData, channel_layer, app_workspace):
                       f"with label {installData['label']}", channel_layer)
     send_notification(f"Installing Version: {installData['version']}", channel_layer)
 
-    successful_install = mamba_install(resource, installData['channel'], installData['label'], installData["version"],
-                                       channel_layer)
-    if not successful_install:
-        send_notification("Error while Installing Conda package. Please check logs for details", channel_layer)
-        return
-
     try:
+        successful_install = mamba_install(resource, installData['channel'], installData['label'],
+                                           installData["version"], channel_layer)
+        if not successful_install:
+            raise Exception("Mamba install script failed to install application.")
+
         detect_app_dependencies(resource['name'], channel_layer)
     except Exception as e:
         logger.error(e)
-        send_notification("Error while checking package for services", channel_layer)
+        send_notification("Application installation failed. Check logs for more details.", channel_layer)
         return

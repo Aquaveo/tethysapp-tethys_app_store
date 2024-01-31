@@ -107,8 +107,6 @@ def test_update_app_exception(mocker, caplog):
 
     update_app(data, mock_channel, mock_workspace)
 
-    assert "Error while running conda install during the update process" in caplog.messages
     assert "Conda failed" in caplog.messages
-    mock_send_update_msg.assert_called_with("Error while Installing Conda package. Please check logs for details",
-                                            mock_channel)
+    mock_send_update_msg.assert_called_with("Application update failed. Check logs for more details.", mock_channel)
     mock_restart.assert_not_called()

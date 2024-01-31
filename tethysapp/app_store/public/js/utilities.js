@@ -88,8 +88,7 @@ const sendNotification = (message, n_content) => {
       })
     )
     resetInstallStatus()
-  }
-  if (message == "Uninstall completed. Restarting server...") {
+  } else if (message == "Uninstall completed. Restarting server...") {
     inRestart = true
     notification_ws.send(
       JSON.stringify({
@@ -97,6 +96,12 @@ const sendNotification = (message, n_content) => {
         type: `restart_server`
       })
     )
+  } else if (message.includes("Application installation failed")) {
+    hideLoader()
+    $("#mainCancel").show()
+  } else if (message.includes("Application update failed")) {
+    $("#update-loader").hide()
+    $("#updateCancel").show()
   }
   n_content.append(new_element)
   $(`#install_notif_${notifCount}`).show("fast")
@@ -111,10 +116,7 @@ function startWS(websocketServerLocation, n_content) {
 
       if ("name" in uninstallData) {
         // Coming back from an uninstall restart
-        sendNotification(
-          "Server restart completed successfully",
-          $("#uninstallNotices")
-        )
+        sendNotification("Server restart completed successfully", $("#uninstallNotices"))
 
         $("#uninstallLoaderEllipsis").hide()
         $("#doneUninstallButton").show()
@@ -131,10 +133,7 @@ function startWS(websocketServerLocation, n_content) {
     if ("name" in updateData) {
       // clear out updateData
       updateData = {}
-      sendNotification(
-        "Server restart completed successfully",
-        $("#update-notices")
-      )
+      sendNotification("Server restart completed successfully", $("#update-notices"))
       $("#update-loader").hide()
       $("#done-update-button").show()
     }

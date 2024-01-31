@@ -85,11 +85,9 @@ def update_app(data, channel_layer, app_workspace):
     """
     try:
         conda_update(data["name"], data["version"], data["channel"], data["label"], channel_layer)
-
     except Exception as e:
-        logger.error("Error while running conda install during the update process")
         logger.error(e)
-        send_update_msg("Error while Installing Conda package. Please check logs for details", channel_layer)
+        send_update_msg("Application update failed. Check logs for more details.", channel_layer)
         return
 
     # Since all settings are preserved, continue to standard cleanup/restart command
