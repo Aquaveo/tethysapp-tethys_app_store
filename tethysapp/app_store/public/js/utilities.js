@@ -133,7 +133,7 @@ function startWS(websocketServerLocation, n_content) {
     if ("name" in updateData) {
       // clear out updateData
       updateData = {}
-      sendNotification("Server restart completed successfully",$("#update-notices"))
+      sendNotification("Server restart completed successfully", $("#update-notices"))
       $("#update-loader").hide()
       $("#done-update-button").show()
     }
