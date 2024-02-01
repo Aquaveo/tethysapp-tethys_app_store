@@ -49,7 +49,7 @@ const settingsHelper = {
                         <label for="${setting.name}">${setting.name}${setting.required ? "*": ""}</label>
                         <input type="text" class="form-control ${requiredClass}" id="${setting.name}" value="${defaultValue}">
                         <p class="help-block">${setting.description}</p>
-                        <div id="${setting.name}_failMessage" style="display:none;margin-top:10px;margin-bottom:10px" class="p-3 mb-2 bg-warning text-white setting_warning">This setting is required and must be filled to submit settings</div>
+                        <div id="${setting.name}_warningMessage" style="display:none;margin-top:10px;margin-bottom:10px" class="p-3 mb-2 bg-warning text-white setting_warning">This setting is required and must be filled to submit settings</div>
                     </div>`
                     formDataElement.append(newElement)
                 })
@@ -71,7 +71,7 @@ const settingsHelper = {
                         .each(function() {
                             if ($(this).hasClass("required_setting") && $(this).val() == "") {
                                 let setting_name = $(this)[0].id
-                                $(`#${setting_name}_failMessage`).show()
+                                $(`#${setting_name}_warningMessage`).show()
                                 has_errors = true
                             }
                             formData.settings[$(this).attr("id")] = $(this).val()
