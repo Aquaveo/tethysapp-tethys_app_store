@@ -18,8 +18,10 @@ def test_send_uninstall_messages(mocker):
 def test_uninstall_app(mocker, caplog, app_store_dir):
     mock_sn = mocker.patch('tethysapp.app_store.uninstall_handlers.send_uninstall_messages')
     mock_subprocess = mocker.patch('tethysapp.app_store.uninstall_handlers.subprocess')
-    mock_subprocess.Popen().stdout.readline.side_effect = ["uninstall still".encode('utf-8'),
-                                                           "Mamba Remove Complete\n".encode('utf-8')]
+    mock_subprocess.Popen().stdout.readline.side_effect = ["Running Mamba remove\n",
+                                                           "Transaction starting\n",
+                                                           "Transaction finished\n",
+                                                           "Mamba Remove Complete\n"]
     mocker.patch('tethysapp.app_store.uninstall_handlers.get_manage_path', return_value="manage_path")
     mock_setting = MagicMock()
     mock_setting.__str__.side_effect = ["setting1"]
@@ -39,18 +41,21 @@ def test_uninstall_app(mocker, caplog, app_store_dir):
     mock_sn.assert_has_calls([
         call('Starting Uninstall. Please wait...', mock_channel),
         call('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', mock_channel),
-        call("uninstall still", mock_channel),
+        call("Running uninstall script", mock_channel),
+        call("Starting mamba uninstall", mock_channel),
+        call("Mamba uninstall complete", mock_channel),
         call('Uninstall completed. Restarting server...', mock_channel)
     ])
     assert "Dropping Database for persistent store setting: setting1" in caplog.messages
-    assert "uninstall still" in caplog.messages
 
 
 def test_uninstall_app_no_persistent_stores(mocker, caplog, app_store_dir):
     mock_sn = mocker.patch('tethysapp.app_store.uninstall_handlers.send_uninstall_messages')
     mock_subprocess = mocker.patch('tethysapp.app_store.uninstall_handlers.subprocess')
-    mock_subprocess.Popen().stdout.readline.side_effect = ["uninstall still".encode('utf-8'),
-                                                           "Mamba Remove Complete\n".encode('utf-8')]
+    mock_subprocess.Popen().stdout.readline.side_effect = ["Running Mamba remove\n",
+                                                           "Transaction starting\n",
+                                                           "Transaction finished\n",
+                                                           "Mamba Remove Complete\n"]
     mock_subprocess.call.side_effect = [KeyboardInterrupt]
     mocker.patch('tethysapp.app_store.uninstall_handlers.get_manage_path', return_value="manage_path")
     mock_app = MagicMock(persistent_store_database_settings=[])
@@ -68,18 +73,21 @@ def test_uninstall_app_no_persistent_stores(mocker, caplog, app_store_dir):
     mock_sn.assert_has_calls([
         call('Starting Uninstall. Please wait...', mock_channel),
         call('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', mock_channel),
-        call("uninstall still", mock_channel),
+        call("Running uninstall script", mock_channel),
+        call("Starting mamba uninstall", mock_channel),
+        call("Mamba uninstall complete", mock_channel),
         call('Uninstall completed. Restarting server...', mock_channel)
     ])
     assert "No Persistent store services found for: test_app" in caplog.messages
-    assert "uninstall still" in caplog.messages
 
 
 def test_uninstall_app_no_target_app(mocker, caplog, app_store_dir):
     mock_sn = mocker.patch('tethysapp.app_store.uninstall_handlers.send_uninstall_messages')
     mock_subprocess = mocker.patch('tethysapp.app_store.uninstall_handlers.subprocess')
-    mock_subprocess.Popen().stdout.readline.side_effect = ["uninstall still".encode('utf-8'),
-                                                           "Mamba Remove Complete\n".encode('utf-8')]
+    mock_subprocess.Popen().stdout.readline.side_effect = ["Running Mamba remove\n",
+                                                           "Transaction starting\n",
+                                                           "Transaction finished\n",
+                                                           "Mamba Remove Complete\n"]
     mocker.patch('tethysapp.app_store.uninstall_handlers.get_manage_path', return_value="manage_path")
     mocker.patch('tethysapp.app_store.uninstall_handlers.TethysApp.objects.filter', side_effect=[[]])
     mock_channel = MagicMock()
@@ -95,18 +103,21 @@ def test_uninstall_app_no_target_app(mocker, caplog, app_store_dir):
     mock_sn.assert_has_calls([
         call('Starting Uninstall. Please wait...', mock_channel),
         call('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', mock_channel),
-        call("uninstall still", mock_channel),
+        call("Running uninstall script", mock_channel),
+        call("Starting mamba uninstall", mock_channel),
+        call("Mamba uninstall complete", mock_channel),
         call('Uninstall completed. Restarting server...', mock_channel)
     ])
     assert "Couldn't find the target application for removal of databases. Continuing clean up" in caplog.messages
-    assert "uninstall still" in caplog.messages
 
 
 def test_uninstall_app_bad_setting(mocker, caplog, app_store_dir):
     mock_sn = mocker.patch('tethysapp.app_store.uninstall_handlers.send_uninstall_messages')
     mock_subprocess = mocker.patch('tethysapp.app_store.uninstall_handlers.subprocess')
-    mock_subprocess.Popen().stdout.readline.side_effect = ["uninstall still".encode('utf-8'),
-                                                           "Mamba Remove Complete\n".encode('utf-8')]
+    mock_subprocess.Popen().stdout.readline.side_effect = ["Running Mamba remove\n",
+                                                           "Transaction starting\n",
+                                                           "Transaction finished\n",
+                                                           "Mamba Remove Complete\n"]
     mocker.patch('tethysapp.app_store.uninstall_handlers.get_manage_path', return_value="manage_path")
     mock_setting = MagicMock()
     mock_setting.__str__.side_effect = ["setting1"]
@@ -126,19 +137,22 @@ def test_uninstall_app_bad_setting(mocker, caplog, app_store_dir):
     mock_sn.assert_has_calls([
         call('Starting Uninstall. Please wait...', mock_channel),
         call('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', mock_channel),
-        call("uninstall still", mock_channel),
+        call("Running uninstall script", mock_channel),
+        call("Starting mamba uninstall", mock_channel),
+        call("Mamba uninstall complete", mock_channel),
         call('Uninstall completed. Restarting server...', mock_channel)
     ])
     assert "bad_setting" in caplog.messages
     assert "Couldn't connect to database for removal. Continuing clean up" in caplog.messages
-    assert "uninstall still" in caplog.messages
 
 
 def test_uninstall_app_setting_not_assigned(mocker, caplog, app_store_dir):
     mock_sn = mocker.patch('tethysapp.app_store.uninstall_handlers.send_uninstall_messages')
     mock_subprocess = mocker.patch('tethysapp.app_store.uninstall_handlers.subprocess')
-    mock_subprocess.Popen().stdout.readline.side_effect = ["uninstall still".encode('utf-8'),
-                                                           "Mamba Remove Complete\n".encode('utf-8')]
+    mock_subprocess.Popen().stdout.readline.side_effect = ["Running Mamba remove\n",
+                                                           "Transaction starting\n",
+                                                           "Transaction finished\n",
+                                                           ""]
     mocker.patch('tethysapp.app_store.uninstall_handlers.get_manage_path', return_value="manage_path")
     mock_setting = MagicMock()
     mock_setting.__str__.side_effect = ["setting1"]
@@ -158,10 +172,11 @@ def test_uninstall_app_setting_not_assigned(mocker, caplog, app_store_dir):
     mock_sn.assert_has_calls([
         call('Starting Uninstall. Please wait...', mock_channel),
         call('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', mock_channel),
-        call("uninstall still", mock_channel),
+        call("Running uninstall script", mock_channel),
+        call("Starting mamba uninstall", mock_channel),
+        call("Mamba uninstall complete", mock_channel),
         call('Uninstall completed. Restarting server...', mock_channel)
     ])
-    assert "uninstall still" in caplog.messages
 
 
 def test_uninstall_app_PackagesNotFoundError(mocker, caplog, app_store_dir):
