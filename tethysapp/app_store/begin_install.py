@@ -11,6 +11,7 @@ from subprocess import call
 
 from .helpers import check_all_present, logger, send_notification
 from .resource_helpers import get_resource, get_app_instance_from_path
+from tethys_apps.base.workspace import TethysWorkspace
 
 
 def handle_property_not_present(prop):
@@ -92,9 +93,14 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
     if custom_settings:
         notification_method("Processing App's Custom Settings....", channel_layer)
         for setting in custom_settings:
+            default = setting.default
+            if isinstance(default, TethysWorkspace):
+                default = default.path
+
             setting = {"name": setting.name,
                        "description": setting.description,
-                       "default": str(setting.default),
+                       "required": setting.required,
+                       "default": str(default),
                        }
             custom_settings_json.append(setting)
 

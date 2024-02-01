@@ -18,6 +18,7 @@ const settingsHelper = {
         if (settingsData) {
             if (settingsData.length > 0) {
                 $("#skipConfigButton").click(function() {
+                    $(".setting_warning").hide()
                     ws.send(
                         JSON.stringify({
                             data: {
@@ -42,11 +43,13 @@ const settingsHelper = {
                 let formDataElement = $("#custom-settings-container").children("form")
                 settingsData.forEach((setting) => {
                     let defaultValue = setting.default ? setting.default : ""
+                    let requiredClass = setting.required ? "required_setting" : ""
                     let newElement = `
                     <div class="form-group">
-                        <label for="${setting.name}">${setting.name}</label>
-                        <input type="text" class="form-control" id="${setting.name}" value="${defaultValue}">
+                        <label for="${setting.name}">${setting.name}${setting.required ? "*": ""}</label>
+                        <input type="text" class="form-control ${requiredClass}" id="${setting.name}" value="${defaultValue}">
                         <p class="help-block">${setting.description}</p>
+                        <div id="${setting.name}_warningMessage" style="display:none;margin-top:10px;margin-bottom:10px" class="p-3 mb-2 bg-warning text-white setting_warning">This setting is required and must be filled to submit settings</div>
                     </div>`
                     formDataElement.append(newElement)
                 })
@@ -55,8 +58,10 @@ const settingsHelper = {
                     `<button type="submit" class="btn btn-success">Submit</button>`
                 )
                 formDataElement.submit(function(event) {
+                    $(".setting_warning").hide()
                     event.preventDefault()
                     let formData = { settings: {} }
+                    let has_errors = false
                     if ("app_py_path" in completeMessage) {
                         formData["app_py_path"] = completeMessage["app_py_path"]
                     }
@@ -64,9 +69,17 @@ const settingsHelper = {
                         .children("form")
                         .find(".form-control")
                         .each(function() {
+                            if ($(this).hasClass("required_setting") && $(this).val() == "") {
+                                let setting_name = $(this)[0].id
+                                $(`#${setting_name}_warningMessage`).show()
+                                has_errors = true
+                            }
                             formData.settings[$(this).attr("id")] = $(this).val()
                         })
-
+                    
+                    if (has_errors) {
+                        return
+                    }
                     ws.send(
                         JSON.stringify({
                             data: formData,
