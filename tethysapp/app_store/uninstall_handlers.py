@@ -6,7 +6,7 @@ from tethys_apps.models import TethysApp
 import subprocess
 import shutil
 import os
-from .helpers import logger, send_notification, get_github_install_metadata
+from .helpers import logger, send_notification, get_github_install_metadata, check_all_present
 from .git_install_handlers import clear_github_cache_list
 
 
@@ -36,8 +36,7 @@ def uninstall_app(data, channel_layer, app_workspace):
     manage_path = get_manage_path({})
     app_name = data['name']
 
-    send_uninstall_messages(
-        'Starting Uninstall. Please wait...', channel_layer)
+    send_uninstall_messages('Starting Uninstall. Please wait...', channel_layer)
 
     try:
         # Check if application had provisioned any Persistent stores and clear them out
@@ -49,8 +48,7 @@ def uninstall_app(data, channel_layer, app_workspace):
                 # If there is a db for this PS, drop it
                 try:
                     if setting.persistent_store_database_exists():
-                        logger.info(
-                            "Dropping Database for persistent store setting: " + str(setting))
+                        logger.info("Dropping Database for persistent store setting: " + str(setting))
                         setting.drop_persistent_store_database()
                 except TethysAppSettingNotAssigned:
                     pass
@@ -65,8 +63,7 @@ def uninstall_app(data, channel_layer, app_workspace):
         # Something wrong with the persistent store setting
         # Could not connect to the database
         logger.info(e)
-        logger.info(
-            "Couldn't connect to database for removal. Continuing clean up")
+        logger.info("Couldn't connect to database for removal. Continuing clean up")
 
     process = ['python', manage_path, 'tethys_app_uninstall', app_name, '-f']
 
@@ -75,8 +72,7 @@ def uninstall_app(data, channel_layer, app_workspace):
     except KeyboardInterrupt:
         pass
 
-    send_uninstall_messages(
-        'Tethys App Uninstalled. Running Conda/GitHub Cleanup...', channel_layer)
+    send_uninstall_messages('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', channel_layer)
 
     try:
         # Running the conda install as a subprocess to get more visibility into the running process
@@ -87,17 +83,22 @@ def uninstall_app(data, channel_layer, app_workspace):
 
         # Running this sub process, in case the library isn't installed, triggers a restart.
         p = subprocess.Popen(uninstall_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        should_not_stop = True
-        while should_not_stop:
+        while True:
             output = p.stdout.readline()
-            if output.decode('utf-8') == 'Mamba Remove Complete\n':
+            if output == '':
                 break
             if output:
                 # Checkpoints for the output
-                str_output = output.decode('utf-8')
-
-                send_uninstall_messages(str_output, channel_layer)
+                str_output = str(output.strip())
                 logger.info(str_output)
+                if (check_all_present(str_output, ['Running Mamba remove'])):
+                    send_uninstall_messages("Running uninstall script", channel_layer)
+                if (check_all_present(str_output, ['Transaction starting'])):
+                    send_uninstall_messages("Starting mamba uninstall", channel_layer)
+                if (check_all_present(str_output, ['Transaction finished'])):
+                    send_uninstall_messages("Mamba uninstall complete", channel_layer)
+                if (check_all_present(str_output, ['Mamba Remove Complete'])):
+                    break
 
     except PackagesNotFoundError:
         # This was installed using GitHub. Try to clean out
