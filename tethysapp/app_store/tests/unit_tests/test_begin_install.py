@@ -57,7 +57,7 @@ def test_detect_app_dependencies_pip_settings(mocker, tethysapp_base_with_applic
     mock_subprocess.Popen().stdout.readline.side_effect = [""]
     mock_tethysapp = mocker.patch('tethysapp.app_store.begin_install.tethysapp')
     mock_app = MagicMock()
-    mock_setting = MagicMock(default=True, description="description")
+    mock_setting = MagicMock(default="some_value", description="description", required=True)
     mock_setting.name = "name"
     mock_app.custom_settings.return_value = [mock_setting]
     mocker.patch('tethysapp.app_store.begin_install.get_app_instance_from_path', return_value=mock_app)
@@ -67,7 +67,45 @@ def test_detect_app_dependencies_pip_settings(mocker, tethysapp_base_with_applic
     detect_app_dependencies(app_name, channel_layer, mock_ws)
 
     expected_data_json = {
-        "data": [{"name": "name", "description": "description", "default": "True"}],
+        "data": [{"name": "name", "description": "description", "required": True, "default": "some_value"}],
+        "returnMethod": "set_custom_settings",
+        "jsHelperFunction": "processCustomSettings",
+        "app_py_path": str(tethysapp_base_with_application_files / "tethysapp")
+    }
+    mock_ws.assert_has_calls([
+        call("Running PIP install....", channel_layer),
+        call("PIP install completed", channel_layer),
+        call("Processing App's Custom Settings....", channel_layer),
+        call(expected_data_json, channel_layer)
+    ])
+    assert mock_subprocess.Popen().stdout.readline.call_count == 1
+
+
+def test_detect_app_dependencies_pip_settings_workspace_default(mocker, tethysapp_base_with_application_files,
+                                                                tmp_path):
+    app_name = "test_app"
+    channel_layer = MagicMock()
+    mock_ws = MagicMock()
+    mocker.patch('tethysapp.app_store.begin_install.call')
+    mocker.patch('tethysapp.app_store.begin_install.cache')
+    mocker.patch('tethysapp.app_store.begin_install.importlib')
+    mock_subprocess = mocker.patch('tethysapp.app_store.begin_install.subprocess')
+    mock_subprocess.Popen().stdout.readline.side_effect = [""]
+    mock_tethysapp = mocker.patch('tethysapp.app_store.begin_install.tethysapp')
+    mock_app = MagicMock()
+    mock_workspace = MagicMock(path=str(tmp_path))
+    mocker.patch('tethysapp.app_store.begin_install.isinstance', return_value=True)
+    mock_setting = MagicMock(default=mock_workspace, description="description", required=True)
+    mock_setting.name = "name"
+    mock_app.custom_settings.return_value = [mock_setting]
+    mocker.patch('tethysapp.app_store.begin_install.get_app_instance_from_path', return_value=mock_app)
+
+    mock_tethysapp.__path__ = [str(tethysapp_base_with_application_files / "tethysapp")]
+
+    detect_app_dependencies(app_name, channel_layer, mock_ws)
+
+    expected_data_json = {
+        "data": [{"name": "name", "description": "description", "required": True, "default": str(tmp_path)}],
         "returnMethod": "set_custom_settings",
         "jsHelperFunction": "processCustomSettings",
         "app_py_path": str(tethysapp_base_with_application_files / "tethysapp")
