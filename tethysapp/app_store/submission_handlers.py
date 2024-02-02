@@ -565,7 +565,6 @@ def process_branch(install_data, channel_layer, app_workspace):
     files_changed = False
     app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
     repo = git.Repo(app_github_dir)
-    setup_path = get_setup_path(app_github_dir)
 
     # 2. Get sensitive information for store
     conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]
@@ -580,6 +579,7 @@ def process_branch(install_data, channel_layer, app_workspace):
     origin = repo.remote(name='origin')
     repo.git.checkout(branch)
     origin.pull()
+    setup_path = get_setup_path(app_github_dir)
     setup_path_data = parse_setup_file(setup_path)
     current_version = generate_current_version(setup_path_data)
 
