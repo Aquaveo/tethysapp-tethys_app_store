@@ -16,18 +16,18 @@
                     <label for="notifEmail">Notification Email</label>
                     <input type="text" class="form-control" id="notifEmail" placeholder="Email Address to notify on build">
                 </div>
-                <div id="notifEmail_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white">A email for notifications must be provided</div>
-                <div id="{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white"></div>
+                <div id="notifEmail_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysApp_failMessage">A email for notifications must be provided</div>
+                <br>
                 <div class="form-group">
                     <label for="githubURL">GitHub URL</label>
                     <input type="text" class="form-control" id="githubURL" placeholder="GitHub Repository URL">
                 </div>
-                <div id="githubURL_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white">A github url must be provided</div>
-
+                <div id="githubURL_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysApp_failMessage">A github url must be provided</div>
+                <br>
                 <div id="availableStores">
                     <p class="title-class">Available Stores</p>
                     
-                    <div id="channel_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white">At least one channel must be selected</div>
+                    <div id="channel_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysApp_failMessage">At least one channel must be selected</div>
                     {% for store in storesData %}
                         <div class="row_store_submission">
                             <div class="dropdown-check-list-channels">
@@ -68,12 +68,12 @@
                                 <div id="{{ store.conda_channel }}_successMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-success text-white">
                                     <p>Your Tethys Application has been successfully queued for processing.You will be notified via email when you application is available on the Tethys App Store. <span id="{{ store.conda_channel }}_SuccessLinkMessage">Click <span id="{{ store.conda_channel }}_addSuccessLink">here</span> to follow the processing logs and inspect it for errors.</span></p>
                                 </div>
-                                <div id="{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white"></div>
+                                <div id="{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysApp_failMessage"></div>
                             </div>
                         </div>
                     {% endfor %}
                 </div> 
-                
+                <div id="{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysApp_failMessage"></div>
                 <button class="btn btn-primary pull-right mt-3" id="fetchRepoButton" onClick="getRepoForAdd()"> Fetch Repository </button>
                 <!-- <div id="branchesList"></div> -->
                 <button class="btn btn-primary pull-right" style="display:none;" id="processBranchButton"> Submit </button>

@@ -11,7 +11,8 @@ var installedApps = {}
 var updateData = {}
 var tethysVersion = ""
 var storesDataList = []
-var originalAddModal = ""
+var originalTethysAddModal = ""
+var originalProxyAddModal = ""
 // End Vars
 const settingsHelper = {
     processCustomSettings: (settingsData, n_content, completeMessage, ws) => {
@@ -535,7 +536,8 @@ $(document).ready(function() {
         sendNotification("install_complete", n_content)
     })
     
-    originalAddModal = $('#add-tethysapp-modal').clone()
+    originalTethysAddModal = $('#add-tethysapp-modal').clone()
+    originalProxyAddModal = $('#add-proxyapp-modal').clone()
 
     $("#doneInstallButton").click(() => reloadCacheRefresh())
     $("#doneUninstallButton").click(() => reloadCacheRefresh())

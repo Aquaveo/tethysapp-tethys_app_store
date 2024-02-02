@@ -24,8 +24,8 @@
         <i class="bi bi-plus-lg"></i>
     </a>
     <ul class="dropdown-menu header_dropdown" aria-labelledby="addAppMenuButton">
-        <li><a class="dropdown-item" data-bs-toggle="modal" style="color:black" data-bs-target="#add-tethysapp-modal">Add Tethys App</a></li>
-        <li><a class="dropdown-item" data-bs-toggle="modal" style="color:black" data-bs-target="#add-proxyapp-modal">Add Proxy App</a></li>
+        <li><a class="dropdown-item" data-bs-toggle="modal" style="color:black" data-bs-target="#add-tethysapp-modal">Submit Tethys App to Store</a></li>
+        <li><a class="dropdown-item" data-bs-toggle="modal" style="color:black" data-bs-target="#add-proxyapp-modal">Add Proxy App to Portal</a></li>
     </ul>
 </div>
 <div class="header-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Refresh Apps">
@@ -110,6 +110,7 @@
 {% include "app_store/modals/services.html" %}
 {% include "app_store/modals/serverOffline.html" %}
 {% include "app_store/modals/addToWarehouse.html" %}
+{% include "app_store/modals/addProxyApp.html" %}
 {% include "app_store/modals/uninstall.html" %}
 {% include "app_store/modals/update.html" %}
 {% endblock %}

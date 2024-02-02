@@ -148,10 +148,9 @@ const addModalHelper = {
   }
 }
 
-const getModalInput = () => {
-  let githubURL = $("#githubURL")[0].value
-
-  let notifEmail = $("#notifEmail")[0].value
+const getTethysAddModalInput = () => {
+  let githubURL = $("#githubURL").val()
+  let notifEmail = $("#notifEmail").val()
 
   let active_stores = []
   availableStores = $("#availableStores").children(".row_store_submission")
@@ -179,7 +178,7 @@ const getModalInput = () => {
   return [githubURL, notifEmail, active_stores]
 }
 
-const disableModalInput = (disable_email=false, disable_gihuburl=false, disable_channels=false, disable_labels=false, disable_branches=false) => {
+const disableTethysAppModalInput = (disable_email=false, disable_gihuburl=false, disable_channels=false, disable_labels=false, disable_branches=false) => {
 
   if (disable_email) {
     $("#notifEmail").prop("disabled", true)
@@ -221,12 +220,102 @@ const disableModalInput = (disable_email=false, disable_gihuburl=false, disable_
   }
 }
 
+const getProxyAddModalInput = () => {
+  let proxyAppName = $("#proxyAppName").val()
+  let proxyEndpoint = $("#proxyEndpoint").val()
+  let proxyDescription = $("#proxyDescription").val()
+  let proxyLogo = $("#proxyLogo").val()
+  let proxyTags = []
+  $("#proxyTagList").find(".tag-item").each(function () {
+    let tag = this.innerText
+    tag = tag.substring(0, tag.length-1)
+    proxyTags.push(tag)
+  })
+  let proxyEnabled = $("#proxyEnabled")[0].checked
+  let proxyShown = $("#proxyShown")[0].checked
+
+  return [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown]
+}
+
+const disableProxyAppModalInput = () => {
+
+  $("#proxyAppName").prop("disabled", true)
+  $("#proxyAppName").css('opacity', '.5');
+
+  $("#proxyEndpoint").prop("disabled", true)
+  $("#proxyEndpoint").css('opacity', '.5');
+
+  $("#proxyDescription").prop("disabled", true)
+  $("#proxyDescription").css('opacity', '.5');
+
+  $("#proxyLogo").prop("disabled", true)
+  $("#proxyLogo").css('opacity', '.5');
+
+  $("#proxyTags").prop("disabled", true)
+  $("#proxyTags").css('opacity', '.5');
+
+  $(".tag-item-delete").each(function() {
+    $(this).prop("disabled", true)
+    $(this).css('opacity', '.5');
+  })
+
+  $("#proxyEnabled").prop("disabled", true)
+  $("#proxyEnabled").css('opacity', '.5');
+
+  $("#proxyShown").prop("disabled", true)
+  $("#proxyShown").css('opacity', '.5');
+}
+
+const createProxyApp = () => {
+  $(".proxyApp_failMessage").hide()
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyAddModalInput()
+
+  let errors = false
+  if (!proxyAppName) {
+    $("#proxyAppName_failMessage").show()
+    errors = true
+  }
+
+  if (!proxyEndpoint) {
+    $("#proxyEndpoint_failMessage").show()
+    errors = true
+  }
+
+  if (!proxyDescription) {
+    $("#proxyDescription_failMessage").show()
+    errors = true
+  }
+
+  if (!proxyLogo) {
+    $("#proxyLogo_failMessage").show()
+    errors = true
+  }
+
+  if (errors) {
+    return
+  }
+
+  disableProxyAppModalInput()
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              proxyAppName: proxyAppName,
+              proxyEndpoint: proxyEndpoint, 
+              proxyDescription: proxyDescription, 
+              proxyLogo: proxyLogo, 
+              proxyTags: proxyTags, 
+              proxyEnabled: proxyEnabled, 
+              proxyShown: proxyShown
+          },
+          type: `create_proxy_app`
+      })
+  )
+}
+
 const getRepoForAdd = () => {
-  $("#notifEmail_failMessage").hide()
-  $("#githubURL_failMessage").hide()
   $(".label_failMessage").hide()
-  $('#channel_failMessage').hide()
-  let [githubURL, notifEmail, active_stores] = getModalInput()
+  $(".tethysApp_failMessage").hide()
+  let [githubURL, notifEmail, active_stores] = getTethysAddModalInput()
 
   let errors = false
   if (!githubURL) {
@@ -258,7 +347,7 @@ const getRepoForAdd = () => {
   $("#loaderEllipsis").show()
   $("#fetchRepoButton").prop("disabled", true)
   $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
-  disableModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
+  disableTethysAppModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
   notification_ws.send(
       JSON.stringify({
           data: {
@@ -295,6 +384,37 @@ $(document).on('change', ".conda-channel-list-item", function() {
 
 $(document).on('hidden.bs.modal', '#add-tethysapp-modal', function() {
   $('#add-tethysapp-modal').remove();
-  var originalAddModalClone = originalAddModal.clone();
-  $('body').append(originalAddModalClone);
+  var originalTethysAddModalClone = originalTethysAddModal.clone();
+  $('body').append(originalTethysAddModalClone);
+});
+
+$(document).on('hidden.bs.modal', '#add-proxyapp-modal', function() {
+  $('#add-proxyapp-modal').remove();
+  var originalProxyAddModalClone = originalProxyAddModal.clone();
+  $('body').append(originalProxyAddModalClone);
+});
+
+
+$(document).on('keydown', '#proxyTags', function(event) {
+  const tags = $("#proxyTagList")[0]; 
+
+  if (event.key === 'Enter' || event.key === 'Tab') { 
+      event.preventDefault(); 
+      const tag = document.createElement('li');
+      const tagContent = this.value.trim(); 
+      if (tagContent !== '') {
+        tag.innerText = tagContent;
+        tag.classList.add("tag-item");
+        tag.innerHTML += '<button class="tag-item-delete">X</button>'; 
+        tags.appendChild(tag);
+        this.value = ''; 
+    } 
+  } 
+});
+
+
+$(document).on('click', '#proxyTagList', function(event) {
+  if (event.target.classList.contains('tag-item-delete')) { 
+    event.target.parentNode.remove(); 
+  } 
 });
