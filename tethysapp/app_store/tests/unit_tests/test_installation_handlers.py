@@ -19,7 +19,7 @@ def test_get_service_options(mocker):
     expected_services = [{"name": "service_setting", "id": 1}]
     assert services == expected_services
     expected_args = Namespace(spatial=True)
-    assert mock_services_list_command.called_with(expected_args)
+    mock_services_list_command.asserrt_called_with(expected_args)
 
 
 def test_restart_server_dev_server(mocker, caplog, tmp_path):

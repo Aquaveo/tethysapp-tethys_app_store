@@ -251,6 +251,9 @@ def get_conda_stores(active_only=False, conda_channels="all", sensitive_info=Fal
         available_stores = [store for store in available_stores if store['conda_channel'] in conda_channels]
 
     for store in available_stores:
+        if isinstance(store['conda_labels'], str):
+            store['conda_labels'] = store['conda_labels'].split(",")
+
         if not sensitive_info:
             del store['github_token']
             del store['github_organization']

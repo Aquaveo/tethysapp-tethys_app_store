@@ -34,7 +34,6 @@ const addModalHelper = {
     $("#loaderEllipsis").hide()
     $("#fetchRepoButton").hide()
     $("#loadingTextAppSubmit").text("")
-    disableModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
 
     if (!("branches" in branchesData)) {
       sendNotification(
@@ -259,7 +258,7 @@ const getRepoForAdd = () => {
   $("#loaderEllipsis").show()
   $("#fetchRepoButton").prop("disabled", true)
   $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
-  
+  disableModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
   notification_ws.send(
       JSON.stringify({
           data: {
