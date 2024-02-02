@@ -3,6 +3,7 @@ import shutil
 import os
 import filecmp
 from unittest.mock import call, MagicMock
+from pytest_lazy_fixtures import lf
 from github.GithubException import UnknownObjectException, BadCredentialsException
 from tethysapp.app_store.submission_handlers import (update_anaconda_dependencies, get_github_repo,
                                                      initialize_local_repo_for_active_stores, initialize_local_repo,
@@ -89,7 +90,7 @@ def test_repo_does_not_exist(mocker, caplog):
 
 @pytest.mark.parametrize(
     "stores, expected_call_count", [
-        (pytest.lazy_fixture("all_active_stores"), 2)])
+        (lf("all_active_stores"), 2)])
 def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mocker):
     install_data = {
         "url": "https://github.com/notrealorg/fakeapp",
@@ -116,33 +117,30 @@ def test_initialize_local_repo_fresh(store, tmp_path, mocker):
     mock_branch1.name = 'origin/commit1'
     mock_branch2 = MagicMock()
     mock_branch2.name = 'origin/commit2'
-    mock_git = mocker.patch('git.Repo.init', side_effect=[mock_repo])
+    mocker.patch('git.Repo.init', side_effect=[mock_repo])
     mock_ws = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
 
     mock_repo.remote().refs = [mock_branch1, mock_branch2]
     initialize_local_repo(github_url, active_store, channel_layer, app_workspace)
 
     expected_github_dur = tmp_path / "gitsubmission" / active_store['conda_channel']
-    expected_app_github_dur = expected_github_dur / "fakeapp"
     assert expected_github_dur.is_dir()
 
-    mock_git.create_remote.called_with(['origin', github_url])
-    mock_git.create_remote().fetch.called_once()
+    mock_repo.create_remote.assert_called_with('origin', github_url)
+    mock_repo.create_remote().fetch.assert_called_once()
 
     expected_data_json = {
         "data": {
             "branches": ["commit1", "commit2"],
-            "github_dir": expected_app_github_dur,
+            'app_name': 'fakeapp',
             "conda_channel": active_store['conda_channel'],
-            "github_token": active_store['github_token'],
-            "conda_labels": active_store['conda_labels'],
-            "github_organization": active_store['github_organization']
+            "conda_labels": active_store['conda_labels']
         },
         "jsHelperFunction": "showBranches",
         "helper": "addModalHelper"
     }
 
-    mock_ws.called_with([expected_data_json, channel_layer])
+    mock_ws.assert_called_with(expected_data_json, channel_layer)
 
 
 def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
@@ -159,7 +157,7 @@ def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
     mock_branch1.name = 'origin/commit1'
     mock_branch2 = MagicMock()
     mock_branch2.name = 'origin/commit2'
-    mock_git = mocker.patch('git.Repo.init', side_effect=[mock_repo])
+    mocker.patch('git.Repo.init', side_effect=[mock_repo])
     mock_ws = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
 
     mock_repo.remote().refs = [mock_branch1, mock_branch2]
@@ -167,23 +165,21 @@ def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
 
     assert expected_github_dur.is_dir()
 
-    mock_git.create_remote.called_with(['origin', github_url])
-    mock_git.create_remote().fetch.called_once()
+    mock_repo.create_remote.assert_called_with('origin', github_url)
+    mock_repo.create_remote().fetch.assert_called_once()
 
     expected_data_json = {
         "data": {
             "branches": ["commit1", "commit2"],
-            "github_dir": expected_app_github_dur,
+            'app_name': 'fakeapp',
             "conda_channel": active_store['conda_channel'],
-            "github_token": active_store['github_token'],
-            "conda_labels": active_store['conda_labels'],
-            "github_organization": active_store['github_organization']
+            "conda_labels": active_store['conda_labels']
         },
         "jsHelperFunction": "showBranches",
         "helper": "addModalHelper"
     }
 
-    mock_ws.called_with([expected_data_json, channel_layer])
+    mock_ws.assert_called_with(expected_data_json, channel_layer)
 
 
 @pytest.mark.parametrize(

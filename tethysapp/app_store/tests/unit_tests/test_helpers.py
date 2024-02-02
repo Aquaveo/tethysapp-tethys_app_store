@@ -1,7 +1,7 @@
 import pytest
 import shutil
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 from tethysapp.app_store.helpers import (parse_setup_file, get_conda_stores, check_all_present, run_process,
                                          send_notification, apply_template, get_github_install_metadata,
                                          get_override_key, get_color_label_dict, get_setup_path)
@@ -48,14 +48,16 @@ def test_run_process(mocker, caplog):
 
 
 def test_send_notification(mocker):
-    channel_layer = MagicMock(group_send="some_function")
+    mock_group_send = MagicMock()
+    channel_layer = MagicMock(group_send=mock_group_send)
     mock_async_to_sync = mocker.patch('tethysapp.app_store.helpers.async_to_sync')
     msg = "testing functionality"
 
     send_notification(msg, channel_layer)
 
-    expected_args = ["notifications", {"type": "install_notifications", "message": msg}]
-    assert mock_async_to_sync.some_function.called_once_with(expected_args)
+    expected_args = ("notifications", {"type": "install_notifications", "message": msg})
+    assert call(mock_group_send) == mock_async_to_sync.mock_calls[0]
+    assert expected_args in mock_async_to_sync.mock_calls[-1]
 
 
 def test_apply_template(app_files_dir, tmp_path):
@@ -153,6 +155,7 @@ def test_get_conda_stores(mocker, store):
     mock_app = mocker.patch('tethysapp.app_store.helpers.app')
     encryption_key = 'fake_encryption_key'
     active_store = store('active_default')
+    active_store['conda_labels'] = "main"
     inactive_store = store("inactive_not_default", default=False, active=False)
     mock_app.get_custom_setting.side_effect = [{'stores': [active_store, inactive_store]}, encryption_key]
 
