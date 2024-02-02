@@ -19,10 +19,14 @@
         <i class="bi bi-question-circle-fill"></i>
     </a>
 </div>
-<div class="header-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Add App">
-    <a data-bs-toggle="modal" data-bs-target="#add-app-modal">
+<div class="header-button" data-bs-toggle="tooltip" data-bs-placement="right" title="Add App">
+    <a  class="btn btn-secondary dropdown-toggle" type="button" id="addAppMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
         <i class="bi bi-plus-lg"></i>
     </a>
+    <ul class="dropdown-menu header_dropdown" aria-labelledby="addAppMenuButton">
+        <li><a class="dropdown-item" data-bs-toggle="modal" style="color:black" data-bs-target="#add-tethysapp-modal">Add Tethys App</a></li>
+        <li><a class="dropdown-item" data-bs-toggle="modal" style="color:black" data-bs-target="#add-proxyapp-modal">Add Proxy App</a></li>
+    </ul>
 </div>
 <div class="header-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Refresh Apps">
     <a href="#" onclick="reloadCacheRefresh()">
@@ -49,7 +53,7 @@
 </div>
 
 <div class="card card-default tethys-platform-version">
-    <div class="card-header" id="tethysPlatformVersionHeader" style="font-weight:700"></div>
+    <div class="card-header" id="tethysPlatformVersionHeader" style="font-weight:700">Tethys Platform Version {{ tethysVersion }}</div>
 </div>
 {% if show_stores %}
 

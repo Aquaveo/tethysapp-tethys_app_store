@@ -535,7 +535,7 @@ $(document).ready(function() {
         sendNotification("install_complete", n_content)
     })
     
-    originalAddModal = $('#add-app-modal').clone()
+    originalAddModal = $('#add-tethysapp-modal').clone()
 
     $("#doneInstallButton").click(() => reloadCacheRefresh())
     $("#doneUninstallButton").click(() => reloadCacheRefresh())

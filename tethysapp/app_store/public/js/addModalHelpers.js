@@ -293,8 +293,8 @@ $(document).on('change', ".conda-channel-list-item", function() {
   }
 })
 
-$(document).on('hidden.bs.modal', '#add-app-modal', function() {
-  $('#add-app-modal').remove();
+$(document).on('hidden.bs.modal', '#add-tethysapp-modal', function() {
+  $('#add-tethysapp-modal').remove();
   var originalAddModalClone = originalAddModal.clone();
   $('body').append(originalAddModalClone);
 });

@@ -593,7 +593,6 @@ window.operateEvents = {
 }
 
 function initMainTables() {
-  $("#tethysPlatformVersionHeader").text("Tethys Platform Version " + tethysVersion)
   $("#installedAppsTable").bootstrapTable("destroy")
 
   $("#installedAppsTable").bootstrapTable({ data: installedApps })
@@ -607,35 +606,11 @@ function initMainTables() {
   $(".main-app-list").removeClass("hidden")
   $(".installed-app-list").removeClass("hidden")
   create_destroy_events_table()
-  // let dropdowns = document.querySelectorAll('.dropdown-toggle')
-  // dropdowns.forEach((dd)=>{
-  //     dd.removeEventListener('click',eventClickDropdown)
-  //     dd.addEventListener('click', eventClickDropdown)
-
-    //   dd.addEventListener('show.bs.dropdown', function (e) {
-    //     // console.log(e)
-    //     // var el = this;
-    //     //make work here to make it dissapear
-    //     // el.style.display = el.style.display==='block'?'none':'block'
-
-    //  })
-
-    //  dd.addEventListener('hide.bs.dropdown', function (e) {
-    //     // const dropdownParent = dd.closest('.btn-group');
-    //     // dropdownParent.classList.remove('position-static')
-    //  })
-  // })
 
   $('#incompatibleAppsTable').on('post-body.bs.table', function (data) {
       create_destroy_events_table();
   
   })
-  // $("#incompatibleAppsTable").bootstrapTable({
-  //   onPageChange: function (number, size) {
-
-  //   }
-  // })
-
 }
 
 function create_destroy_events_table(){
@@ -647,9 +622,10 @@ function create_destroy_events_table(){
 }
 
 function eventClickDropdown(e) {
-
   var el = this.nextElementSibling
-  el.style.display = el.style.display==='block'?'none':'block'
+  if (!el.classList.contains("header_dropdown")) {
+    el.style.display = el.style.display==='block'?'none':'block'
+  }
 }
 
 function eventClickDropdownUpdate(e) {
