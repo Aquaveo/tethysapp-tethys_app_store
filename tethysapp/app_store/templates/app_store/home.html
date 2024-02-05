@@ -99,6 +99,8 @@
 {% include "app_store/compatibleAppsTable.html" %}
 {% include "app_store/incompatibleAppsTable.html" %}
 {% include "app_store/installedAppsTable.html" %}
+{% include "app_store/installedProxyAppsTable.html" %}
+
 
 {% endblock %}
 
@@ -111,6 +113,7 @@
 {% include "app_store/modals/serverOffline.html" %}
 {% include "app_store/modals/addToWarehouse.html" %}
 {% include "app_store/modals/addProxyApp.html" %}
+{% include "app_store/modals/updateProxyApp.html" %}
 {% include "app_store/modals/uninstall.html" %}
 {% include "app_store/modals/update.html" %}
 {% endblock %}
@@ -132,6 +135,7 @@
     {{ storesData|json_script:"storesDataList" }}
     {{ availableApps|json_script:"availableAppsList" }}
     {{ installedApps|json_script:"installedAppsList" }}
+    {{ proxyApps|json_script:"proxyAppsList" }}
     {{ incompatibleApps|json_script:"incompatibleAppsList" }}
     {{ tethysVersion|json_script:"tethysVersion" }}
 <script src="https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.js"></script>

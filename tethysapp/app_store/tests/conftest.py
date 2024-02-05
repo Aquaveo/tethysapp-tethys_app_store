@@ -22,9 +22,27 @@ class TestApp(TethysAppBase):
         return [mock_setting]
 
 
+class ProxyApp:
+    name = "test proxy app"
+    description = "proxy app description"
+    endpoint = "https_endpoint"
+    logo_url = "logo_url.png"
+    tags = "tag1,tag2"
+    enabled = True
+    show_in_apps_library = True
+
+    def save(self):
+        pass
+
+
 @pytest.fixture()
 def tethysapp():
     return TestApp
+
+
+@pytest.fixture()
+def proxyapp():
+    return ProxyApp
 
 
 @pytest.fixture()
@@ -47,6 +65,19 @@ def test_files_dir():
     app_files_dir = current_dir / "files"
 
     return app_files_dir
+
+
+@pytest.fixture()
+def proxy_app_install_data():
+    return {
+        'app_name': 'test proxy app',
+        'endpoint': 'https://google.com',
+        'description': 'This is a test proxy app',
+        'logo_url': 'logo_url.png',
+        'tags': ['tag1', 'tag2', 'tag3'],
+        'enabled': True,
+        'show_in_apps_library': True
+    }
 
 
 @pytest.fixture

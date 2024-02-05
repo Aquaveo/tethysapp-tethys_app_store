@@ -221,6 +221,14 @@ function addHtmlForUpdateApp(row){
   }
   return html_str
 }
+
+function ProxyAppActionFormatter(value, row, index) {
+  let ProxyApp = row["name"]
+  let deleteButton =  `<button type="button" id="${ProxyApp}_deleteProxy" style="margin-left:5px" class="custom-label label-color-danger proxyAppDelete">Delete</button>`
+  let updateButton =  `<button type="button" id="${ProxyApp}_updateProxy" style="margin-left:5px" class="custom-label label-color-warning proxyAppUpdate">Update</button>`
+  return deleteButton + updateButton
+}
+
 function mergedOperateFormatter(value, row, index){
 
   var html_str = `<div class="store_label_val">`
@@ -516,6 +524,11 @@ window.operateEvents = {
     $("#uninstall-app-modal").modal("show")
   },
 
+  "click .deleteProxyApp": function(e, value, row, index) {
+    let ProxyApp = row["name"]
+    console.log(ProxyApp)
+  },
+
   "click .update": function(e, value, row, index) {
     let n_content = $("#update-notices .lead")
     // Find The installed App's version
@@ -596,6 +609,7 @@ function initMainTables() {
   $("#installedAppsTable").bootstrapTable("destroy")
 
   $("#installedAppsTable").bootstrapTable({ data: installedApps })
+  $("#installedProxyAppsTable").bootstrapTable({ data: proxyApps })
   $("#mainAppsTable").bootstrapTable("destroy")
   $("#mainAppsTable").bootstrapTable({ data: availableApps })
   $("#incompatibleAppsTable").bootstrapTable("destroy")

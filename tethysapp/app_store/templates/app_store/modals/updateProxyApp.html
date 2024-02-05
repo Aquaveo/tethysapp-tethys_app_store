@@ -1,16 +1,15 @@
 {% load static %}
-<div class="modal" id="add-proxyapp-modal" style="z-index:2000;" tabindex="-1" role="dialog" aria-labelledby="add-proxyapp-modal-label">
+<div class="modal" id="update-proxyapp-modal" style="z-index:2000;" tabindex="-1" role="dialog" aria-labelledby="update-proxyapp-modal-label">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="add-proxyapp-modal-label">Create a proxy app for the tethys portal</h5>
+                <h5 class="modal-title" id="update-proxyapp-modal-label">Update Proxy App</h5>
             </div>
             <div class="modal-body" id="add-app-container">
                 <div>
                     <p>
-                        The following form can be used to create a Tethys proxy app. Proxy apps are links to external 
-                        web applications or websites. They are represented in the App Library page with an app tile 
-                        just like native Tethys Apps.
+                        The following form can be used to Update a Tethys proxy app. Current metadata is prefilled into
+                        the form.
                     </p>
                     <p> 
                         After submitting the form, the page will reload automatically to add the new proxy app to the
@@ -19,30 +18,30 @@
                 </div>
                 <div class="form-group">
                     <label for="proxyAppName">Proxy App Name*</label>
-                    <input type="text" class="form-control" id="proxyAppName" placeholder="Proxy App Name">
+                    <input type="text" class="form-control" id="proxyAppName"disabled>
                 </div>
                 <div id="proxyAppName_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white proxyApp_failMessage">A name of the proxy app must be provided</div>
                 <br>
                 <div class="form-group">
                     <label for="proxyEndpoint">Proxy Endpoint*</label>
-                    <input type="text" class="form-control" id="proxyEndpoint" placeholder="https://myproxyapp.com">
+                    <input type="text" class="form-control" id="proxyEndpoint">
                 </div>
                 <div id="proxyEndpoint_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white proxyApp_failMessage">A endpoint for the proxy app must be provided</div>
                 <br>
                 <div class="form-group">
                     <label for="proxyDescription">Proxy App Description</label>
-                    <input type="text" class="form-control" id="proxyDescription" placeholder="This is a proxy app">
+                    <input type="text" class="form-control" id="proxyDescription">
                 </div>
                 <br>
                 <div class="form-group">
                     <label for="proxyLogo">Proxy App Logo URL</label>
-                    <input type="text" class="form-control" id="proxyLogo" placeholder="https://the-logo-of-myproxy-app.png">
+                    <input type="text" class="form-control" id="proxyLogo">
                 </div>
                 <br>
                 <div class="form-group">
                     <label for="proxyTags">Proxy App Tags</label>
                     <div class="tags-input">
-                        <input type="text" class="form-control" id="proxyTags" placeholder="tag">
+                        <input type="text" class="form-control" id="proxyTags">
                         <ul id="proxyTagList"></ul>
                     </div>
                 </div>
@@ -58,7 +57,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true"> Cancel </button>
-                <button class="btn btn-success pull-right" style="margin-top:10px;" onClick="createProxyApp()"> Create Proxy App </button>
+                <button class="btn btn-success pull-right" style="margin-top:10px;" onClick="UpdateProxyApp()"> Update Proxy App </button>
             </div>
         </div>
     </div>

@@ -504,6 +504,7 @@ $(document).ready(function() {
     availableApps = JSON.parse(document.getElementById('availableAppsList').textContent);
     installedApps = JSON.parse(document.getElementById('installedAppsList').textContent);
     incompatibleApps = JSON.parse(document.getElementById('incompatibleAppsList').textContent);
+    proxyApps = JSON.parse(document.getElementById('proxyAppsList').textContent);
     tethysVersion = JSON.parse(document.getElementById('tethysVersion').textContent);
     
     $("#mainAppLoader").hide()

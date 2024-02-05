@@ -220,55 +220,56 @@ const disableTethysAppModalInput = (disable_email=false, disable_gihuburl=false,
   }
 }
 
-const getProxyAddModalInput = () => {
-  let proxyAppName = $("#proxyAppName").val()
-  let proxyEndpoint = $("#proxyEndpoint").val()
-  let proxyDescription = $("#proxyDescription").val()
-  let proxyLogo = $("#proxyLogo").val()
+const getProxyModalInput = (modal_type) => {
+  let ProxyAppModal = $(`#${modal_type}-proxyapp-modal`)
+  let proxyAppName = ProxyAppModal.find("#proxyAppName").val()
+  let proxyEndpoint = ProxyAppModal.find("#proxyEndpoint").val()
+  let proxyDescription = ProxyAppModal.find("#proxyDescription").val()
+  let proxyLogo = ProxyAppModal.find("#proxyLogo").val()
   let proxyTags = []
-  $("#proxyTagList").find(".tag-item").each(function () {
+  ProxyAppModal.find("#proxyTagList").find(".tag-item").each(function () {
     let tag = this.innerText
     tag = tag.substring(0, tag.length-1)
     proxyTags.push(tag)
   })
-  let proxyEnabled = $("#proxyEnabled")[0].checked
-  let proxyShown = $("#proxyShown")[0].checked
+  let proxyEnabled = ProxyAppModal.find("#proxyEnabled")[0].checked
+  let proxyShown = ProxyAppModal.find("#proxyShown")[0].checked
 
   return [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown]
 }
 
-const disableProxyAppModalInput = () => {
+const disableProxyAppModalInput = (modal_type) => {
+  let ProxyAppModal = $(`#${modal_type}-proxyapp-modal`)
+  ProxyAppModal.find("#proxyAppName").prop("disabled", true)
+  ProxyAppModal.find("#proxyAppName").css('opacity', '.5');
 
-  $("#proxyAppName").prop("disabled", true)
-  $("#proxyAppName").css('opacity', '.5');
+  ProxyAppModal.find("#proxyEndpoint").prop("disabled", true)
+  ProxyAppModal.find("#proxyEndpoint").css('opacity', '.5');
 
-  $("#proxyEndpoint").prop("disabled", true)
-  $("#proxyEndpoint").css('opacity', '.5');
+  ProxyAppModal.find("#proxyDescription").prop("disabled", true)
+  ProxyAppModal.find("#proxyDescription").css('opacity', '.5');
 
-  $("#proxyDescription").prop("disabled", true)
-  $("#proxyDescription").css('opacity', '.5');
+  ProxyAppModal.find("#proxyLogo").prop("disabled", true)
+  ProxyAppModal.find("#proxyLogo").css('opacity', '.5');
 
-  $("#proxyLogo").prop("disabled", true)
-  $("#proxyLogo").css('opacity', '.5');
+  ProxyAppModal.find("#proxyTags").prop("disabled", true)
+  ProxyAppModal.find("#proxyTags").css('opacity', '.5');
 
-  $("#proxyTags").prop("disabled", true)
-  $("#proxyTags").css('opacity', '.5');
-
-  $(".tag-item-delete").each(function() {
+  ProxyAppModal.find(".tag-item-delete").each(function() {
     $(this).prop("disabled", true)
     $(this).css('opacity', '.5');
   })
 
-  $("#proxyEnabled").prop("disabled", true)
-  $("#proxyEnabled").css('opacity', '.5');
+  ProxyAppModal.find("#proxyEnabled").prop("disabled", true)
+  ProxyAppModal.find("#proxyEnabled").css('opacity', '.5');
 
-  $("#proxyShown").prop("disabled", true)
-  $("#proxyShown").css('opacity', '.5');
+  ProxyAppModal.find("#proxyShown").prop("disabled", true)
+  ProxyAppModal.find("#proxyShown").css('opacity', '.5');
 }
 
 const createProxyApp = () => {
   $(".proxyApp_failMessage").hide()
-  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyAddModalInput()
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("add")
 
   let errors = false
   if (!proxyAppName) {
@@ -281,35 +282,26 @@ const createProxyApp = () => {
     errors = true
   }
 
-  if (!proxyDescription) {
-    $("#proxyDescription_failMessage").show()
-    errors = true
-  }
-
-  if (!proxyLogo) {
-    $("#proxyLogo_failMessage").show()
-    errors = true
-  }
-
   if (errors) {
     return
   }
 
-  disableProxyAppModalInput()
+  disableProxyAppModalInput("add")
   notification_ws.send(
       JSON.stringify({
           data: {
-              proxyAppName: proxyAppName,
-              proxyEndpoint: proxyEndpoint, 
-              proxyDescription: proxyDescription, 
-              proxyLogo: proxyLogo, 
-              proxyTags: proxyTags, 
-              proxyEnabled: proxyEnabled, 
-              proxyShown: proxyShown
+              app_name: proxyAppName,
+              endpoint: proxyEndpoint, 
+              description: proxyDescription, 
+              logo_url: proxyLogo, 
+              tags: proxyTags, 
+              enabled: proxyEnabled, 
+              show_in_apps_library: proxyShown
           },
           type: `create_proxy_app`
       })
   )
+  location.reload();
 }
 
 const getRepoForAdd = () => {
@@ -359,6 +351,43 @@ const getRepoForAdd = () => {
   )
 }
 
+function UpdateProxyApp() {
+  $(".proxyApp_failMessage").hide()
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("update")
+
+  let errors = false
+  if (!proxyAppName) {
+    $("#proxyAppName_failMessage").show()
+    errors = true
+  }
+
+  if (!proxyEndpoint) {
+    $("#proxyEndpoint_failMessage").show()
+    errors = true
+  }
+
+  if (errors) {
+    return
+  }
+
+  disableProxyAppModalInput("update")
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              app_name: proxyAppName,
+              endpoint: proxyEndpoint, 
+              description: proxyDescription, 
+              logo_url: proxyLogo, 
+              tags: proxyTags, 
+              enabled: proxyEnabled, 
+              show_in_apps_library: proxyShown
+          },
+          type: `update_proxy_app`
+      })
+  )
+  location.reload();
+}
+
 $(document).on('click', ".anchor", function() {
   let checkList = $(this).parents(".dropdown-check-list")[0]
   if (checkList.classList.contains('visible')){
@@ -396,7 +425,7 @@ $(document).on('hidden.bs.modal', '#add-proxyapp-modal', function() {
 
 
 $(document).on('keydown', '#proxyTags', function(event) {
-  const tags = $("#proxyTagList")[0]; 
+  const tags = $(this).siblings("#proxyTagList")[0]; 
 
   if (event.key === 'Enter' || event.key === 'Tab') { 
       event.preventDefault(); 
@@ -417,4 +446,44 @@ $(document).on('click', '#proxyTagList', function(event) {
   if (event.target.classList.contains('tag-item-delete')) { 
     event.target.parentNode.remove(); 
   } 
+});
+
+
+$(document).on('click', '.proxyAppDelete', function(event) {
+  let proxyAppName = this.id.split("_")[0]
+  notification_ws.send(
+    JSON.stringify({
+        data: {
+          app_name: proxyAppName
+        },
+        type: `delete_proxy_app`
+    })
+  )
+  location.reload();
+});
+
+
+$(document).on('click', '.proxyAppUpdate', function(event) {
+  let proxyAppName = this.id.split("_")[0]
+  let proxyApp = proxyApps.filter(obj => {return obj.name === proxyAppName})[0]
+  let updateProxyAppModal = $('#update-proxyapp-modal')
+  updateProxyAppModal.find("#proxyAppName")[0].value = proxyAppName
+  updateProxyAppModal.find("#proxyEndpoint")[0].value = proxyApp['endpoint']
+  updateProxyAppModal.find("#proxyDescription")[0].value = proxyApp['description']
+  updateProxyAppModal.find("#proxyLogo")[0].value = proxyApp['logo']
+  updateProxyAppModal.find("#proxyEnabled")[0].checked = proxyApp['enabled']
+  updateProxyAppModal.find("#proxyShown")[0].checked = proxyApp['show_in_apps_library']
+
+  let proxyTagList = updateProxyAppModal.find("#proxyTagList")
+  proxyTagList.empty()
+  proxyApp['tags'].split(",").forEach(function (tag_value) {
+    const tag = document.createElement('li');
+    if (tag_value !== '') {
+      tag.innerText = tag_value;
+      tag.classList.add("tag-item");
+      tag.innerHTML += '<button class="tag-item-delete">X</button>'; 
+      proxyTagList[0].appendChild(tag);
+    }
+  })
+  updateProxyAppModal.modal('show');
 });
