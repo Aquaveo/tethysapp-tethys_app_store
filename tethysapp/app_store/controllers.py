@@ -39,7 +39,7 @@ def home(request, app_workspace):
     installedApps = object_stores_formatted_by_label_and_channel['installedApps']
     incompatibleApps = object_stores_formatted_by_label_and_channel['incompatibleApps']
     tethysVersion = object_stores_formatted_by_label_and_channel['tethysVersion']
-    
+
     proxyApps = list_proxy_apps()
 
     context = {
