@@ -5,9 +5,9 @@ const addModalHelper = {
       // $("#failMessage").show()
 
 
-      $(`#${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#${validationData.conda_channel}_failMessage`).show()
-      $(`#${validationData.conda_channel}_spinner`).hide();
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
+      $(`#tethysapp_${validationData.conda_channel}-spinner`).hide();
       $("#loaderEllipsis").hide()
       $("#loadingTextAppSubmit").text("")
       $("#fetchRepoButton").prop("disabled", false)
@@ -15,8 +15,8 @@ const addModalHelper = {
     else{
       // $("#failMessage").html(validationData.mssge_string)
       // $("#failMessage").show()
-      $(`#${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#${validationData.conda_channel}_failMessage`).show()
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
       notification_ws.send(
           JSON.stringify({
               data: {
@@ -48,7 +48,7 @@ const addModalHelper = {
     let app_name = branchesData["app_name"]
 
     if (branches.length == 1) {
-      $(`#${conda_channel}_spinner`).show(); 
+      $(`#tethysapp_${conda_channel}-spinner`).show(); 
 
       sendNotification(
         `One branch found. Continuing packaging with ${branches[0]} branch.`,
@@ -76,8 +76,8 @@ const addModalHelper = {
             app_name: app_name,
             conda_channel: conda_channel,
             conda_labels: conda_labels,
-            email: $("#notifEmail").val(),
-            dev_url: $("#githubURL").val()
+            email: $("#tethysapp_notifEmail").val(),
+            dev_url: $("#tethysapp_githubURL").val()
 
           },
           type: `process_branch`
@@ -89,10 +89,10 @@ const addModalHelper = {
     // More than one branch available. Ask user for option:
     let branchesHTML = htmlHelpers.getBranches(conda_channel, branches)
     // $("#branchesList").append(branchesHTML)
-    $(`#${conda_channel}_branchesList`).append(branchesHTML)
+    $(`#tethysapp_${conda_channel}_branchesList`).append(branchesHTML)
 
     $("#processBranchButton").click((e) => {
-      $(`#${conda_channel}_spinner`).show();
+      $(`#tethysapp_${conda_channel}-spinner`).show();
 
       let branchName = $(`#${conda_channel}_add_branch`).val()
 
@@ -107,8 +107,8 @@ const addModalHelper = {
             app_name: app_name,
             conda_channel: conda_channel,
             conda_labels: conda_labels,
-            email: $("#notifEmail").val(),
-            dev_url: $("#githubURL").val()
+            email: $("#tethysapp_notifEmail").val(),
+            dev_url: $("#tethysapp_githubURL").val()
           },
           type: `process_branch`
         })
@@ -116,7 +116,7 @@ const addModalHelper = {
     })
     $("#processBranchButton").show()
     // $("#failMessage").hide()
-    $(`#${conda_channel}_failMessage`).hide()
+    $(`#tethysapp${conda_channel}_failMessage`).hide()
 
 
   },
@@ -142,18 +142,18 @@ const addModalHelper = {
     }
     $("#doneAddButton").show()
     $("#submitNewButton").show()
-    $(`#${addData.conda_channel}_successMessage`).show();
-    $(`#${addData.conda_channel}_failMessage`).hide()
-    $(`#${addData.conda_channel}_spinner`).hide(); 
+    $(`#tethysapp_${addData.conda_channel}_successMessage`).show();
+    $(`#tethysapp_${addData.conda_channel}_failMessage`).hide()
+    $(`#tethysapp_${addData.conda_channel}-spinner`).hide(); 
   }
 }
 
 const getTethysAddModalInput = () => {
-  let githubURL = $("#githubURL").val()
-  let notifEmail = $("#notifEmail").val()
+  let githubURL = $("#tethysapp_githubURL").val()
+  let notifEmail = $("#tethysapp_notifEmail").val()
 
   let active_stores = []
-  availableStores = $("#availableStores").children(".row_store_submission")
+  availableStores = $("#tethysapp_availableStores").children(".row_store_submission")
   for (let i = 0; i < availableStores.length; i++) {
     let input_store = {"conda_channel": "", "conda_labels": []}
     let store = availableStores[i]
@@ -181,13 +181,13 @@ const getTethysAddModalInput = () => {
 const disableTethysAppModalInput = (disable_email=false, disable_gihuburl=false, disable_channels=false, disable_labels=false, disable_branches=false) => {
 
   if (disable_email) {
-    $("#notifEmail").prop("disabled", true)
-    $("#notifEmail").css('opacity', '.5');
+    $("#tethysapp_notifEmail").prop("disabled", true)
+    $("#tethysapp_notifEmail").css('opacity', '.5');
   }
 
   if (disable_gihuburl) {
-    $("#githubURL").prop("disabled", true)
-    $("#githubURL").css('opacity', '.5');
+    $("#tethysapp_githubURL").prop("disabled", true)
+    $("#tethysapp_githubURL").css('opacity', '.5');
   }
   
   if (disable_channels) {
@@ -306,27 +306,27 @@ const createProxyApp = () => {
 
 const getRepoForAdd = () => {
   $(".label_failMessage").hide()
-  $(".tethysApp_failMessage").hide()
+  $(".tethysapp_failMessage").hide()
   let [githubURL, notifEmail, active_stores] = getTethysAddModalInput()
 
   let errors = false
   if (!githubURL) {
-    $("#githubURL_failMessage").show()
+    $("#tethysapp_githubURL_failMessage").show()
     errors = true
   }
 
   if (!notifEmail) {
-    $("#notifEmail_failMessage").show()
+    $("#tethysapp_notifEmail_failMessage").show()
     errors = true
   }
 
   if (active_stores.length == 0) {
-    $('#channel_failMessage').show()
+    $('#tethysapp_channel_failMessage').show()
     errors = true
   } else {
     for (let i = 0; i < active_stores.length; i++) {
       if (active_stores[i].conda_labels.length == 0) {
-        $(`#${active_stores[i].conda_channel}_label_failMessage`).show()
+        $(`#tethysapp_${active_stores[i].conda_channel}_label_failMessage`).show()
         errors = true
       }
     }
@@ -389,7 +389,7 @@ function UpdateProxyApp() {
 }
 
 $(document).on('click', ".anchor", function() {
-  let checkList = $(this).parents(".dropdown-check-list")[0]
+  let checkList = $(this).parents(".dropdown-check-list-labels")[0]
   if (checkList.classList.contains('visible')){
     checkList.classList.remove('visible');
   }
@@ -399,9 +399,9 @@ $(document).on('click', ".anchor", function() {
 })
 
 $(document).on('change', ".conda-channel-list-item", function() {
-  let conda_channel = this.id;
-  let branch_select = $(`#${conda_channel}_branchesList`)[0];
-  let label_select = $(`#${conda_channel}_labels`)[0];
+  let conda_channel = this.id.split("_")[1];
+  let branch_select = $(`#tethysapp_${conda_channel}_branchesList`)[0];
+  let label_select = $(`#tethysapp_${conda_channel}_labels`)[0];
   if(this.checked){
     label_select.classList.remove('d-none')
     branch_select.classList.remove('d-none')
@@ -411,16 +411,16 @@ $(document).on('change', ".conda-channel-list-item", function() {
   }
 })
 
-$(document).on('hidden.bs.modal', '#add-tethysapp-modal', function() {
-  $('#add-tethysapp-modal').remove();
-  var originalTethysAddModalClone = originalTethysAddModal.clone();
-  $('body').append(originalTethysAddModalClone);
+$(document).on('hidden.bs.modal', '#submit-tethysapp-to-store-modal', function() {
+  $('#submit-tethysapp-to-store-modal').remove();
+  var originalTethysSubmitStoreModalClone = originalTethysSubmitStoreModal.clone();
+  $('body').append(originalTethysSubmitStoreModalClone);
 });
 
-$(document).on('hidden.bs.modal', '#add-proxyapp-modal', function() {
-  $('#add-proxyapp-modal').remove();
-  var originalProxyAddModalClone = originalProxyAddModal.clone();
-  $('body').append(originalProxyAddModalClone);
+$(document).on('hidden.bs.modal', '#add-proxyapp-to-portal-modal', function() {
+  $('#add-proxyapp-to-portal-modal').remove();
+  var originalProxyAddPortalModalClone = originalProxyAddPortalModal.clone();
+  $('body').append(originalProxyAddPortalModalClone);
 });
 
 

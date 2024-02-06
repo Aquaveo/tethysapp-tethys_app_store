@@ -6,13 +6,13 @@
     --pink: #ff4b77;
   }
   
-  .dropdown-check-list {
+  .dropdown-check-list-labels {
     display: inline-block;
     width: 100%;
   
   }
   
-  .dropdown-check-list .anchor {
+  .dropdown-check-list-labels .anchor {
     position: relative;
     cursor: pointer;
     display: inline-block;
@@ -21,7 +21,7 @@
     width: 100%;
   }
   
-  .dropdown-check-list .anchor:after {
+  .dropdown-check-list-labels .anchor:after {
     position: absolute;
     content: "";
     border-left: 2px solid black;
@@ -36,12 +36,12 @@
     transform: rotate(-135deg);
   }
   
-  .dropdown-check-list .anchor:active:after {
+  .dropdown-check-list-labels .anchor:active:after {
     right: 8px;
     top: 21%;
   }
   
-  .dropdown-check-list ul.items {
+  .dropdown-check-list-labels ul.items {
     padding: 2px;
     display: none;
     margin: 0;
@@ -52,18 +52,18 @@
     /* margin: 50px auto 0; */
   }
   
-  .dropdown-check-list ul.items li {
+  .dropdown-check-list-labels ul.items li {
     list-style: none;
   }
   
-  .dropdown-check-list ul.items li [type="checkbox"] {
+  .dropdown-check-list-labels ul.items li [type="checkbox"] {
     position: absolute;
     left: -9999px;
     position: relative;
     counter-increment: switchCounter;
   }
   
-  .dropdown-check-list ul.items li::before {
+  .dropdown-check-list-labels ul.items li::before {
     content: counter(switchCounter);
     position: absolute;
     top: 50%;
@@ -74,18 +74,18 @@
     color: var(--pink);
   }
   @media screen and (max-width: 600px) {
-    .dropdown-check-list ul.items li::before {
+    .dropdown-check-list-labels ul.items li::before {
       display: none;
     }
   }
   
-  .dropdown-check-list ul.items li label {
+  .dropdown-check-list-labels ul.items li label {
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
   
-  .dropdown-check-list ul.items li label span:last-child {
+  .dropdown-check-list-labels ul.items li label span:last-child {
     position: relative;
     width: 50px;
     height: 26px;
@@ -94,12 +94,12 @@
     background: var(--gray);
     transition: all 0.3s;
   }
-  .dropdown-check-list ul.items li label span:last-child::before,
-  .dropdown-check-list ul.items li label span:last-child::after {
+  .dropdown-check-list-labels ul.items li label span:last-child::before,
+  .dropdown-check-list-labels ul.items li label span:last-child::after {
     content: "";
     position: absolute;
   }
-  .dropdown-check-list ul.items li label span:last-child::before {
+  .dropdown-check-list-labels ul.items li label span:last-child::before {
     left: 1px;
     top: 1px;
     width: 24px;
@@ -109,7 +109,7 @@
     z-index: 1;
     transition: transform 0.3s;
   }
-  .dropdown-check-list ul.items li label span:last-child::after {
+  .dropdown-check-list-labels ul.items li label span:last-child::after {
     top: 50%;
     right: 8px;
     width: 12px;
@@ -120,13 +120,13 @@
   }
   
   /*CUSTOM VARIABLES HERE*/
-  .dropdown-check-list ul.items li [type="checkbox"]:checked + label span:last-child {
+  .dropdown-check-list-labels ul.items li [type="checkbox"]:checked + label span:last-child {
     background: var(--green);
   }
-  .dropdown-check-list ul.items li [type="checkbox"]:checked + label span:last-child::before {
+  .dropdown-check-list-labels ul.items li [type="checkbox"]:checked + label span:last-child::before {
     transform: translateX(24px);
   }
-  .dropdown-check-list ul.items li [type="checkbox"]:checked + label span:last-child::after {
+  .dropdown-check-list-labels ul.items li [type="checkbox"]:checked + label span:last-child::after {
     width: 14px;
     height: 14px;
     left: 8px;
@@ -135,11 +135,11 @@
   }
   
   
-  .dropdown-check-list.visible .anchor {
+  .dropdown-check-list-labels.visible .anchor {
     color: var(--blue);
   }
   
-  .dropdown-check-list.visible .items {
+  .dropdown-check-list-labels.visible .items {
     width: 100%;
     display: block;
   }
