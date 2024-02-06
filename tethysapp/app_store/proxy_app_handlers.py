@@ -113,3 +113,8 @@ def update_proxy_app(install_data, channel_layer):
     send_notification(f"Proxy app '{app_name}' was updated successfully", channel_layer)
 
     return
+
+
+def submit_proxy_app(install_data, channel_layer, app_workspace):
+    
+    return

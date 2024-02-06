@@ -6,7 +6,7 @@ from .git_install_handlers import get_log_file  # noqa: F401
 from .update_handlers import update_app  # noqa: F401
 from .resource_helpers import clear_conda_channel_cache  # noqa: F401
 from .submission_handlers import process_branch, initialize_local_repo_for_active_stores  # noqa: F401
-from .proxy_app_handlers import create_proxy_app, delete_proxy_app, update_proxy_app  # noqa: F401
+from .proxy_app_handlers import create_proxy_app, delete_proxy_app, update_proxy_app, submit_proxy_app  # noqa: F401
 # called with threading.Thread
 from .begin_install import begin_install  # noqa: F401
 from tethys_sdk.routing import consumer
@@ -64,7 +64,8 @@ class notificationsConsumer(AsyncWebsocketConsumer):
         args = [text_data_json['data'], self.channel_layer]
 
         app_workspace_functions = ['begin_install', 'restart_server', 'get_log_file', 'process_branch',
-                                   'initialize_local_repo_for_active_stores', 'update_app', 'uninstall_app']
+                                   'initialize_local_repo_for_active_stores', 'update_app', 'uninstall_app',
+                                   'submit_proxy_app']
 
         if function_name in app_workspace_functions:
             app_workspace = await sync_to_async(get_app_workspace, thread_sensitive=True)(app)

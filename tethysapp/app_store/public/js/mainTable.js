@@ -226,7 +226,8 @@ function ProxyAppActionFormatter(value, row, index) {
   let ProxyApp = row["name"]
   let deleteButton =  `<button type="button" id="${ProxyApp}_deleteProxy" style="margin-left:5px" class="custom-label label-color-danger proxyAppDelete">Delete</button>`
   let updateButton =  `<button type="button" id="${ProxyApp}_updateProxy" style="margin-left:5px" class="custom-label label-color-warning proxyAppUpdate">Update</button>`
-  return deleteButton + updateButton
+  let submitButton =  `<button type="button" id="${ProxyApp}_submitProxy" style="margin-left:5px" class="custom-label label-color-primary proxyAppUploadToStore">Submit to App Store</button>`
+  return deleteButton + updateButton + submitButton
 }
 
 function mergedOperateFormatter(value, row, index){

@@ -148,12 +148,12 @@ const addModalHelper = {
   }
 }
 
-const getTethysAddModalInput = () => {
-  let githubURL = $("#tethysapp_githubURL").val()
-  let notifEmail = $("#tethysapp_notifEmail").val()
+const getTethysSubmitModalInput = (modal_type) => {
+  let githubURL = $(`#${modal_type}_githubURL`).val()
+  let notifEmail = $(`#${modal_type}_notifEmail`).val()
 
   let active_stores = []
-  availableStores = $("#tethysapp_availableStores").children(".row_store_submission")
+  availableStores = $(`#${modal_type}_availableStores`).children(".row_store_submission")
   for (let i = 0; i < availableStores.length; i++) {
     let input_store = {"conda_channel": "", "conda_labels": []}
     let store = availableStores[i]
@@ -178,42 +178,42 @@ const getTethysAddModalInput = () => {
   return [githubURL, notifEmail, active_stores]
 }
 
-const disableTethysAppModalInput = (disable_email=false, disable_gihuburl=false, disable_channels=false, disable_labels=false, disable_branches=false) => {
-
-  if (disable_email) {
-    $("#tethysapp_notifEmail").prop("disabled", true)
-    $("#tethysapp_notifEmail").css('opacity', '.5');
+const disableSubmitAppModalInput = (modal_type, disable_options) => {
+  let SubmitAppModal = $(`#submit-${modal_type}-to-store-modal`)
+  if (disable_options['disable_email']) {
+    SubmitAppModal.find(".notifEmail").prop("disabled", true)
+    SubmitAppModal.find(".notifEmail").css('opacity', '.5');
   }
 
-  if (disable_gihuburl) {
-    $("#tethysapp_githubURL").prop("disabled", true)
-    $("#tethysapp_githubURL").css('opacity', '.5');
+  if (disable_options['disable_gihuburl']) {
+    SubmitAppModal.find(".githubURL").prop("disabled", true)
+    SubmitAppModal.find(".githubURL").css('opacity', '.5');
   }
   
-  if (disable_channels) {
-    $(".conda-channel-list-item").each(function() {
+  if (disable_options['disable_channels']) {
+    SubmitAppModal.find(".conda-channel-list-item").each(function() {
       $(this).prop("disabled", true)
     })
     
-    $(".conda-channel-list-item-custom-checkbox").each(function() {
+    SubmitAppModal.find(".conda-channel-list-item-custom-checkbox").each(function() {
       $(this).css('background-color', 'lightgray');
       $(this).css('opacity', '.5');
     })
   }
 
-  if (disable_labels) {
-    $(".conda-label-list-item").each(function() {
+  if (disable_options['disable_labels']) {
+    SubmitAppModal.find(".conda-label-list-item").each(function() {
       $(this).prop("disabled", true)
     })
     
-    $(".conda-label-list-item-custom-checkbox").each(function() {
+    SubmitAppModal.find(".conda-label-list-item-custom-checkbox").each(function() {
       $(this).css('background-color', 'lightgray');
       $(this).css('opacity', '.5');
     })
   }
 
-  if (disable_branches) {
-    $(".add_branch").each(function() {
+  if (disable_options['disable_branches']) {
+    SubmitAppModal.find(".add_branch").each(function() {
       $(this).prop("disabled", true)
       $(this).css('opacity', '.5');
     })
@@ -307,7 +307,7 @@ const createProxyApp = () => {
 const getRepoForAdd = () => {
   $(".label_failMessage").hide()
   $(".tethysapp_failMessage").hide()
-  let [githubURL, notifEmail, active_stores] = getTethysAddModalInput()
+  let [githubURL, notifEmail, active_stores] = getTethysSubmitModalInput("tethysapp")
 
   let errors = false
   if (!githubURL) {
@@ -339,7 +339,10 @@ const getRepoForAdd = () => {
   $("#loaderEllipsis").show()
   $("#fetchRepoButton").prop("disabled", true)
   $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
-  disableTethysAppModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
+  disable_options = {
+    disable_email: true, disable_gihuburl: true, disable_channels: true, disable_labels: true, disable_branches: false
+  }
+  disableSubmitAppModalInput("tethysapp", disable_options)
   notification_ws.send(
       JSON.stringify({
           data: {
@@ -399,15 +402,22 @@ $(document).on('click', ".anchor", function() {
 })
 
 $(document).on('change', ".conda-channel-list-item", function() {
-  let conda_channel = this.id.split("_")[1];
-  let branch_select = $(`#tethysapp_${conda_channel}_branchesList`)[0];
-  let label_select = $(`#tethysapp_${conda_channel}_labels`)[0];
+  let channel_select = $(this).parents(".dropdown-check-list-channels")
+  let label_select = channel_select.siblings(".dropdown-check-list-labels")[0];
   if(this.checked){
     label_select.classList.remove('d-none')
-    branch_select.classList.remove('d-none')
   } else {
     label_select.classList.add('d-none')
-    branch_select.classList.add('d-none')
+  }
+
+  let branch_selects = channel_select.siblings(".branches-list");
+  if (branch_selects.length > 0) {
+    let branch_select = branch_selects[0];
+    if(this.checked){
+      branch_select.classList.remove('d-none')
+    } else {
+      branch_select.classList.add('d-none')
+    }
   }
 })
 
@@ -421,6 +431,12 @@ $(document).on('hidden.bs.modal', '#add-proxyapp-to-portal-modal', function() {
   $('#add-proxyapp-to-portal-modal').remove();
   var originalProxyAddPortalModalClone = originalProxyAddPortalModal.clone();
   $('body').append(originalProxyAddPortalModalClone);
+});
+
+$(document).on('hidden.bs.modal', '#submit-proxyapp-to-store-modal', function() {
+  $('#submit-proxyapp-to-store-modal').remove();
+  var originalProxySubmitStoreModalClone = originalProxySubmitStoreModal.clone();
+  $('body').append(originalProxySubmitStoreModalClone);
 });
 
 
@@ -486,4 +502,64 @@ $(document).on('click', '.proxyAppUpdate', function(event) {
     }
   })
   updateProxyAppModal.modal('show');
+});
+
+
+$(document).on('click', '.proxyAppUploadToStore', function(event) {
+  let proxyAppName = this.id.split("_")[0]
+  let submitProxyAppModal = $('#submit-proxyapp-to-store-modal')
+  submitProxyAppModal.find(".modal-header").find("#submitProxyAppName")[0].innerHTML = proxyAppName
+  submitProxyAppModal.find(".modal-footer").find("#submitProxyAppName")[0].innerHTML = proxyAppName
+  submitProxyAppModal.modal("show")
+});
+
+
+$(document).on('click', '#submitProxyApp', function(event) {
+  $(".label_failMessage").hide()
+  $(".proxyapp_failMessage").hide()
+  let submitProxyAppModal = $('#submit-proxyapp-to-store-modal')
+  let proxyAppName = submitProxyAppModal.find(".modal-header").find("#submitProxyAppName")[0].innerHTML
+  let [_, notifEmail, active_stores] = getTethysSubmitModalInput("proxyapp")
+
+  let errors = false
+  if (!notifEmail) {
+    $("#proxyapp_notifEmail_failMessage").show()
+    errors = true
+  }
+
+  if (active_stores.length == 0) {
+    $('#proxyapp_channel_failMessage').show()
+    errors = true
+  } else {
+    for (let i = 0; i < active_stores.length; i++) {
+      if (active_stores[i].conda_labels.length == 0) {
+        $(`#proxyapp_${active_stores[i].conda_channel}_label_failMessage`).show()
+        errors = true
+      }
+    }
+  }
+
+  if (errors) {
+    return
+  }
+
+  disable_options = {
+    disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true, disable_branches: false
+  }
+  disableSubmitAppModalInput("proxyapp", disable_options)
+  $("#submitProxyApp").prop("disabled", true)
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              app_name: proxyAppName,
+              endpoint: proxyEndpoint, 
+              description: proxyDescription, 
+              logo_url: proxyLogo, 
+              tags: proxyTags, 
+              enabled: proxyEnabled, 
+              show_in_apps_library: proxyShown
+          },
+          type: `submit_proxy_app`
+      })
+  )
 });
