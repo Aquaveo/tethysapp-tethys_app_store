@@ -80,7 +80,7 @@ const addModalHelper = {
             dev_url: $("#tethysapp_githubURL").val()
 
           },
-          type: `process_branch`
+          type: `submit_tethysapp_to_store`
         })
       )
       return
@@ -110,7 +110,7 @@ const addModalHelper = {
             email: $("#tethysapp_notifEmail").val(),
             dev_url: $("#tethysapp_githubURL").val()
           },
-          type: `process_branch`
+          type: `submit_tethysapp_to_store`
         })
       )
     })
@@ -159,7 +159,7 @@ const getTethysSubmitModalInput = (modal_type) => {
     let store = availableStores[i]
     let channel_checkbox = $(store).find(".conda-channel-list-item")[0]
     if (!channel_checkbox.checked) {
-      break;
+      continue;
     }
     input_store["conda_channel"] = channel_checkbox.value
 
@@ -167,7 +167,7 @@ const getTethysSubmitModalInput = (modal_type) => {
     for (let x = 0; x < labels_checkboxes.length; x++) {
       let label_checkbox = labels_checkboxes[x]
       if (!label_checkbox.checked) {
-        break;
+        continue;
       }
       input_store["conda_labels"].push(label_checkbox.value)
     }
@@ -220,8 +220,8 @@ const disableSubmitAppModalInput = (modal_type, disable_options) => {
   }
 }
 
-const getProxyModalInput = (modal_type) => {
-  let ProxyAppModal = $(`#${modal_type}-proxyapp-modal`)
+const getProxyModalInput = (modal_name) => {
+  let ProxyAppModal = $(`#${modal_name}`)
   let proxyAppName = ProxyAppModal.find("#proxyAppName").val()
   let proxyEndpoint = ProxyAppModal.find("#proxyEndpoint").val()
   let proxyDescription = ProxyAppModal.find("#proxyDescription").val()
@@ -238,8 +238,8 @@ const getProxyModalInput = (modal_type) => {
   return [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown]
 }
 
-const disableProxyAppModalInput = (modal_type) => {
-  let ProxyAppModal = $(`#${modal_type}-proxyapp-modal`)
+const disableProxyAppModalInput = (modal_name) => {
+  let ProxyAppModal = $(`#${modal_name}`)
   ProxyAppModal.find("#proxyAppName").prop("disabled", true)
   ProxyAppModal.find("#proxyAppName").css('opacity', '.5');
 
@@ -269,7 +269,7 @@ const disableProxyAppModalInput = (modal_type) => {
 
 const createProxyApp = () => {
   $(".proxyApp_failMessage").hide()
-  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("add")
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("add-proxyapp-to-portal-modal")
 
   let errors = false
   if (!proxyAppName) {
@@ -286,7 +286,7 @@ const createProxyApp = () => {
     return
   }
 
-  disableProxyAppModalInput("add")
+  disableProxyAppModalInput("add-proxyapp-to-portal-modal")
   notification_ws.send(
       JSON.stringify({
           data: {
@@ -356,7 +356,7 @@ const getRepoForAdd = () => {
 
 function UpdateProxyApp() {
   $(".proxyApp_failMessage").hide()
-  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("update")
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("update-proxyapp-modal")
 
   let errors = false
   if (!proxyAppName) {
@@ -373,7 +373,7 @@ function UpdateProxyApp() {
     return
   }
 
-  disableProxyAppModalInput("update")
+  disableProxyAppModalInput("update-proxyapp-modal")
   notification_ws.send(
       JSON.stringify({
           data: {
@@ -552,12 +552,8 @@ $(document).on('click', '#submitProxyApp', function(event) {
       JSON.stringify({
           data: {
               app_name: proxyAppName,
-              endpoint: proxyEndpoint, 
-              description: proxyDescription, 
-              logo_url: proxyLogo, 
-              tags: proxyTags, 
-              enabled: proxyEnabled, 
-              show_in_apps_library: proxyShown
+              active_stores: active_stores,
+              notification_email: notifEmail
           },
           type: `submit_proxy_app`
       })

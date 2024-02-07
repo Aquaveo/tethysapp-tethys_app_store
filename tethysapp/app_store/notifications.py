@@ -5,7 +5,7 @@ from .uninstall_handlers import uninstall_app  # noqa: F401
 from .git_install_handlers import get_log_file  # noqa: F401
 from .update_handlers import update_app  # noqa: F401
 from .resource_helpers import clear_conda_channel_cache  # noqa: F401
-from .submission_handlers import submit_app_to_store, initialize_local_repo_for_active_stores  # noqa: F401
+from .submission_handlers import submit_tethysapp_to_store, initialize_local_repo_for_active_stores  # noqa: F401
 from .proxy_app_handlers import create_proxy_app, delete_proxy_app, update_proxy_app, submit_proxy_app  # noqa: F401
 # called with threading.Thread
 from .begin_install import begin_install  # noqa: F401
@@ -65,7 +65,6 @@ class notificationsConsumer(AsyncWebsocketConsumer):
             message = event['message']
             await self.send(text_data=json.dumps({'message': message, }))
             logger.info(f"Sent message {message} at {self.channel_name}")
-            
 
     async def receive(self, text_data):
         """Receives information from the user and runs the specified functions and arguments
@@ -84,9 +83,9 @@ class notificationsConsumer(AsyncWebsocketConsumer):
             module_name = sys.modules[__name__]
             args = [text_data_json['data'], self.channel_layer]
 
-            app_workspace_functions = ['begin_install', 'restart_server', 'get_log_file', 'submit_app_to_store',
-                                    'initialize_local_repo_for_active_stores', 'update_app', 'uninstall_app',
-                                    'submit_proxy_app']
+            app_workspace_functions = ['begin_install', 'restart_server', 'get_log_file', 'submit_tethysapp_to_store',
+                                       'initialize_local_repo_for_active_stores', 'update_app', 'uninstall_app',
+                                       'submit_proxy_app']
 
             if function_name in app_workspace_functions:
                 app_workspace = await sync_to_async(get_app_workspace, thread_sensitive=True)(app)

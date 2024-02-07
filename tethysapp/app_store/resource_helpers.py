@@ -38,7 +38,7 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_ch
     """Creates a dictionary of resources based on conda channels and conda labels
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         refresh (bool, optional): Indicates whether resources should be refreshed or use a cache. Defaults to False.
         conda_channels (str/list, optional): Name of the conda channel to use for app discovery. Defaults to 'all'.
 
@@ -115,7 +115,7 @@ def get_stores_reformatted(app_workspace, refresh=False, conda_channels='all'):
         provide a list of available apps, installed apps, and incompatible apps
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         refresh (bool, optional): Indicates whether resources should be refreshed or use a cache. Defaults to False.
         conda_channels (str/list, optional): Name of the conda channel to use for app discovery. Defaults to 'all'.
 
@@ -335,7 +335,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     we are checking the compatibility map to see if the compatible tethys version will work with this portal setup.
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         require_refresh (bool): Indicates whether resources should be refreshed or use a cache
         conda_channel (str): Name of the conda channel to use for app discovery
         conda_label (str): Name of the conda label to use for app discovery
@@ -418,7 +418,7 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
     installation
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         conda_channel (str): Name of the conda channel to use for app discovery
         conda_label (str, optional): Name of the conda label to use for app discovery. Defaults to "main".
         cache_key (str, optional): Key to be used for caching strategy. Defaults to None.
@@ -547,7 +547,7 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
 
     Args:
         resources (list): List of resources to process
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         conda_channel (str): Name of the conda channel to use for app discovery
         conda_label (str, optional): Name of the conda label to use for app discovery.
 
@@ -665,7 +665,7 @@ def get_resource(resource_name, conda_channel, conda_label, app_workspace):
         resource_name (str): Name of the app resource
         conda_channel (str): Name of the conda channel to use for app discovery
         conda_label (str): Name of the conda label to use for app discovery
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Returns:
         dict: Dictionary representing the desired resource and metadata

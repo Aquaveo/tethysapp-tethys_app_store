@@ -8,14 +8,19 @@ from tethysapp.app_store.notifications import notificationsConsumer
 
 
 @pytest.mark.asyncio
-async def test_notificationsConsumer_connect_disconnect(caplog):
+async def test_notificationsConsumer_connect_disconnect(mocker, caplog):
+    mock_duser = mocker.patch('tethysapp.app_store.notifications.User')
+    mock_duser.objects.get().has_perm.return_value = True
+    mock_user = MagicMock(id=1)
     consumer = notificationsConsumer
     consumer.channel_layer_alias = "testlayer"
     channel_layers_setting = {
         "testlayer": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
     with override_settings(CHANNEL_LAYERS=channel_layers_setting):
+        consumer = notificationsConsumer.as_asgi()
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
+        communicator.scope["user"] = mock_user
         connected, _ = await communicator.connect()
         assert connected
         channel_layer = get_channel_layer("testlayer")
@@ -27,14 +32,19 @@ async def test_notificationsConsumer_connect_disconnect(caplog):
 
 
 @pytest.mark.asyncio
-async def test_notificationsConsumer_install_notifications(caplog):
+async def test_notificationsConsumer_install_notifications(mocker, caplog):
+    mock_duser = mocker.patch('tethysapp.app_store.notifications.User')
+    mock_duser.objects.get().has_perm.return_value = True
+    mock_user = MagicMock(id=1)
     consumer = notificationsConsumer
     consumer.channel_layer_alias = "testlayer"
     channel_layers_setting = {
         "testlayer": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
     with override_settings(CHANNEL_LAYERS=channel_layers_setting):
+        consumer = notificationsConsumer.as_asgi()
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
+        communicator.scope["user"] = mock_user
         connected, _ = await communicator.connect()
         assert connected
 
@@ -53,6 +63,9 @@ async def test_notificationsConsumer_install_notifications(caplog):
 
 @pytest.mark.asyncio
 async def test_notificationsConsumer_receive_begin_install(mocker, caplog):
+    mock_duser = mocker.patch('tethysapp.app_store.notifications.User')
+    mock_duser.objects.get().has_perm.return_value = True
+    mock_user = MagicMock(id=1)
     mock_begin_install = mocker.patch('tethysapp.app_store.notifications.begin_install')
     mock_workspace = MagicMock()
     mock_get_workspace = AsyncMock(return_value=mock_workspace)
@@ -64,7 +77,9 @@ async def test_notificationsConsumer_receive_begin_install(mocker, caplog):
         "testlayer": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
     with override_settings(CHANNEL_LAYERS=channel_layers_setting):
+        consumer = notificationsConsumer.as_asgi()
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
+        communicator.scope["user"] = mock_user
         connected, _ = await communicator.connect()
         assert connected
 
@@ -92,14 +107,19 @@ async def test_notificationsConsumer_receive_begin_install(mocker, caplog):
 
 
 @pytest.mark.asyncio
-async def test_notificationsConsumer_receive_invalid_type(caplog):
+async def test_notificationsConsumer_receive_invalid_type(mocker, caplog):
+    mock_duser = mocker.patch('tethysapp.app_store.notifications.User')
+    mock_duser.objects.get().has_perm.return_value = True
+    mock_user = MagicMock(id=1)
     consumer = notificationsConsumer
     consumer.channel_layer_alias = "testlayer"
     channel_layers_setting = {
         "testlayer": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
     with override_settings(CHANNEL_LAYERS=channel_layers_setting):
+        consumer = notificationsConsumer.as_asgi()
         communicator = WebsocketCommunicator(notificationsConsumer.as_asgi(), "GET", "install/notifications")
+        communicator.scope["user"] = mock_user
         connected, _ = await communicator.connect()
         assert connected
 

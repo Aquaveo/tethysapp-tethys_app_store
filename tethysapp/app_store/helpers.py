@@ -159,7 +159,7 @@ def get_github_install_metadata(app_workspace):
     """Get resource metadata for all applications already installed.
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Returns:
         list: List of resources found in the installed directory

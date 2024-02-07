@@ -113,7 +113,7 @@ def initialize_local_repo_for_active_stores(install_data, channel_layer, app_wor
         install_data (dict): Dictionary containing installation information such as the github url and a list of stores
             and associated metadata
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     github_url = install_data.get("url")
     stores = install_data.get("stores")
@@ -125,7 +125,7 @@ def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
     """Creates (if needed) the conda channel gitsubmission folder and returns the directory for the app in said folder.
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         app_name (str): Name of the application that is being installed
         conda_channel (str): Name of the conda channel to use for app discovery
 
@@ -137,7 +137,11 @@ def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
     if not os.path.exists(github_dir):
         os.makedirs(github_dir)
 
-    return os.path.join(github_dir, app_name)
+    app_github_dir = os.path.join(github_dir, app_name)
+    if not os.path.exists(app_github_dir):
+        os.makedirs(app_github_dir)
+
+    return app_github_dir
 
 
 def initialize_local_repo(github_url, active_store, channel_layer, app_workspace):
@@ -148,7 +152,7 @@ def initialize_local_repo(github_url, active_store, channel_layer, app_workspace
         github_url (str): Url for the github repo that will be submitted to the app store
         active_store (str): Name of the store that will be used for creating github files and app submission
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     # Create/Refresh github directories within the app workspace for the given channel
     app_name = github_url.split("/")[-1].replace(".git", "")
@@ -553,7 +557,111 @@ def get_workflow_job_url(repo, tethysapp_repo, current_tag_name):
     return job_url
 
 
-def process_branch(install_data, channel_layer, app_workspace):
+def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspace):
+    # 1. Get Variables
+    app_name = proxy_app.name
+    conda_labels = install_data["conda_labels"]
+    conda_channel = install_data["conda_channel"]
+    input_user_email = install_data['email']
+    labels_string = generate_label_strings(conda_labels)
+    files_changed = False
+    app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
+    reset_folder(app_github_dir)
+    repo = git.Repo.init(app_github_dir)
+
+    # 2. Get sensitive information for store
+    conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]
+    github_organization = conda_store["github_organization"]
+    github_token = conda_store["github_token"]
+
+    # 3. Validate git inputs
+    g = validate_git_credentials(github_token, conda_channel, channel_layer)
+    organization = validate_git_organization(g, github_organization, conda_channel, channel_layer)
+
+    # 4. Add files to local repo
+    source_files_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'application_files')
+    proxyapp_template = os.path.join(source_files_path, "proxyapp_template.yaml")
+    proxyapp_data = {
+        "name": proxy_app.name,
+        "description": proxy_app.description,
+        "endpoint": proxy_app.endpoint,
+        "logo_url": proxy_app.logo_url,
+        "tags": proxy_app.tags,
+        "enabled": proxy_app.enabled,
+        "show_in_apps_library": proxy_app.show_in_apps_library
+    }
+    destination = os.path.join(app_github_dir, 'proxyapp.yaml')
+    apply_template(proxyapp_template, proxyapp_data, destination)
+    repo.index.add([destination])
+    repo.index.commit("Adding proxyapp.yaml to repo")
+
+    # 5. create head tethysapp_warehouse_release and checkout the head
+    create_tethysapp_warehouse_release(repo, 'tethysapp_warehouse_release')
+    repo.git.checkout('tethysapp_warehouse_release')
+
+    # 6. Delete workflow directory if exits in the repo folder, and create the directory workflow.
+    # Add the required files if they don't exist.
+    workflows_path = os.path.join(app_github_dir, '.github', 'workflows')
+    source_files_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'application_files')
+    reset_folder(workflows_path)
+
+    # 7. Delete conda.recipes directory if exits in the repo folder, and create the directory conda.recipes.
+    recipe_path = os.path.join(app_github_dir, 'conda.recipes')
+    reset_folder(recipe_path)
+
+    # 8. copy the getChannels.py from the source to the destination
+    # if does not exits Channels purpose is to have conda build -c conda-forge -c x -c x2 -c x3 --output-folder . .
+    source = os.path.join(source_files_path, 'getChannels.py')
+    destination = os.path.join(recipe_path, 'getChannels.py')
+    files_changed = copy_files_for_recipe(source, destination, files_changed)
+
+    # 9. Create the label string to upload to multiple labels a conda package
+    source = os.path.join(source_files_path, 'meta_template.yaml')
+    destination = os.path.join(recipe_path, 'meta.yaml')
+    create_upload_command(labels_string, source_files_path, recipe_path)
+
+    # 10. apply data to the main.yml for the github action
+    apply_main_yml_template(source_files_path, workflows_path, app_name, input_user_email)
+
+    # 11. Check if this repo already exists on our remote:
+    repo_name = app_github_dir.split('/')[-1]
+    remote_repo = get_github_repo(repo_name, organization)
+    remote_url = remote_repo.git_url.replace("git://", "https://" + github_token + ":x-oauth-basic@")
+    tethysapp_remote = check_if_organization_in_remote(repo, github_organization, remote_url)
+
+    # 12. add, commit, and push to the tethysapp_warehouse_release remote branch
+    current_tag_name = "proxyapp_submit"
+    push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_name, files_changed)
+
+    # 13 create/ push current tag branch to remote
+    create_head_current_version(repo, current_tag_name, [], tethysapp_remote)
+
+    # 14. create/push tag for current tag version in remote
+    create_tags_for_current_version(repo, current_tag_name, [], tethysapp_remote)
+
+    # 15. return workflow job url
+    job_url = get_workflow_job_url(repo, remote_repo, current_tag_name)
+
+    get_data_json = {
+        "data": {
+            "githubURL": remote_repo.git_url.replace("git:", "https:"),
+            "job_url": job_url,
+            "conda_channel": conda_channel
+        },
+        "jsHelperFunction": "proxySubmitComplete",
+        "helper": "addModalHelper"
+    }
+    send_notification(get_data_json, channel_layer)
+
+
+def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
+    """Initiate, process, and submit a tethys application to the configured app store github repo.
+
+    Args:
+        install_data (dict): Dictionary containing installation information for the proxy app
+        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
+    """
     # 1. Get Variables
     app_name = install_data["app_name"]
     conda_labels = install_data["conda_labels"]

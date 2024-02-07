@@ -56,7 +56,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
     Args:
         data (dict): Dictionary of data with app information and restart type
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
         run_collect_all (bool, optional): Detemines if collect all needs to be ran. Defaults to True.
     """
     # Check if Install Running file is present and delete it

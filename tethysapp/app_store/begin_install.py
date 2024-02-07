@@ -192,7 +192,7 @@ def begin_install(installData, channel_layer, app_workspace):
     Args:
         installData (dict): User provided information about the application that should be installed
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
     if not resource:

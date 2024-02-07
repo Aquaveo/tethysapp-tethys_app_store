@@ -15,8 +15,9 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      create_current_tag_version, check_if_organization_in_remote,
                                                      push_to_warehouse_release_remote_branch,
                                                      create_head_current_version, create_tags_for_current_version,
-                                                     get_workflow_job_url, process_branch, validate_git_credentials,
-                                                     validate_git_organization, get_gitsubmission_app_dir)
+                                                     get_workflow_job_url, submit_tethysapp_to_store,
+                                                     validate_git_credentials, validate_git_organization,
+                                                     get_gitsubmission_app_dir)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -500,7 +501,7 @@ def test_get_workflow_job_url_not_found(mocker):
     assert job_url is None
 
 
-def test_process_branch(mocker, app_store_workspace, basic_tethysapp):
+def test_submit_tethysapp_to_store(mocker, app_store_workspace, basic_tethysapp):
     dev_url = "https://github.com/notrealorg/fakeapp"
     mock_workspace = MagicMock(path=str(app_store_workspace))
     conda_stores = [{
@@ -526,7 +527,7 @@ def test_process_branch(mocker, app_store_workspace, basic_tethysapp):
     mocker.patch('tethysapp.app_store.submission_handlers.get_workflow_job_url', return_value="job_url")
     mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
 
-    process_branch(install_data, mock_channel, mock_workspace)
+    submit_tethysapp_to_store(install_data, mock_channel, mock_workspace)
 
     expected_data_json = {
         "data": {

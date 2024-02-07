@@ -1,0 +1,7 @@
+name: $name,
+description: $description,
+endpoint: $endpoint,
+logo_url: $logo_url,
+tags: $tags,
+enabled: $enabled,
+show_in_apps_library: $show_in_apps_library

@@ -81,7 +81,7 @@ def update_app(data, channel_layer, app_workspace):
     Args:
         data (dict): Information about the app that will be updated
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     try:
         conda_update(data["name"], data["version"], data["channel"], data["label"], channel_layer)

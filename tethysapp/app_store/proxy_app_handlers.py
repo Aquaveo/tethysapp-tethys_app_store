@@ -1,4 +1,5 @@
 from .helpers import logger, send_notification
+from .submission_handlers import submit_proxyapp_to_store
 
 
 def create_proxy_app(install_data, channel_layer):
@@ -116,5 +117,14 @@ def update_proxy_app(install_data, channel_layer):
 
 
 def submit_proxy_app(install_data, channel_layer, app_workspace):
-    
+    from tethys_apps.models import ProxyApp
+
+    app_name = install_data['app_name']
+    active_stores = install_data['active_stores']
+    proxy_app = ProxyApp.objects.get(name=app_name)
+
+    for active_store in active_stores:
+        active_store['email'] = install_data['notification_email']
+        submit_proxyapp_to_store(proxy_app, active_store, channel_layer, app_workspace)
+
     return
