@@ -5,6 +5,7 @@
 var notification_ws
 var notifCount = 0
 var inRestart = false
+var unauthorized_channel_access = false
 
 
 const serviceLookup = {
@@ -177,11 +178,18 @@ function startWS(websocketServerLocation, n_content) {
     }
   }
 
-  notification_ws.onclose = function() {
-    setServerOffline()
-    // Try to reconnect in 1 second
-    setTimeout(function() {
-      startWS(websocketServerLocation, n_content)
-    }, 1000)
+  notification_ws.onerror = function(e) {
+    unauthorized_channel_access = true
+    console.log("User is unauthorized to access django channels")
+  }
+
+  notification_ws.onclose = function(e) {
+    if (!unauthorized_channel_access) {
+      setServerOffline()
+      // Try to reconnect in 1 second
+      setTimeout(function() {
+        startWS(websocketServerLocation, n_content)
+      }, 1000)
+    }
   }
 }
