@@ -648,7 +648,7 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
             "job_url": job_url,
             "conda_channel": conda_channel
         },
-        "jsHelperFunction": "proxySubmitComplete",
+        "jsHelperFunction": "proxyAppSubmitComplete",
         "helper": "addModalHelper"
     }
     send_notification(get_data_json, channel_layer)
@@ -769,7 +769,7 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
             "job_url": job_url,
             "conda_channel": conda_channel
         },
-        "jsHelperFunction": "addComplete",
+        "jsHelperFunction": "tethysAppSubmitComplete",
         "helper": "addModalHelper"
     }
     send_notification(get_data_json, channel_layer)

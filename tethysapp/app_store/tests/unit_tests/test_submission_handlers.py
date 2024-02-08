@@ -535,7 +535,7 @@ def test_submit_tethysapp_to_store(mocker, app_store_workspace, basic_tethysapp)
             "job_url": "job_url",
             "conda_channel": "test_channel"
         },
-        "jsHelperFunction": "addComplete",
+        "jsHelperFunction": "tethysAppSubmitComplete",
         "helper": "addModalHelper"
     }
     mock_send_notification.assert_called_with(expected_data_json, mock_channel)

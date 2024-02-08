@@ -66,27 +66,27 @@
                             <div id="tethysapp_{{ store.conda_channel }}_branchesList" class="branches-list"></div>
                             <div>
                                 <div id="tethysapp_{{ store.conda_channel }}_successMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-success text-white">
-                                    <p>Your Tethys Application has been successfully queued for processing.You will be notified via email when you application is available on the Tethys App Store. <span id="{{ store.conda_channel }}_SuccessLinkMessage">Click <span id="{{ store.conda_channel }}_addSuccessLink">here</span> to follow the processing logs and inspect it for errors.</span></p>
+                                    <p>Your Tethys Application has been successfully queued for processing.You will be notified via email when you application is available on the Tethys App Store. <span id="tethysapp_{{ store.conda_channel }}_SuccessLinkMessage">Click <span id="tethysapp_{{ store.conda_channel }}_addSuccessLink">here</span> to follow the processing logs and inspect it for errors.</span></p>
                                 </div>
                                 <div id="tethysapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysapp_failMessage"></div>
                             </div>
                         </div>
                     {% endfor %}
                 </div> 
-                <div id="{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysapp_failMessage"></div>
+                <div id="tethysapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysapp_failMessage"></div>
                 <button class="btn btn-primary pull-right mt-3" id="fetchRepoButton" onClick="getRepoForAdd()"> Fetch Repository </button>
                 <button class="btn btn-primary pull-right" style="display:none;" id="processBranchButton"> Submit </button>
             </div>
             <div class="modal-footer">
-                <div id="loadingTextAppSubmit"></div>
-                <div id="loaderEllipsis" class="lds-ellipsis pull-right">
+                <div id="submitTethysAppLoaderText" class="loaderText"></div>
+                <div id="submitTethysAppLoaderEllipsis" class="lds-ellipsis pull-right">
                     <div></div>
                     <div></div>
                     <div></div>
                     <div></div>
                 </div>
-                <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true" id="cancelAddButton"> Cancel </button>
-                <button class="btn btn-success pull-right" style="margin-top:10px;display:none;" data-bs-dismiss="modal" aria-hidden="true" id="doneAddButton"> Done </button>
+                <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitCancel"> Cancel </button>
+                <button class="btn btn-success pull-right" style="margin-top:10px;display:none;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitDone"> Done </button>
             </div>
         </div>
     </div>

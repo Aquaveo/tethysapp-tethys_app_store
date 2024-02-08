@@ -59,25 +59,26 @@
                             <div id="proxyapp_{{ store.conda_channel }}_branchesList"></div>
                             <div>
                                 <div id="proxyapp_{{ store.conda_channel }}_successMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-success text-white">
-                                    <p>Your Tethys Application has been successfully queued for processing.You will be notified via email when you application is available on the Tethys App Store. <span id="{{ store.conda_channel }}_SuccessLinkMessage">Click <span id="{{ store.conda_channel }}_addSuccessLink">here</span> to follow the processing logs and inspect it for errors.</span></p>
+                                    <p>Your Proxy Application has been successfully queued for processing.You will be notified via email when you application is available on the Tethys App Store. <span id="proxyapp_{{ store.conda_channel }}_SuccessLinkMessage">Click <span id="proxyapp_{{ store.conda_channel }}_addSuccessLink">here</span> to follow the processing logs and inspect it for errors.</span></p>
                                 </div>
                                 <div id="proxyapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white proxyapp_failMessage"></div>
                             </div>
                         </div>
                     {% endfor %}
                 </div> 
-                <div id="{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white proxyapp_failMessage"></div>
+                <div id="proxyapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white proxyapp_failMessage"></div>
             </div>
             <div class="modal-footer">
-                <div id="loadingTextAppSubmit"></div>
-                <div id="loaderEllipsis" class="lds-ellipsis pull-right">
+                <div id="submitProxyAppLoaderText" class="loaderText"></div>
+                <div id="submitProxyAppLoaderEllipsis" class="lds-ellipsis pull-right">
                     <div></div>
                     <div></div>
                     <div></div>
                     <div></div>
                 </div>
-                <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true"> Cancel </button>
-                <button class="btn btn-success pull-right" style="margin-top:10px;" aria-hidden="true" id="submitProxyApp"> Submit <span id="submitProxyAppName"></span> </button>
+                <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true" id="proxyappSubmitCancel"> Cancel </button>
+                <button class="btn btn-primary pull-right" style="margin-top:10px;" aria-hidden="true" id="submitProxyApp"> Submit <span id="submitProxyAppName"></span> </button>
+                <button class="btn btn-success pull-right" style="margin-top:10px;display:none;" data-bs-dismiss="modal" aria-hidden="true" id="proxyappSubmitDone"> Done </button>
             </div>
         </div>
     </div>

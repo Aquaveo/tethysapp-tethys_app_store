@@ -8,8 +8,8 @@ const addModalHelper = {
       $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
       $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
       $(`#tethysapp_${validationData.conda_channel}-spinner`).hide();
-      $("#loaderEllipsis").hide()
-      $("#loadingTextAppSubmit").text("")
+      $("#submitTethysAppLoaderEllipsis").hide()
+      $("#submitTethysAppLoaderText").text("")
       $("#fetchRepoButton").prop("disabled", false)
     }
     else{
@@ -31,9 +31,9 @@ const addModalHelper = {
   showBranches: (branchesData, content, completeMessage, ws) => {
     // Clear loader and button:
 
-    $("#loaderEllipsis").hide()
+    $("#submitTethysAppLoaderEllipsis").hide()
     $("#fetchRepoButton").hide()
-    $("#loadingTextAppSubmit").text("")
+    $("#submitTethysAppLoaderText").text("")
 
     if (!("branches" in branchesData)) {
       sendNotification(
@@ -56,9 +56,9 @@ const addModalHelper = {
         $(".branchesList")
 
       )
-      $("#loaderEllipsis").show()
+      $("#submitTethysAppLoaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
-      $("#loadingTextAppSubmit").text(`Please wait. Processing branch: ${branches[0]}`)
+      $("#submitTethysAppLoaderText").text(`Please wait. Processing branch: ${branches[0]}`)
 
       // notification_ws.send(
       //   JSON.stringify({
@@ -96,9 +96,9 @@ const addModalHelper = {
 
       let branchName = $(`#${conda_channel}_add_branch`).val()
 
-      $("#loaderEllipsis").show()
+      $("#submitTethysAppLoaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
-      $("#loadingTextAppSubmit").text( `Please wait. Processing branch: ${branchName}`)
+      $("#submitTethysAppLoaderText").text( `Please wait. Processing branch: ${branchName}`)
 
       notification_ws.send(
         JSON.stringify({
@@ -117,34 +117,46 @@ const addModalHelper = {
     $("#processBranchButton").show()
     // $("#failMessage").hide()
     $(`#tethysapp${conda_channel}_failMessage`).hide()
-
-
   },
-  addComplete: (addData, content, completeMessage, ws) => {
-    $("#loaderEllipsis").hide()
+
+  tethysAppSubmitComplete: (addData, content, completeMessage, ws) => {
+    $("#submitTethysAppLoaderEllipsis").hide()
     $("#processBranchButton").hide()
-    $("#cancelAddButton").hide()
-    $("#loadingTextAppSubmit").text("")
+    $("#tethysappSubmitCancel").hide()
+    $("#submitTethysAppLoaderText").text("")
     if (addData.job_url) {
       
-      $(`#${addData.conda_channel}_addSuccessLink`).html(
+      $(`#tethysapp_${addData.conda_channel}_addSuccessLink`).html(
         `<a href="${addData.job_url}" target="_blank">here</a>`
       )
-      // $("#addSuccessLink").html(
-      //   `<a href="${addData.job_url}" target="_blank">here</a>`
-      // )
-      
     } else {
       // Hide the link part of the success message
-      $(`#${addData.conda_channel}_SuccessLinkMessage`).hide();
-      // $("#SuccessLinkMessage").hide()
-
+      $(`#tethysapp_${addData.conda_channel}_SuccessLinkMessage`).hide();
     }
-    $("#doneAddButton").show()
-    $("#submitNewButton").show()
+    $("#tethysappSubmitDone").show()
     $(`#tethysapp_${addData.conda_channel}_successMessage`).show();
     $(`#tethysapp_${addData.conda_channel}_failMessage`).hide()
     $(`#tethysapp_${addData.conda_channel}-spinner`).hide(); 
+  },
+
+  
+  proxyAppSubmitComplete: (addData, content, completeMessage, ws) => {
+    $("#submitProxyAppLoaderEllipsis").hide()
+    $("#submitProxyAppLoaderText").text("")
+    $("#proxyappSubmitCancel").hide()
+    if (addData.job_url) {
+      
+      $(`#proxyapp_${addData.conda_channel}_addSuccessLink`).html(
+        `<a href="${addData.job_url}" target="_blank">here</a>`
+      )
+    } else {
+      $(`#proxyapp_${addData.conda_channel}_SuccessLinkMessage`).hide();
+    }
+    $("#submitProxyApp").hide()
+    $("#proxyappSubmitDone").show()
+    $(`#proxyapp_${addData.conda_channel}_successMessage`).show();
+    $(`#proxyapp_${addData.conda_channel}_failMessage`).hide()
+    $(`#proxyapp_${addData.conda_channel}-spinner`).hide(); 
   }
 }
 
@@ -336,9 +348,9 @@ const getRepoForAdd = () => {
     return
   }
 
-  $("#loaderEllipsis").show()
+  $("#submitTethysAppLoaderEllipsis").show()
   $("#fetchRepoButton").prop("disabled", true)
-  $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
+  $("#submitTethysAppLoaderText").text("Please wait. Fetching GitHub Repo")
   disable_options = {
     disable_email: true, disable_gihuburl: true, disable_channels: true, disable_labels: true, disable_branches: false
   }
@@ -547,6 +559,8 @@ $(document).on('click', '#submitProxyApp', function(event) {
     disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true, disable_branches: false
   }
   disableSubmitAppModalInput("proxyapp", disable_options)
+  $("#submitProxyAppLoaderEllipsis").show()
+  $("#submitProxyAppLoaderText").text( `Please wait. Submitting ${proxyAppName} to the app store`)
   $("#submitProxyApp").prop("disabled", true)
   notification_ws.send(
       JSON.stringify({
