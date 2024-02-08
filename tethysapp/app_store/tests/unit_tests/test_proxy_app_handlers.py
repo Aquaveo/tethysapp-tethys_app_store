@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
-from tethysapp.app_store.proxy_app_handlers import create_proxy_app, list_proxy_apps, delete_proxy_app, update_proxy_app
+from tethysapp.app_store.proxy_app_handlers import (create_proxy_app, list_proxy_apps, delete_proxy_app,
+                                                    update_proxy_app, submit_proxy_app)
 from tethys_apps.models import ProxyApp
 
 
@@ -127,3 +128,24 @@ def test_update_proxy_app_missing_app(mocker, proxy_app_install_data, caplog):
     update_proxy_app(proxy_app_install_data, mock_channel)
 
     assert "Proxy app named 'test proxy app' does not exist" in caplog.messages
+
+
+def test_submit_proxy_app(mocker, store, proxyapp):
+    mock_proxy = mocker.patch("tethys_apps.models.ProxyApp")
+    mock_submit = mocker.patch("tethysapp.app_store.proxy_app_handlers.submit_proxyapp_to_store")
+    app = proxyapp()
+    store = store("test_store")
+    mock_proxy.objects.get.return_value = app
+    install_data = {
+        "app_name": "test_app",
+        "notification_email": "test_email",
+        "active_stores": [store]
+    }
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
+
+    submit_proxy_app(install_data, mock_channel, mock_workspace)
+
+    submit_data = store
+    submit_data['notification_email'] = install_data['notification_email']
+    mock_submit.assert_called_with(app, submit_data, mock_channel, mock_workspace)

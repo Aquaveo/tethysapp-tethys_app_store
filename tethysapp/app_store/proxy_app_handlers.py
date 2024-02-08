@@ -124,7 +124,8 @@ def submit_proxy_app(install_data, channel_layer, app_workspace):
     proxy_app = ProxyApp.objects.get(name=app_name)
 
     for active_store in active_stores:
-        active_store['email'] = install_data['notification_email']
-        submit_proxyapp_to_store(proxy_app, active_store, channel_layer, app_workspace)
+        submit_data = active_store
+        submit_data['notification_email'] = install_data['notification_email']
+        submit_proxyapp_to_store(proxy_app, submit_data, channel_layer, app_workspace)
 
     return

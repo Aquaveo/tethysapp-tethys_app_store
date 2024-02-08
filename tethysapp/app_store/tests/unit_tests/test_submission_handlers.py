@@ -17,7 +17,7 @@ from tethysapp.app_store.submission_handlers import (update_anaconda_dependencie
                                                      create_head_current_version, create_tags_for_current_version,
                                                      get_workflow_job_url, submit_tethysapp_to_store,
                                                      validate_git_credentials, validate_git_organization,
-                                                     get_gitsubmission_app_dir)
+                                                     get_gitsubmission_app_dir, submit_proxyapp_to_store)
 
 
 def test_update_anaconda_dependencies_no_pip(basic_tethysapp, app_files_dir, basic_meta_yaml):
@@ -501,7 +501,48 @@ def test_get_workflow_job_url_not_found(mocker):
     assert job_url is None
 
 
-def test_submit_tethysapp_to_store(mocker, app_store_workspace, basic_tethysapp):
+def test_submit_proxyapp_to_store(mocker, app_store_workspace, proxyapp):
+    dev_url = "https://github.com/notrealorg/fakeapp"
+    mock_workspace = MagicMock(path=str(app_store_workspace))
+    conda_stores = [{
+        "github_organization": "fake_org",
+        "github_token": "fake_token",
+        "conda_labels": ["main", "dev"],
+        "conda_channel": "test_channel"
+    }]
+
+    install_data = {
+        "app_name": "test_app",
+        "dev_url": dev_url,
+        "email": "test@email.com",
+        "conda_labels": ["main", "dev"],
+        "conda_channel": "test_channel",
+        "branch": "test_branch"
+    }
+    mock_channel = MagicMock()
+    mock_github = mocker.patch('tethysapp.app_store.submission_handlers.get_conda_stores', return_value=conda_stores)
+    mock_github = mocker.patch('tethysapp.app_store.submission_handlers.github')
+    mock_github.Github().get_organization().get_repo().git_url.replace.return_value = dev_url
+    mocker.patch('tethysapp.app_store.submission_handlers.git')
+    mocker.patch('tethysapp.app_store.submission_handlers.get_workflow_job_url', return_value="job_url")
+    mock_send_notification = mocker.patch('tethysapp.app_store.submission_handlers.send_notification')
+    app = proxyapp()
+
+    submit_proxyapp_to_store(app, install_data, mock_channel, mock_workspace)
+
+    expected_data_json = {
+        "data": {
+            "githubURL": dev_url,
+            "job_url": "job_url",
+            "conda_channel": "test_channel"
+        },
+        "jsHelperFunction": "proxyAppSubmitComplete",
+        "helper": "addModalHelper"
+    }
+    mock_send_notification.assert_called_with(expected_data_json, mock_channel)
+
+
+def test_submit_tethysapp_to_store(mocker, app_store_workspace):
     dev_url = "https://github.com/notrealorg/fakeapp"
     mock_workspace = MagicMock(path=str(app_store_workspace))
     conda_stores = [{

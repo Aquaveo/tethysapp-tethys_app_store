@@ -4,7 +4,33 @@ from unittest.mock import AsyncMock, MagicMock
 from channels.testing import WebsocketCommunicator
 from channels.layers import get_channel_layer
 from django.test import override_settings
-from tethysapp.app_store.notifications import notificationsConsumer
+from django.contrib.auth.models import User
+from tethysapp.app_store.notifications import notificationsConsumer, check_user_permissions
+
+
+@pytest.mark.asyncio
+async def test_check_user_permissions(mocker):
+    mock_user = MagicMock()
+    mock_user.has_perm.return_value = True
+    mocker.patch("tethysapp.app_store.notifications.User.objects.get", return_value=mock_user)
+
+    assert await check_user_permissions(1)
+
+
+@pytest.mark.asyncio
+async def test_check_user_permissions_unauthorized(mocker):
+    mock_user = MagicMock()
+    mock_user.has_perm.return_value = False
+    mocker.patch("tethysapp.app_store.notifications.User.objects.get", return_value=mock_user)
+
+    assert not await check_user_permissions(1)
+
+
+@pytest.mark.asyncio
+async def test_check_user_permissions_dne(mocker):
+    mocker.patch("tethysapp.app_store.notifications.User.objects.get", side_effect=[User.DoesNotExist])
+
+    assert not await check_user_permissions(1)
 
 
 @pytest.mark.asyncio
