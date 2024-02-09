@@ -23,7 +23,7 @@ class TestApp(TethysAppBase):
 
 
 class ProxyApp:
-    name = "test proxy app"
+    name = "test app"
     description = "proxy app description"
     endpoint = "https_endpoint"
     logo_url = "logo_url.png"

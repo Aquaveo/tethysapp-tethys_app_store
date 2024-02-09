@@ -147,5 +147,5 @@ def test_submit_proxy_app(mocker, store, proxyapp):
     submit_proxy_app(install_data, mock_channel, mock_workspace)
 
     submit_data = store
-    submit_data['notification_email'] = install_data['notification_email']
+    submit_data['email'] = install_data['notification_email']
     mock_submit.assert_called_with(app, submit_data, mock_channel, mock_workspace)

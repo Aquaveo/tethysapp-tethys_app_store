@@ -125,7 +125,7 @@ def submit_proxy_app(install_data, channel_layer, app_workspace):
 
     for active_store in active_stores:
         submit_data = active_store
-        submit_data['notification_email'] = install_data['notification_email']
+        submit_data['email'] = install_data['notification_email']
         submit_proxyapp_to_store(proxy_app, submit_data, channel_layer, app_workspace)
 
     return
