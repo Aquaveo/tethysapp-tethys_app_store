@@ -151,16 +151,7 @@ const addModalHelper = {
 
   
   proxyAppInstallComplete: (addData, content, completeMessage, ws) => {
-    $("#installLoaderEllipsis").hide()
-    $("#doneInstallButton").show()
-    $("#goToAppButton").show()
-    location.reload();
-  },
-
-  
-  proxyAppUpdateComplete: (data, content, completeMessage, ws) => {
-    $("#updateLoaderEllipsis").hide()
-    location.reload();
+    sendNotification("install_complete", content)
   }
 }
 

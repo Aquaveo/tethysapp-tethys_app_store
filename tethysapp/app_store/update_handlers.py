@@ -91,11 +91,7 @@ def update_app(data, channel_layer, app_workspace):
         send_update_msg("Application update failed. Check logs for more details.", channel_layer)
         return
 
-    if data['app_type'] == "tethysapp":
-        # Since all settings are preserved, continue to standard cleanup/restart command
-        restart_server(data={"restart_type": "update", "name": data["name"]}, channel_layer=channel_layer,
-                    app_workspace=app_workspace)
-    else:
+    if data['app_type'] == "proxyapp":
         data['app_name'] = data['name'].replace("proxyapp_", "")
         delete_proxy_app(data, channel_layer)
         
@@ -106,14 +102,8 @@ def update_app(data, channel_layer, app_workspace):
             install_data = yaml.safe_load(f)
 
         create_proxy_app(install_data, channel_layer)
-
-        get_data_json = {
-            "data": {
-                "app_name": data['app_name'],
-                "message": f"Proxy app {data['app_name']} updated"
-            },
-            "jsHelperFunction": "proxyAppUpdateComplete",
-            "helper": "addModalHelper"
-        }
         send_update_msg("Proxy app has been updated.", channel_layer)
-        send_notification(get_data_json, channel_layer) 
+
+    # Since all settings are preserved, continue to standard cleanup/restart command
+    restart_server(data={"restart_type": "update", "name": data["name"]}, channel_layer=channel_layer,
+                app_workspace=app_workspace)
