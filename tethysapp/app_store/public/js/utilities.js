@@ -181,13 +181,13 @@ function startWS(websocketServerLocation, n_content) {
     if ("code" in e) {
       if (e.code == 4004) {
         console.log("User is unauthorized to access django channels")
+        return
       }
-    } else {
-      setServerOffline()
-      // Try to reconnect in 1 second
-      setTimeout(function() {
-        startWS(websocketServerLocation, n_content)
-      }, 1000)
     }
+    setServerOffline()
+    // Try to reconnect in 1 second
+    setTimeout(function() {
+      startWS(websocketServerLocation, n_content)
+    }, 1000)
   }
 }
