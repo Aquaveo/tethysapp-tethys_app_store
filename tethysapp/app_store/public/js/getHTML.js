@@ -6,7 +6,7 @@ htmlHelpers.versions = (appName, channel, label, version, isUsingIncompatible) =
     // <div id="selectVersion" style="display: inline-block; min-width:100px" onchange="updateTethysPlatformVersion('${appName}', '${isUsingIncompatible}')"></div>
 
     return `<div>Start installation: 
-                    <button id="${appName}_installer" class="btn btn-primary" onclick="startInstall('${appName}','${channel}', '${label}','${version}')"> Start </button>
+                    <button id="${appName}_installer" class="btn btn-primary" onclick="startInstall('${appName}', '${channel}', '${label}', '${version}')"> Start </button>
                     <br>
                     <br>
                     <div id="tethysPlatformVersion" style="min-width:100px"></div>

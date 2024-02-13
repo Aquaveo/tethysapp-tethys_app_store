@@ -353,6 +353,7 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
                                     refresh=require_refresh)
     tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
     for resource in all_resources:
+        resource['name'] = resource['name'].replace("proxyapp_", "")
         if resource["installed"][conda_channel][conda_label]:
             installed_apps[resource['name']] = resource
 
@@ -432,8 +433,7 @@ def check_if_proxyapp_installed(app_name):
     """
     return_obj = {'isInstalled': False}
     proxy_apps = list_proxy_apps()
-    installed_app = [app for app in proxy_apps if app['name'] == app_name]
-
+    installed_app = [app for app in proxy_apps if app['name'] == app_name.replace("proxyapp_", "")]
     if installed_app:
         installed_app = installed_app[0]
         conda_channel = None
@@ -505,7 +505,6 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
 
         # Look for packages:
         logger.info("Refreshing list of apps cache")
-
         [resp, err, code] = conda_run(Commands.SEARCH,
                                       ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
 

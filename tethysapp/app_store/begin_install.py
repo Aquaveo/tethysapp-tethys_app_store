@@ -12,7 +12,7 @@ from subprocess import call
 
 from .helpers import check_all_present, logger, send_notification
 from .resource_helpers import get_resource, get_app_instance_from_path
-from .proxy_app_handlers import create_proxy_app
+from .proxy_app_handlers import create_proxy_app, list_proxy_apps
 from .mamba_helpers import mamba_uninstall, mamba_download, mamba_install
 from tethys_apps.base.workspace import TethysWorkspace
 
@@ -145,14 +145,15 @@ def begin_install(installData, channel_layer, app_workspace):
                 raise Exception("Mamba install script failed to install application.")
             detect_app_dependencies(resource['name'], channel_layer)
         else:
+            proxy_apps = list_proxy_apps()
+            installed_app = [app for app in proxy_apps if app['name'] == resource["name"].replace("proxyapp_", "")]
+            if installed_app:
+                message = "Proxy App is already installed with this name"
+                send_notification(message, channel_layer)
+                raise Exception(message)
+            
             successful_install = mamba_download(resource, installData['channel'], installData['label'],
                                             installData["version"], channel_layer)
-            if not successful_install:
-                mamba_uninstall(resource["name"], channel_layer)
-                successful_install = mamba_download(resource, installData['channel'], installData['label'],
-                                                    installData["version"], channel_layer)
-                if not successful_install:
-                    raise Exception("Mamba install script failed to install application.")
 
             site_packages = os.path.join(os.path.dirname(subprocess.__file__), "site-packages")
             proxy_package = [package for package in os.listdir(site_packages) if resource["name"] in package][0]
@@ -160,9 +161,17 @@ def begin_install(installData, channel_layer, app_workspace):
             with open(proxyapp_yaml) as f:
                 install_data = yaml.safe_load(f)
 
-            app_created = create_proxy_app(install_data, channel_layer)
-            if not app_created:
-                raise Exception("Failed to create proxy app. Check logs for more details")
+            create_proxy_app(install_data, channel_layer)
+
+            get_data_json = {
+                "data": {
+                    "app_name": resource['name'],
+                    "message": f"Proxy app {resource['name']} added"
+                },
+                "jsHelperFunction": "proxyAppInstallComplete",
+                "helper": "addModalHelper"
+            }
+            send_notification(get_data_json, channel_layer) 
     except Exception as e:
         logger.error(e)
         send_notification("Application installation failed. Check logs for more details.", channel_layer)

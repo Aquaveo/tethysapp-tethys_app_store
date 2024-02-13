@@ -17,6 +17,7 @@ def create_proxy_app(install_data, channel_layer):
     proxy_description = install_data['description']
     proxy_logo = install_data['logo_url']
     proxy_tags = install_data['tags']
+    proxy_tags = ",".join(proxy_tags) if isinstance(proxy_tags, list) else proxy_tags
     proxy_enabled = install_data['enabled']
     proxy_shown = install_data['show_in_apps_library']
     try:
@@ -32,7 +33,7 @@ def create_proxy_app(install_data, channel_layer):
             logo_url=proxy_logo,
             back_url="",
             description=proxy_description,
-            tags=",".join(proxy_tags),
+            tags=proxy_tags,
             show_in_apps_library=proxy_shown,
             enabled=proxy_enabled,
             open_in_new_tab=True,

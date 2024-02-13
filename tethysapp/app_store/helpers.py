@@ -2,6 +2,9 @@ import logging
 import os
 import re
 import toml
+import subprocess
+from pathlib import Path
+import sys
 
 from django.conf import settings
 from django.core.cache import cache
@@ -9,6 +12,7 @@ from django.core.cache import cache
 from asgiref.sync import async_to_sync
 from string import Template
 from subprocess import run
+from tethys_cli.cli_helpers import get_manage_path
 from .utilities import decrypt
 from .app import AppStore as app
 

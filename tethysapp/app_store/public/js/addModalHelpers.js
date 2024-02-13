@@ -52,22 +52,12 @@ const addModalHelper = {
 
       sendNotification(
         `One branch found. Continuing packaging with ${branches[0]} branch.`,
-        // $("#branchesList")
         $(".branchesList")
 
       )
       $("#submitTethysAppLoaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
       $("#submitTethysAppLoaderText").text(`Please wait. Processing branch: ${branches[0]}`)
-
-      // notification_ws.send(
-      //   JSON.stringify({
-      //       data: {
-      //           url: githubURL
-      //       },
-      //       type: `validate_git_repo`
-      //   })
-      // )
 
       notification_ws.send(
         JSON.stringify({
@@ -157,6 +147,20 @@ const addModalHelper = {
     $(`#proxyapp_${addData.conda_channel}_successMessage`).show();
     $(`#proxyapp_${addData.conda_channel}_failMessage`).hide()
     $(`#proxyapp_${addData.conda_channel}-spinner`).hide(); 
+  },
+
+  
+  proxyAppInstallComplete: (addData, content, completeMessage, ws) => {
+    $("#installLoaderEllipsis").hide()
+    $("#doneInstallButton").show()
+    $("#goToAppButton").show()
+    location.reload();
+  },
+
+  
+  proxyAppUpdateComplete: (data, content, completeMessage, ws) => {
+    $("#updateLoaderEllipsis").hide()
+    location.reload();
   }
 }
 

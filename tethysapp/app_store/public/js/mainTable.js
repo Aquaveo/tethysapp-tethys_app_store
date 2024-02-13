@@ -225,7 +225,7 @@ function addHtmlForUpdateApp(row){
     for(channel in row['updateAvailable']){
       for(label in row['updateAvailable'][channel]){
         if(row['updateAvailable'][channel][label]){
-          html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Rebase"><button type="button" id="${channel}__${label}__update" class="custom-label label-color-primary label-outline-xs">Rebase</button></a>`  
+          html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Rebase"><button type="button" id="${channel}_${label}_update" class="custom-label label-color-primary label-outline-xs">Rebase</button></a>`  
         }
       }
     }
@@ -235,9 +235,9 @@ function addHtmlForUpdateApp(row){
 
 function ProxyAppActionFormatter(value, row, index) {
   let ProxyApp = row["name"]
-  let deleteButton =  `<button type="button" id="${ProxyApp}_deleteProxy" style="margin-left:5px" class="custom-label label-color-danger proxyAppDelete">Delete</button>`
-  let updateButton =  `<button type="button" id="${ProxyApp}_updateProxy" style="margin-left:5px" class="custom-label label-color-warning proxyAppUpdate">Update</button>`
-  let submitButton =  `<button type="button" id="${ProxyApp}_submitProxy" style="margin-left:5px" class="custom-label label-color-primary proxyAppUploadToStore">Submit to App Store</button>`
+  let deleteButton =  `<button type="button" id="${ProxyApp}_deleteProxy" style="margin-left:5px" class="custom-label label-color-danger label-outline-xs proxyAppDelete">Delete</button>`
+  let updateButton =  `<button type="button" id="${ProxyApp}_updateProxy" style="margin-left:5px" class="custom-label label-color-warning label-outline-xs proxyAppUpdate">Update</button>`
+  let submitButton =  `<button type="button" id="${ProxyApp}_submitProxy" style="margin-left:5px" class="custom-label label-color-primary label-outline-xs proxyAppUploadToStore">Submit to App Store</button>`
   return deleteButton + updateButton + submitButton
 }
 
@@ -251,58 +251,12 @@ function mergedOperateFormatter(value, row, index){
         html_str += `<a class="uninstall button-spaced" href="javascript:void(0)" title="Uninstall">
         <button type="button" id="${channel}__${label}__uninstall" class="custom-label label-color-danger label-outline-xs"><i class="bi bi-dash-lg"></i> Uninstall</button>
         </a>`
-        html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Rebase"><button type="button" id="${channel}__${label}__update" class="custom-label label-color-primary label-outline-xs"><i class="bi bi-stack"></i> Rebase </button></a>`  
-
+        html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Rebase"><button type="button" id="${channel}_${label}_update" class="custom-label label-color-warning label-outline-xs"><i class="bi bi-stack"></i> Rebase </button></a>`  
       }
     }
   }
-  // html_str+= addHtmlForUpdateApp(row);
   html_str += `</div>`
   return html_str
-  // var html_str = '<div class="actions_channel_container">';
-  // for(channel in value){
-  //   html_str += `<div class="channels_container"> <div class="channels_centered"><span class="store_label custom-label label-outline-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span></div><div> `;
-  //   for (label in value[channel]){
-  //     var github_url =''
-  //     if (value[channel][label] !== null ){
-  //       github_url =  value[channel][label]
-  //       if(github_url == ""){
-  //         var normal_json = row['license'][channel][label];
-  //         try{
-  //           var licenseChannnelLabel = JSON.parse(normal_json.replace(/'/g, '"'));
-  //           var github_url = licenseChannnelLabel['dev_url']
-  //         }
-  //         catch(e){
-  //           console.log(e)
-  //         }
-
-  //       }
-  //     }
-  //       // check compatibility
-  //       var icon_warning = '';
-  //       var color_icon = 'primary';
-  //       if(Object. keys(row['compatibility'][channel][label]).length == 0 ){
-  //         icon_warning = `<i class="bi bi-exclamation-triangle"></i> `
-  //         color_icon = 'danger';
-  //       }
-
-  //       html_str += `<div class="actions_label_container"><div><span class="label_label custom-label label-outline-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i>${label}</span></div>
-  //       <span>
-  //         <p class="store_label_val">
-  //           <a class="github_type button-spaced" href="${github_url}" target="_blank" title="Github">
-  //             <button type="button" class="custom-label label-color-info label-outline-xs"><i class="bi bi-github"></i></button>
-  //           </a>
-  //           <a class="install button-spaced" href="javascript:void(0)" title="Install">
-  //             <button type="button" id="${channel}__${label}__install" class="custom-label label-color-${color_icon} label-outline-xs">Install</button>
-  //           </a>
-  //         </p>
-  //       </span></div>`
-      
-  //   }
-  //   html_str += `</div></div>`
-  // }
-  // return html_str
-  
 }
 
 
@@ -453,7 +407,7 @@ function get_channel_label_from_id(e){
   return [channel,label]
 }
 
-function chooseVersion(app_name,channel,label,version,div_element){
+function chooseVersion(app_name, app_type, channel, label, version, div_element){
   var htmlLatestVersion=''
   htmlLatestVersion += `<span class="labels_container" style="display: inline-block;"> `
   htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["channel_style"]} label-outline-xs"> <i class="bi bi-shop"></i> ${channel} </span>`
@@ -466,10 +420,14 @@ function chooseVersion(app_name,channel,label,version,div_element){
       app_name
     }</strong> app to version ${htmlLatestVersion}? `
   )
-  // console.log(channel,label,version)
+
+  if (app_type === "proxyapp") {
+    app_name = "proxyapp_" + app_name
+  }
   updateData = {
     name: app_name,
-    channel:channel,
+    app_type: app_type,
+    channel: channel,
     label: label,
     version: version
   }
@@ -477,10 +435,6 @@ function chooseVersion(app_name,channel,label,version,div_element){
 
 
 window.operateEvents = {
-  // "click .install2": function(e, value, row, index) {
-
-  // },
-
   "click .install": function(e, value, row, index) {
     
     $("#mainCancel").show()
@@ -500,20 +454,13 @@ window.operateEvents = {
     installData["name"] = appName
     let channel_and_label = get_channel_label_from_id(e);
     let selectedVersion = e.target.innerText;
-    n_content.append(htmlHelpers.versions(appName,channel_and_label[0],channel_and_label[1],selectedVersion, isUsingIncompatible))
+    let app_type = row['app_type'];
+    if (app_type === "proxyapp") {
+      appName = "proxyapp_" + appName
+    }
+    n_content.append(htmlHelpers.versions(appName, channel_and_label[0], channel_and_label[1], selectedVersion, isUsingIncompatible))
     writeTethysPlatformCompatibility_new(e, row, channel_and_label[0],channel_and_label[1])
   },
-
-  //$('#versions').on('select2:select', function (e, _, row, _) {
-  //"click .versions": function (e, _, row, _) {
-  //  writeTethysPlatformCompatibility(e, row)
-  //},
-
-  // "click .github": function(e, value, row, index) {
-    
-  //   let githubURL = getResourceValueByName("dev_url", row.name, availableApps)
-  //   if (githubURL) window.open(githubURL, "_blank")
-  // },
 
   "click .uninstall": function(e, value, row, index) {
     $("#uninstallingAppNotice").html(
@@ -522,8 +469,14 @@ window.operateEvents = {
       }</strong> app from your Tethys Portal? 
       \n This will remove all associated files and data stored in any linked persistent stores.`
     )
+    let appType = row['app_type'];
+    let appName = row["name"];
+    if (appType === "proxyapp") {
+      appName = "proxyapp_" + appName
+    }
     uninstallData = {
-      name: row["name"]
+      name: appName,
+      app_type: appType
     }
     $("#uninstallingAppNotice").show()
     $("#doneUninstallButton").hide()
@@ -560,15 +513,10 @@ window.operateEvents = {
         htmlLatestVersion += `<span class="custom-label label-color-${labels_style_dict[channel]["label_styles"][label]} label-outline-xs"><i class="bi bi-tags"></i> ${label}</span>`
         htmlLatestVersion += `<span class="custom-label label-outline-xs label-color-gray">${row['latestVersion'][channel][label]}</span>`
         htmlLatestVersion += `</span>`
-        htmlLatestVersion += `<button class="custom-label label-outline-xs label-outline-success pull-right" id="choose-version-update" onClick="chooseVersion('${row['name']}','${channel}','${label}','${row['latestVersion'][channel][label]}','update-app-notice')" >Choose Version</button>`
+        htmlLatestVersion += `<button class="custom-label label-outline-xs label-outline-success pull-right" id="choose-version-update" onClick="chooseVersion('${row['name']}', '${row['app_type']}', '${channel}', '${label}', '${row['latestVersion'][channel][label]}', 'update-app-notice')" >Choose Version</button>`
         htmlLatestVersion += `</span>`
         $("#current-version-update").html(htmlCurrentVersion);
         $("#latest-version-update").html(htmlLatestVersion);
-        // $("#update-app-notice").html(
-        //   `Are you sure you would like to update the <strong>${
-        //     row["name"]
-        //   }</strong> app to version ${row['latestVersion'][channel][label]}? `
-        // )
       }
     }
 
@@ -588,23 +536,6 @@ window.operateEvents = {
       idd.addEventListener('click', eventClickDropdownUpdate)
     })
 
-
-
-
-    // $(`#${ $("#install-dropdown-update")}`).on("click")
-
-    // let installedApp = installedApps.find((app) => app.name == row["name"])
-    // $("#current-version-update").html(installedApp.installedVersion)
-    // $("#latest-version-update").html(installedApp.latestVersion)
-    // $("#update-app-notice").html(
-    //   `Are you sure you would like to update the <strong>${
-    //     row["name"]
-    //   }</strong> app to version ${installedApp.latestVersion}? `
-    // )
-    // updateData = {
-    //   name: row["name"],
-    //   version: installedApp.latestVersion
-    // }
     $("#update-app-notice").show()
     $("#done-update-button").hide()
 

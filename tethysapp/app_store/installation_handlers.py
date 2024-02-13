@@ -1,18 +1,11 @@
-import os
-import sys
-import subprocess
-
 from argparse import Namespace
 from django.core.exceptions import ObjectDoesNotExist
-from pathlib import Path
 
 from tethys_apps.models import CustomSetting, TethysApp
 from tethys_apps.utilities import (get_app_settings, link_service_to_app_setting)
-from tethys_cli.cli_helpers import get_manage_path
 from tethys_cli.install_commands import (get_service_type_from_setting, get_setting_type_from_setting)
 from tethys_cli.services_commands import services_list_command
 
-from .app import AppStore as app
 from .begin_install import detect_app_dependencies
 from .resource_helpers import get_app_instance_from_path, check_if_app_installed
 from .helpers import logger, run_process, send_notification

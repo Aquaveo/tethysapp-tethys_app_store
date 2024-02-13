@@ -344,7 +344,7 @@ const updateTethysPlatformCompatibility_new = (app, selectedVersion,channel,labe
     $("#tethysPlatformVersion").text('Tethys Platform Compatibility: ' + platform_compatibility)
 }
 
-const startInstall = (appName,channel_app,label_app,current_version) => {
+const startInstall = (appName, channel_app, label_app, current_version) => {
     showLoader()
     $(`#${appName}_installer`).prop("disabled", true)
     $(`#${appName}_installer`).css('opacity', '.5');
@@ -410,7 +410,12 @@ const uninstall = () => {
 }
 
 const update = () => {
+    if (jQuery.isEmptyObject(updateData)) {
+        $("#update_failMessage").show()
+        return
+    }
     // Hide Elements
+    $("#update_failMessage").hide()
     $("#update-app-notice").hide()
     $("#yes-update").hide()
     $("#no-update").hide()
@@ -426,7 +431,6 @@ const update = () => {
 
 
     $("#update-processing-label").html(
-
         `Updating to: ${htmlStr}`
     )
     notification_ws.send(

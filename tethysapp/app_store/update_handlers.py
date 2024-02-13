@@ -1,8 +1,10 @@
 import subprocess
 import os
 import time
+import yaml
 
 from .helpers import logger, send_notification, check_all_present, restart_server
+from .proxy_app_handlers import delete_proxy_app, create_proxy_app
 
 
 def send_update_msg(msg, channel_layer):
@@ -89,6 +91,29 @@ def update_app(data, channel_layer, app_workspace):
         send_update_msg("Application update failed. Check logs for more details.", channel_layer)
         return
 
-    # Since all settings are preserved, continue to standard cleanup/restart command
-    restart_server(data={"restart_type": "update", "name": data["name"]}, channel_layer=channel_layer,
-                   app_workspace=app_workspace)
+    if data['app_type'] == "tethysapp":
+        # Since all settings are preserved, continue to standard cleanup/restart command
+        restart_server(data={"restart_type": "update", "name": data["name"]}, channel_layer=channel_layer,
+                    app_workspace=app_workspace)
+    else:
+        data['app_name'] = data['name'].replace("proxyapp_", "")
+        delete_proxy_app(data, channel_layer)
+        
+        site_packages = os.path.join(os.path.dirname(subprocess.__file__), "site-packages")
+        proxy_package = [package for package in os.listdir(site_packages) if data["name"] in package][0]
+        proxyapp_yaml = os.path.join(site_packages, proxy_package, "config", "proxyapp.yaml")
+        with open(proxyapp_yaml) as f:
+            install_data = yaml.safe_load(f)
+
+        create_proxy_app(install_data, channel_layer)
+
+        get_data_json = {
+            "data": {
+                "app_name": data['app_name'],
+                "message": f"Proxy app {data['app_name']} updated"
+            },
+            "jsHelperFunction": "proxyAppUpdateComplete",
+            "helper": "addModalHelper"
+        }
+        send_update_msg("Proxy app has been updated.", channel_layer)
+        send_notification(get_data_json, channel_layer) 
