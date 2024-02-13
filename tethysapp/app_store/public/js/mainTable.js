@@ -186,6 +186,17 @@ function checkInstalledInAvailable(row,value){
 }
 
 
+function mergedTypeFormatter(value, row, index){
+  if (value=="tethysapp") {
+    return "Tethys App"
+  } else if (value=="proxyapp") {
+    return "Proxy App"
+  } else {
+    return "Unknown"
+  }
+}
+
+
 function mergedFieldsFormatter(value, row, index){
   // console.log(incompatibleApps)
 

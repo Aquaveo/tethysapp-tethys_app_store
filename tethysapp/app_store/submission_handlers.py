@@ -8,6 +8,7 @@ import stat
 import json
 import time
 import re
+from pathlib import Path
 from github.GithubException import UnknownObjectException, BadCredentialsException
 
 from pathlib import Path
@@ -316,7 +317,7 @@ def get_keywords_and_email(setup_path_data):
 
 
 def create_template_data_for_install(app_github_dir, dev_url, setup_path_data, app_name=None, app_version=None,
-                                     source_files_path=None):
+                                     source_files_path=None, proxyapp=False):
     """Join the install_data information with the setup_py information to create template data for conda install
 
     Args:
@@ -337,8 +338,15 @@ def create_template_data_for_install(app_github_dir, dev_url, setup_path_data, a
 
     with open(install_yml) as f:
         install_yml_file = yaml.safe_load(f)
-        metadata_dict = {**setup_path_data, "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),
-                         "dev_url": dev_url}
+        if proxyapp:
+            additional_data = {"app_type": "proxyapp", "tethys_version": ">=3.0.0"}
+        else:
+            additional_data = {
+                "app_type": "tethysapp", "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),
+                "dev_url": dev_url
+            }
+            
+        metadata_dict = {**setup_path_data, **additional_data}
 
     template_data = {
         'metadataObj': json.dumps(metadata_dict).replace('"', "'")
@@ -588,15 +596,20 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     """
     # 1. Get Variables
     app_name = proxy_app.name.replace(" ", "_")
+    package_app_name = f"proxyapp_{app_name}"
     conda_labels = install_data["conda_labels"]
     conda_channel = install_data["conda_channel"]
     input_user_email = install_data['email']
+    app_version = "1.0"
     labels_string = generate_label_strings(conda_labels)
     files_changed = False
-    app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
+    app_github_dir = get_gitsubmission_app_dir(app_workspace, package_app_name, conda_channel)
     reset_folder(app_github_dir)
     repo = git.Repo.init(app_github_dir)
-    app_version = "1.0"
+    app_config_dir = os.path.join(app_github_dir, "config")
+    os.makedirs(app_config_dir)
+    (Path(app_github_dir) / "__init__.py").touch()
+    (Path(app_config_dir) / "__init__.py").touch()
 
     # 2. Get sensitive information for store
     conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]
@@ -610,16 +623,18 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     # 4. Add files to local repo
     source_files_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'application_files')
     proxyapp_template = os.path.join(source_files_path, "proxyapp_template.yaml")
+    additional_tags = f",conda_channel_{conda_channel},conda_labels_{'_'.join(conda_labels)},app_version_{app_version}"
+    proxy_tags = proxy_app.tags + additional_tags
     proxyapp_data = {
         "name": proxy_app.name,
         "description": proxy_app.description,
         "endpoint": proxy_app.endpoint,
         "logo_url": proxy_app.logo_url,
-        "tags": proxy_app.tags,
+        "tags": proxy_tags,
         "enabled": proxy_app.enabled,
         "show_in_apps_library": proxy_app.show_in_apps_library
     }
-    destination = os.path.join(app_github_dir, 'proxyapp.yaml')
+    destination = os.path.join(app_config_dir, 'proxyapp.yaml')
     apply_template(proxyapp_template, proxyapp_data, destination)
     repo.index.add([destination])
     repo.index.commit("Adding proxyapp.yaml to repo")
@@ -650,21 +665,22 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     # 10 get the data from the install.yml and create a metadata dict
     source = os.path.join(source_files_path, 'meta_template.yaml')
     destination = os.path.join(recipe_path, 'meta.yaml')
-    template_data = create_template_data_for_install(app_github_dir, "", {}, app_name=app_name,
-                                                     app_version=app_version, source_files_path=source_files_path)
+    template_data = create_template_data_for_install(app_github_dir, "", {}, app_name=package_app_name,
+                                                     proxyapp=True, app_version=app_version,
+                                                     source_files_path=source_files_path)
     apply_template(source, template_data, destination)
 
     # 11 get the data from the install.yml and create a metadata dict
     source = os.path.join(source_files_path, 'proxyapp_setup_template.py')
     destination = os.path.join(app_github_dir, 'setup.py')
-    template_data = {"app_name": app_name, "app_version": app_version}
+    template_data = {"app_name": package_app_name, "app_version": app_version}
     apply_template(source, template_data, destination)
 
     # 14. Update the dependencies of the package
     update_anaconda_dependencies(app_github_dir, recipe_path, source_files_path)
 
     # 11. apply data to the main.yml for the github action
-    apply_main_yml_template(source_files_path, workflows_path, app_name, input_user_email)
+    apply_main_yml_template(source_files_path, workflows_path, package_app_name, input_user_email)
 
     # 12. Check if this repo already exists on our remote:
     repo_name = app_github_dir.split('/')[-1]

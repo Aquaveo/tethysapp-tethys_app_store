@@ -2,8 +2,7 @@ import subprocess
 import os
 import time
 
-from .helpers import logger, send_notification, check_all_present
-from .installation_handlers import restart_server
+from .helpers import logger, send_notification, check_all_present, restart_server
 
 
 def send_update_msg(msg, channel_layer):

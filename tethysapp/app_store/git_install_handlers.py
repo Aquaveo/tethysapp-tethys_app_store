@@ -24,20 +24,13 @@ from datetime import datetime
 
 from conda.cli.python_api import run_command as conda_run, Commands
 from .app import AppStore as app
-from .helpers import get_override_key, logger, CACHE_KEY
-from .installation_handlers import restart_server
+from .helpers import get_override_key, logger, restart_server, clear_github_cache_list
 
 FNULL = open(os.devnull, 'w')
 
 git_install_logger = logging.getLogger("warehouse_git_install_logger")
 git_install_logger.setLevel(logging.DEBUG)
 logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
-
-
-def clear_github_cache_list():
-    """Clears out the stored cache of GitHub installed apps.
-    """
-    cache.delete(CACHE_KEY)
 
 
 def run_pending_installs():

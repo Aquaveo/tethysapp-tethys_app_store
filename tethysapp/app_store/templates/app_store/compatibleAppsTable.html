@@ -1,6 +1,6 @@
 {% load static %}
 <div class="card card-default main-app-list hidden">
-    <div class="card-header showHandIcon" data-bs-toggle="collapse" href="#mainApps">Compatible Tethys Applications</div>
+    <div class="card-header showHandIcon" data-bs-toggle="collapse" href="#mainApps">Compatible Applications</div>
     <div class="collapse show" id="mainApps">
         <div class="card-body">
         {% ifchanged active_store %}
@@ -8,8 +8,8 @@
                 <thead>
                     <tr>
                         <th data-field="name" data-formatter="mergedNameFormatter">App Name</th>
+                        <th data-field="app_type" data-formatter="mergedTypeFormatter">App Type</th>
                         <th data-field="latestVersion" data-formatter="mergedFieldsFormatter">App Latest Versions</th>
-                        
                         <th data-field="installed" data-formatter="mergedOperateFormatter" data-events="operateEvents">Actions</th>
                     </tr>
                 </thead>

@@ -8,7 +8,7 @@ from subprocess import (Popen, PIPE, STDOUT)
 from pathlib import Path
 
 from .git_install_handlers import write_logs
-from .helpers import logger
+from .helpers import logger, restart_server
 from tethys_cli.scaffold_commands import APP_PATH, APP_PREFIX, get_random_color, render_path, TEMPLATE_SUFFIX
 
 from rest_framework.decorators import api_view, authentication_classes
@@ -17,7 +17,6 @@ from rest_framework.authentication import TokenAuthentication
 
 from django.http import JsonResponse
 from tethys_sdk.routing import controller
-from .installation_handlers import restart_server
 
 
 def install_app(app_path, project_name, app_workspace):

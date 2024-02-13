@@ -16,6 +16,7 @@ import shutil
 from pkg_resources import parse_version
 import yaml
 from .helpers import logger, get_conda_stores
+from .proxy_app_handlers import list_proxy_apps
 from conda.cli.python_api import run_command as conda_run, Commands
 
 
@@ -208,7 +209,7 @@ def merge_channels_of_apps(app_channel_obj, stores):
                 if app not in app_channel_obj[type_app]:
                     continue
                 for key in stores[channel][type_app][app]:
-                    if key != 'name':
+                    if key not in ['name', 'app_type']:
                         if key not in merged_channels_app[type_app][app]:
                             merged_channels_app[type_app][app][key] = {}
                         if channel in app_channel_obj[type_app][app]:
@@ -299,7 +300,7 @@ def merge_labels_for_app_in_store(apps_label, store, conda_channel, type_apps):
             if label not in apps_label[app]:
                 continue
             for key in store[label][type_apps].get(app, []):
-                if key != 'name':
+                if key not in ['name', 'app_type']:
                     if key not in new_store_label_obj[app]:
                         new_store_label_obj[app][key] = {
                             conda_channel: {}
@@ -387,8 +388,8 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     return return_object
 
 
-def check_if_app_installed(app_name):
-    """Check if the app is installed with conda. If so, return additional information about the resource
+def check_if_tethysapp_installed(app_name):
+    """Check if the app is installed with conda as a tethys app. If so, return additional information about the resource
 
     Args:
         app_name (str): name of the potentially installed app
@@ -409,6 +410,60 @@ def check_if_app_installed(app_name):
             return_obj['channel'] = conda_search_result[0]["channel"]
             return_obj['version'] = conda_search_result[0]["version"]
             return return_obj
+
+    return return_obj
+
+
+def check_if_proxyapp_installed(app_name):
+    """Check if the app is installed as a proxy app. If so, return additional information about the resource
+
+    Args:
+        app_name (str): name of the potentially installed app
+
+    Returns:
+        dict: Dictionary containing additional information about the application
+    """
+    return_obj = {'isInstalled': False}
+    proxy_apps = list_proxy_apps()
+    installed_app = [app for app in proxy_apps if app['name'] == app_name]
+
+    if installed_app:
+        installed_app = installed_app[0]
+        conda_channel = None
+        app_version = None
+        
+        app_tags = installed_app['tags'].split(",")
+        for tag in app_tags:
+            if "conda_channel_" in tag:
+                conda_channel = tag.replace("conda_channel_", "")
+            if "app_version_" in tag:
+                app_version = tag.replace("app_version_", "")
+                
+        return_obj['isInstalled'] = True
+        return_obj['channel'] = conda_channel
+        return_obj['version'] = app_version
+
+    return return_obj
+
+
+def check_if_app_installed(app_name, app_type=None):
+    """Check if the app is installed with conda. If so, return additional information about the resource
+
+    Args:
+        app_name (str): name of the potentially installed app
+        app_type (str): type of app being installed. could be tethysapp or proxyapp
+
+    Returns:
+        dict: Dictionary containing additional information about the application
+    """
+    if app_type == "tethysapp":
+        return_obj = check_if_tethysapp_installed(app_name)
+    elif app_type == "proxyapp":
+        return_obj = check_if_proxyapp_installed(app_name)
+    else:
+        return_obj = check_if_proxyapp_installed(app_name)
+        if not return_obj["isInstalled"]:
+            return_obj = check_if_tethysapp_installed(app_name)
 
     return return_obj
 
@@ -460,10 +515,9 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
             return resource_metadata
 
         for app_package in conda_search_result:
-            installed_version = check_if_app_installed(app_package)
-
             newPackage = {
                 'name': app_package,
+                'app_type': "tethysapp",
                 'installed': {
                     conda_channel: {
                         conda_label: False
@@ -509,25 +563,25 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
             if "license" in conda_search_result[app_package][-1]:
                 newPackage["license"][conda_channel][conda_label] = conda_search_result[app_package][-1]["license"]
 
-            if installed_version['isInstalled']:
-                if conda_channel == installed_version['channel']:
-                    newPackage["installed"][conda_channel][conda_label] = True
-                    newPackage["installedVersion"] = {conda_channel: {}}
-                    newPackage["installedVersion"][conda_channel][conda_label] = installed_version['version']
-
             for conda_version in conda_search_result[app_package]:
                 newPackage["versions"][conda_channel][conda_label].append(conda_version.get('version'))
                 newPackage["versionURLs"][conda_channel][conda_label].append(conda_version.get('url'))
                 newPackage["licenses"][conda_channel][conda_label].append(conda_version.get('license'))
-
                 if "license" in conda_version:
                     try:
-                        license_json = json.loads(conda_version['license'].replace("', '", '", "')
-                                                  .replace("': '", '": "').replace("'}", '"}').replace("{'", '{"'))
+                        license_json = json.loads(conda_version['license'].replace("\'", "\""))
+                        newPackage["app_type"] = license_json.get('app_type', 'tethysapp')
                         if 'tethys_version' in license_json:
                             newPackage["compatibility"][conda_channel][conda_label][conda_version['version']] = license_json.get('tethys_version')  # noqa: E501
                     except (ValueError, TypeError):
                         pass
+
+            installed_version = check_if_app_installed(app_package, app_type=newPackage["app_type"])
+            if installed_version['isInstalled']:
+                if conda_channel == installed_version.get('channel'):
+                    newPackage["installed"][conda_channel][conda_label] = True
+                    newPackage["installedVersion"] = {conda_channel: {}}
+                    newPackage["installedVersion"][conda_channel][conda_label] = installed_version['version']
 
             resource_metadata.append(newPackage)
 
@@ -563,12 +617,12 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
         app["latestVersion"] = {conda_channel: {}}
 
         app["latestVersion"][conda_channel][conda_label] = app["versions"][conda_channel][conda_label][-1]
-        license = app["license"][conda_channel][conda_label]
+        license = app["license"][conda_channel][conda_label].replace("\'", "\"")
 
         comp_dict = None
         compatible = None
         try:
-            comp_dict = ast.literal_eval(license)
+            comp_dict = json.loads(license)
         except Exception:
             pass
 

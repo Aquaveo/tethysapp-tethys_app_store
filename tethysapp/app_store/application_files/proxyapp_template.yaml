@@ -1,4 +1,4 @@
-name: "$name"
+app_name: "$name"
 description: "$description"
 endpoint: "$endpoint"
 logo_url: "$logo_url"

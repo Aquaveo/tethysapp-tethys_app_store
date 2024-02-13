@@ -11,6 +11,7 @@ def create_proxy_app(install_data, channel_layer):
     """
     from tethys_apps.models import ProxyApp
 
+    app_created = False
     app_name = install_data['app_name']
     proxy_endpoint = install_data['endpoint']
     proxy_description = install_data['description']
@@ -40,9 +41,10 @@ def create_proxy_app(install_data, channel_layer):
         )
 
         proxy_app.save()
+        app_created = True
         send_notification(f"Proxy app {app_name} added", channel_layer)
 
-    return
+    return app_created
 
 
 def list_proxy_apps():

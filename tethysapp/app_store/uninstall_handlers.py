@@ -5,23 +5,8 @@ from tethys_apps.models import TethysApp
 
 import subprocess
 import shutil
-import os
-from .helpers import logger, send_notification, get_github_install_metadata, check_all_present
-from .git_install_handlers import clear_github_cache_list
-
-
-def send_uninstall_messages(msg, channel_layer):
-    """Send a message to the django channel about the uninstall status
-
-    Args:
-        msg (str): Message to send to the django channel
-        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-    """
-    data_json = {
-        "target": 'uninstallNotices',
-        "message": msg
-    }
-    send_notification(data_json, channel_layer)
+from .helpers import logger, get_github_install_metadata, clear_github_cache_list
+from .mamba_helpers import mamba_uninstall, send_uninstall_messages
 
 
 def uninstall_app(data, channel_layer, app_workspace):
@@ -75,31 +60,7 @@ def uninstall_app(data, channel_layer, app_workspace):
     send_uninstall_messages('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', channel_layer)
 
     try:
-        # Running the conda install as a subprocess to get more visibility into the running process
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        script_path = os.path.join(dir_path, "scripts", "mamba_uninstall.sh")
-
-        uninstall_command = [script_path, app_name]
-
-        # Running this sub process, in case the library isn't installed, triggers a restart.
-        p = subprocess.Popen(uninstall_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        while True:
-            output = p.stdout.readline()
-            if output == '':
-                break
-            if output:
-                # Checkpoints for the output
-                str_output = str(output.strip())
-                logger.info(str_output)
-                if (check_all_present(str_output, ['Running Mamba remove'])):
-                    send_uninstall_messages("Running uninstall script", channel_layer)
-                if (check_all_present(str_output, ['Transaction starting'])):
-                    send_uninstall_messages("Starting mamba uninstall", channel_layer)
-                if (check_all_present(str_output, ['Transaction finished'])):
-                    send_uninstall_messages("Mamba uninstall complete", channel_layer)
-                if (check_all_present(str_output, ['Mamba Remove Complete'])):
-                    break
-
+        mamba_uninstall(app_name, channel_layer)
     except PackagesNotFoundError:
         # This was installed using GitHub. Try to clean out
         github_installed = get_github_install_metadata(app_workspace)
