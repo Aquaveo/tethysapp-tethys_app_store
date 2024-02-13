@@ -398,7 +398,14 @@ def check_if_tethysapp_installed(app_name):
         dict: Dictionary containing additional information about the application
     """
     return_obj = {'isInstalled': False}
-    [resp, err, code] = conda_run(Commands.LIST, ["-f", "--json", app_name])
+    try:
+        [resp, err, code] = conda_run(Commands.LIST, ["-f", "--json", app_name])
+    except Exception as e:
+        if 'Path not found' in e.args[0]:
+            package_path = e.args[0].replace("Path not found: ", "")
+            shutil.rmtree(os.path.dirname(package_path))
+        [resp, err, code] = conda_run(Commands.LIST, ["-f", "--json", app_name])
+
     if code != 0:
         # In here maybe we just try re running the install
         logger.error(

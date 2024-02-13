@@ -38,16 +38,25 @@ def check_user_permissions(user_id):
     url='install/notifications',
 )
 class notificationsConsumer(AsyncWebsocketConsumer):
-    authorized = False
+    _authorized = None
+    
+    @property
+    async def authorized(self):
+        if self._authorized is None:
+            self._authorized = await check_user_permissions(self.scope["user"].id)
+        
+        return self._authorized
 
     async def connect(self):
         """Connects to the websocket consumer and adds a notifications group to the channel
         """
-        self.authorized = await check_user_permissions(self.scope["user"].id)
-        if self.authorized:
-            await self.accept()
+        await self.accept()
+        if await self.authorized:
             await self.channel_layer.group_add("notifications", self.channel_name)
             logger.info(f"Added {self.channel_name} channel to notifications")
+        else:
+            logger.info(f"User not authorized for websocket access")
+            await self.close(code=4004)
 
     async def disconnect(self, _):
         """Disconnects from the websocket consumer and removes a notifications group from the channel
@@ -62,7 +71,7 @@ class notificationsConsumer(AsyncWebsocketConsumer):
         Args:
             event (dict): event dictionary containing the message that will be sent to the channel group
         """
-        if self.authorized:
+        if await self.authorized:
             message = event['message']
             await self.send(text_data=json.dumps({'message': message, }))
             logger.info(f"Sent message {message} at {self.channel_name}")
@@ -73,7 +82,7 @@ class notificationsConsumer(AsyncWebsocketConsumer):
         Args:
             text_data (str): Json string of information on what function the server should run
         """
-        if self.authorized:
+        if await self.authorized:
             logger.info(f"Received message {text_data} at {self.channel_name}")
             text_data_json = json.loads(text_data)
             function_name = text_data_json.get('type')
