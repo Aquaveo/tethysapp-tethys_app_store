@@ -208,7 +208,7 @@ def test_merge_channels_of_apps(store_with_resources):
                 'timestamp': {store1['conda_channel']: {'main': "timestamp"},
                               store2['conda_channel']: {'dev': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'main': {}}, store2['conda_channel']: {'dev': {}}},
-                'license': {store1['conda_channel']: {'main': None}, store2['conda_channel']: {'dev': None}},
+                'license': {store1['conda_channel']: {'main': ""}, store2['conda_channel']: {'dev': ""}},
                 'licenses': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'dev': []}},
                 'author': {store1['conda_channel']: {'main': 'author'}, store2['conda_channel']: {'dev': 'author'}},
                 'description': {store1['conda_channel']: {'main': 'description'},
@@ -234,7 +234,7 @@ def test_merge_channels_of_apps(store_with_resources):
                 'timestamp': {store1['conda_channel']: {'main': "timestamp"},
                               store2['conda_channel']: {'main': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'main': {}}, store2['conda_channel']: {'main': {}}},
-                'license': {store1['conda_channel']: {'main': None}, store2['conda_channel']: {'main': None}},
+                'license': {store1['conda_channel']: {'main': ""}, store2['conda_channel']: {'main': ""}},
                 'licenses': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
                 'author': {store1['conda_channel']: {'main': 'author'}, store2['conda_channel']: {'main': 'author'}},
                 'description': {store1['conda_channel']: {'main': 'description'},
@@ -257,7 +257,7 @@ def test_merge_channels_of_apps(store_with_resources):
                 'channels_and_labels': {store1['conda_channel']: {'dev': []}},
                 'timestamp': {store1['conda_channel']: {'dev': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'dev': {}}},
-                'license': {store1['conda_channel']: {'dev': None}},
+                'license': {store1['conda_channel']: {'dev': ""}},
                 'licenses': {store1['conda_channel']: {'dev': []}},
                 'author': {store1['conda_channel']: {'dev': 'author'}},
                 'description': {store1['conda_channel']: {'dev': 'description'}},
@@ -312,7 +312,7 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
                 'timestamp': {store1['conda_channel']: {'main': "timestamp"},
                               store2['conda_channel']: {'main': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'main': {}}, store2['conda_channel']: {'main': {}}},
-                'license': {store1['conda_channel']: {'main': None}, store2['conda_channel']: {'main': None}},
+                'license': {store1['conda_channel']: {'main': ""}, store2['conda_channel']: {'main': ""}},
                 'licenses': {store1['conda_channel']: {'main': []}, store2['conda_channel']: {'main': []}},
                 'author': {store1['conda_channel']: {'main': 'author'}, store2['conda_channel']: {'main': 'author'}},
                 'description': {store1['conda_channel']: {'main': 'description'},
@@ -335,7 +335,7 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
                 'channels_and_labels': {store1['conda_channel']: {'dev': []}},
                 'timestamp': {store1['conda_channel']: {'dev': "timestamp"}},
                 'compatibility': {store1['conda_channel']: {'dev': {}}},
-                'license': {store1['conda_channel']: {'dev': None}},
+                'license': {store1['conda_channel']: {'dev': ""}},
                 'licenses': {store1['conda_channel']: {'dev': []}},
                 'author': {store1['conda_channel']: {'dev': 'author'}},
                 'description': {store1['conda_channel']: {'dev': 'description'}},
@@ -431,7 +431,7 @@ def test_merge_labels_single_store(store, resource):
         'channels_and_labels': {active_store['conda_channel']: {'main': [], 'dev': []}},
         'timestamp': {active_store['conda_channel']: {'main': "timestamp", 'dev': "timestamp"}},
         'compatibility': {active_store['conda_channel']: {'main': {}, 'dev': {}}},
-        'license': {active_store['conda_channel']: {'main': None, 'dev': None}},
+        'license': {active_store['conda_channel']: {'main': "", 'dev': ""}},
         'licenses': {active_store['conda_channel']: {'main': [], 'dev': []}},
         'author': {active_store['conda_channel']: {'main': 'author', 'dev': 'author'}},
         'description': {active_store['conda_channel']: {'main': 'description', 'dev': 'description'}},
@@ -516,7 +516,7 @@ def test_merge_labels_for_app_in_store(store, resource):
         'channels_and_labels': {active_store['conda_channel']: {'main': [], 'dev': []}},
         'timestamp': {active_store['conda_channel']: {'main': "timestamp", 'dev': "timestamp"}},
         'compatibility': {active_store['conda_channel']: {'main': {}, 'dev': {}}},
-        'license': {active_store['conda_channel']: {'main': None, 'dev': None}},
+        'license': {active_store['conda_channel']: {'main': "", 'dev': ""}},
         'licenses': {active_store['conda_channel']: {'main': [], 'dev': []}},
         'author': {active_store['conda_channel']: {'main': 'author', 'dev': 'author'}},
         'description': {active_store['conda_channel']: {'main': 'description', 'dev': 'description'}},
@@ -919,7 +919,7 @@ def test_check_if_app_installed_installed(mocker):
     conda_run_resp = json.dumps([{"channel": "conda_channel", 'version': '1.0'}])
     mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 0])
 
-    response = check_if_app_installed("test_app")
+    response = check_if_app_installed("test_app", app_type="tethysapp")
 
     expected_response = {
         'isInstalled': True,
@@ -933,7 +933,7 @@ def test_check_if_app_installed_not_installed(mocker):
     conda_run_resp = json.dumps([{}])
     mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 10])
 
-    response = check_if_app_installed("test_app")
+    response = check_if_app_installed("test_app", app_type="tethysapp")
 
     expected_response = {
         'isInstalled': False

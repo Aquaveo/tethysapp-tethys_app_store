@@ -8,7 +8,7 @@ from tethys_cli.services_commands import services_list_command
 
 from .begin_install import detect_app_dependencies
 from .resource_helpers import get_app_instance_from_path, check_if_app_installed
-from .helpers import logger, run_process, send_notification
+from .helpers import logger, send_notification
 from .model import *  # noqa: F401, F403
 
 

@@ -3,6 +3,7 @@ import subprocess
 import time
 from .helpers import logger, send_notification, check_all_present
 
+
 def mamba_uninstall(app_name, channel_layer):
     """Run a conda uninstall
 
@@ -98,8 +99,8 @@ def mamba_download(app_metadata, app_channel, app_label, app_version, channel_la
             str_output = str(output.strip())
             logger.info(str_output)
             if (check_all_present(str_output, ['All requested packages already installed'])):
-                send_notification("Application package is already installed in this conda environment. Will try to reinstall",
-                                  channel_layer)
+                send_notification("Application package is already installed in this conda environment. Will " /
+                                  "try to reinstall", channel_layer)
                 success = False
             if (check_all_present(str_output, ['Mamba Download Complete'])):
                 break

@@ -11,7 +11,6 @@ import re
 from pathlib import Path
 from github.GithubException import UnknownObjectException, BadCredentialsException
 
-from pathlib import Path
 from .helpers import logger, send_notification, apply_template, parse_setup_file, get_setup_path, get_conda_stores
 
 CHANNEL_NAME = 'tethysapp'
@@ -345,7 +344,7 @@ def create_template_data_for_install(app_github_dir, dev_url, setup_path_data, a
                 "app_type": "tethysapp", "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),
                 "dev_url": dev_url
             }
-            
+
         metadata_dict = {**setup_path_data, **additional_data}
 
     template_data = {

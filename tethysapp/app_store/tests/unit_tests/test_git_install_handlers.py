@@ -5,18 +5,10 @@ import pytest
 from rest_framework.exceptions import ValidationError
 from unittest.mock import MagicMock, call
 from django.http import Http404
-from tethysapp.app_store.git_install_handlers import (clear_github_cache_list, update_status_file, run_pending_installs,
-                                                      CACHE_KEY, install_worker, install_packages, write_logs,
+from tethysapp.app_store.git_install_handlers import (update_status_file, run_pending_installs,
+                                                      install_worker, install_packages, write_logs,
                                                       continue_install, get_log_file, get_status_file, get_status_main,
                                                       get_logs_main, resume_pending_installs)
-
-
-def test_clear_github_cache_list(mocker):
-    mock_cache = mocker.patch('tethysapp.app_store.git_install_handlers.cache')
-
-    clear_github_cache_list()
-
-    mock_cache.delete.assert_called_with(CACHE_KEY)
 
 
 def test_run_pending_installs_dne(tmp_path, mocker, caplog):

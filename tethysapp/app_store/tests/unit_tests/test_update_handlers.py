@@ -80,6 +80,7 @@ def test_update_app(mocker):
     mock_workspace = MagicMock()
     data = {
         "name": "test_app",
+        "app_type": "tethysapp",
         "version": "1.0.0",
         "channel": "conda_channel",
         "label": "conda_label"

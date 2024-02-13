@@ -17,7 +17,6 @@ from tethys_sdk.permissions import has_permission
 
 from django.http import JsonResponse, Http404, HttpResponse
 
-from django.core.cache import cache
 from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 from datetime import datetime

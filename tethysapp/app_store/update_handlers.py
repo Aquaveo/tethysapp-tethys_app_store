@@ -94,7 +94,7 @@ def update_app(data, channel_layer, app_workspace):
     if data['app_type'] == "proxyapp":
         data['app_name'] = data['name'].replace("proxyapp_", "")
         delete_proxy_app(data, channel_layer)
-        
+
         site_packages = os.path.join(os.path.dirname(subprocess.__file__), "site-packages")
         proxy_package = [package for package in os.listdir(site_packages) if data["name"] in package][0]
         proxyapp_yaml = os.path.join(site_packages, proxy_package, "config", "proxyapp.yaml")
@@ -106,4 +106,4 @@ def update_app(data, channel_layer, app_workspace):
 
     # Since all settings are preserved, continue to standard cleanup/restart command
     restart_server(data={"restart_type": "update", "name": data["name"]}, channel_layer=channel_layer,
-                app_workspace=app_workspace)
+                   app_workspace=app_workspace)

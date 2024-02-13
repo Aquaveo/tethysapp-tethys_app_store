@@ -1,6 +1,5 @@
 from django.core.cache import cache
 
-import ast
 import re
 import semver
 from tethys_apps.base import TethysAppBase
@@ -438,14 +437,14 @@ def check_if_proxyapp_installed(app_name):
         installed_app = installed_app[0]
         conda_channel = None
         app_version = None
-        
+
         app_tags = installed_app['tags'].split(",")
         for tag in app_tags:
             if "conda_channel_" in tag:
                 conda_channel = tag.replace("conda_channel_", "")
             if "app_version_" in tag:
                 app_version = tag.replace("app_version_", "")
-                
+
         return_obj['isInstalled'] = True
         return_obj['channel'] = conda_channel
         return_obj['version'] = app_version
@@ -556,7 +555,7 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
                 },
                 'license': {
                     conda_channel: {
-                        conda_label: None
+                        conda_label: ""
                     }
                 },
                 'licenses': {

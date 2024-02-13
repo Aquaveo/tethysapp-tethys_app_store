@@ -39,12 +39,12 @@ def check_user_permissions(user_id):
 )
 class notificationsConsumer(AsyncWebsocketConsumer):
     _authorized = None
-    
+
     @property
     async def authorized(self):
         if self._authorized is None:
             self._authorized = await check_user_permissions(self.scope["user"].id)
-        
+
         return self._authorized
 
     async def connect(self):
@@ -55,7 +55,7 @@ class notificationsConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_add("notifications", self.channel_name)
             logger.info(f"Added {self.channel_name} channel to notifications")
         else:
-            logger.info(f"User not authorized for websocket access")
+            logger.info("User not authorized for websocket access")
             await self.close(code=4004)
 
     async def disconnect(self, _):

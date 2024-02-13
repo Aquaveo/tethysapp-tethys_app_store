@@ -116,7 +116,7 @@ def fresh_resource():
             'channels_and_labels': {conda_channel: {conda_label: []}},
             'timestamp': {conda_channel: {conda_label: "timestamp"}},
             'compatibility': {conda_channel: {conda_label: {}}},
-            'license': {conda_channel: {conda_label: None}},
+            'license': {conda_channel: {conda_label: ""}},
             'licenses': {conda_channel: {conda_label: []}}
         }
     return _fresh_resource
@@ -135,7 +135,7 @@ def resource():
             'channels_and_labels': {conda_channel: {conda_label: []}},
             'timestamp': {conda_channel: {conda_label: "timestamp"}},
             'compatibility': {conda_channel: {conda_label: {}}},
-            'license': {conda_channel: {conda_label: None}},
+            'license': {conda_channel: {conda_label: ""}},
             'licenses': {conda_channel: {conda_label: []}},
             'author': {conda_channel: {conda_label: 'author'}},
             'description': {conda_channel: {conda_label: 'description'}},

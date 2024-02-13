@@ -295,7 +295,7 @@ def test_create_template_data_for_install(complex_tethysapp):
         'metadataObj': "{'name': 'tethysapp-test_app', 'version': '0.0.1', 'description': 'example', "
         "'long_description': 'This is just an example for testing', 'keywords': 'example,test', "
         "'author': 'Tester', 'author_email': 'tester@email.com', 'url': '', 'license': 'BSD-3', "
-        "'tethys_version': '>=4.0', 'dev_url': 'https://github.com/notrealorg/fakeapp'}"
+        "'app_type': 'tethysapp', 'tethys_version': '>=4.0', 'dev_url': 'https://github.com/notrealorg/fakeapp'}"
     }
     assert template_data == expected_template_data
 
