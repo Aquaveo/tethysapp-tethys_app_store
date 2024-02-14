@@ -23,7 +23,11 @@ def uninstall_app(data, channel_layer, app_workspace):
     app_name = data['name']
 
     send_uninstall_messages('Starting Uninstall. Please wait...', channel_layer)
-    if data['app_type'] == "tethysapp":
+    if data['app_type'] == "proxyapp":
+        data['app_name'] = data['name'].replace("proxyapp_", "")
+        send_uninstall_messages('Uninstalling Proxy App', channel_layer)
+        delete_proxy_app(data, channel_layer)
+    else:
         try:
             # Check if application had provisioned any Persistent stores and clear them out
             target_app = TethysApp.objects.filter(package=app_name)[0]
@@ -59,10 +63,6 @@ def uninstall_app(data, channel_layer, app_workspace):
             pass
 
         send_uninstall_messages('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', channel_layer)
-    else:
-        data['app_name'] = data['name'].replace("proxyapp_", "")
-        send_uninstall_messages('Uninstalling Proxy App', channel_layer)
-        delete_proxy_app(data, channel_layer)
 
     try:
         mamba_uninstall(app_name, channel_layer)

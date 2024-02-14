@@ -136,13 +136,7 @@ def begin_install(installData, channel_layer, app_workspace):
     send_notification(f"Installing Version: {installData['version']}", channel_layer)
 
     try:
-        if resource['app_type'] == "tethysapp":
-            successful_install = mamba_install(resource, installData['channel'], installData['label'],
-                                               installData["version"], channel_layer)
-            if not successful_install:
-                raise Exception("Mamba install script failed to install application.")
-            detect_app_dependencies(resource['name'], channel_layer)
-        else:
+        if resource['app_type'] == "proxyapp":
             proxy_apps = list_proxy_apps()
             installed_app = [app for app in proxy_apps if app['name'] == resource["name"].replace("proxyapp_", "")]
             if installed_app:
@@ -157,9 +151,9 @@ def begin_install(installData, channel_layer, app_workspace):
             proxy_package = [package for package in os.listdir(site_packages) if resource["name"] in package][0]
             proxyapp_yaml = os.path.join(site_packages, proxy_package, "config", "proxyapp.yaml")
             with open(proxyapp_yaml) as f:
-                install_data = yaml.safe_load(f)
+                proxy_app_data = yaml.safe_load(f)
 
-            create_proxy_app(install_data, channel_layer)
+            create_proxy_app(proxy_app_data, channel_layer)
 
             get_data_json = {
                 "data": {
@@ -170,6 +164,12 @@ def begin_install(installData, channel_layer, app_workspace):
                 "helper": "addModalHelper"
             }
             send_notification(get_data_json, channel_layer)
+        else:
+            successful_install = mamba_install(resource, installData['channel'], installData['label'],
+                                               installData["version"], channel_layer)
+            if not successful_install:
+                raise Exception("Mamba install script failed to install application.")
+            detect_app_dependencies(resource['name'], channel_layer)
     except Exception as e:
         logger.error(e)
         send_notification("Application installation failed. Check logs for more details.", channel_layer)

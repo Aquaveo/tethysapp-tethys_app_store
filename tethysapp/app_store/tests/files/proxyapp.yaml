@@ -1,0 +1,7 @@
+app_name: "test_app"
+description: "proxy app description"
+endpoint: "https_endpoint"
+logo_url: "logo_url.png"
+tags: "tag1,tag2"
+enabled: True
+show_in_apps_library: True

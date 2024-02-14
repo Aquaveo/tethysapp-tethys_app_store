@@ -1,4 +1,5 @@
 from unittest.mock import call, MagicMock
+import yaml
 from tethysapp.app_store.begin_install import (handle_property_not_present, process_post_install_scripts,
                                                detect_app_dependencies, begin_install)
 
@@ -165,7 +166,7 @@ def test_detect_app_dependencies_no_app_path(mocker, caplog):
     assert "Can't find the installed app location." in caplog.messages
 
 
-def test_begin_install(resource, mocker):
+def test_begin_install_tethysapp(resource, mocker):
     mock_channel = MagicMock()
     mock_workspace = MagicMock()
     app_name = "test_app"
@@ -182,18 +183,20 @@ def test_begin_install(resource, mocker):
 
     mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
     mocker.patch('tethysapp.app_store.begin_install.get_resource', return_value=app_resource)
-    mocker.patch('tethysapp.app_store.begin_install.mamba_install', return_value=True)
-    mocker.patch('tethysapp.app_store.begin_install.detect_app_dependencies')
+    mock_install = mocker.patch('tethysapp.app_store.begin_install.mamba_install', return_value=True)
+    mock_deps = mocker.patch('tethysapp.app_store.begin_install.detect_app_dependencies')
 
     begin_install(install_data, mock_channel, mock_workspace)
 
+    mock_install.assert_called_with(app_resource, app_channel, app_label, app_version, mock_channel)
+    mock_deps.assert_called_with(app_name, mock_channel)
     mock_ws.assert_has_calls([
         call(f"Starting installation of app: {app_name} from store {app_channel} with label {app_label}", mock_channel),
         call(f"Installing Version: {app_version}", mock_channel),
     ])
 
 
-def test_begin_install_no_resource(mocker):
+def test_begin_install_tethysapp_no_resource(mocker):
     mock_channel = MagicMock()
     mock_workspace = MagicMock()
     app_name = "test_app"
@@ -216,7 +219,7 @@ def test_begin_install_no_resource(mocker):
     ])
 
 
-def test_begin_install_failed_install(resource, mocker):
+def test_begin_install_tethysapp_failed_install(resource, mocker):
     mock_channel = MagicMock()
     mock_workspace = MagicMock()
     app_name = "test_app"
@@ -240,5 +243,84 @@ def test_begin_install_failed_install(resource, mocker):
     mock_ws.assert_has_calls([
         call(f"Starting installation of app: {app_name} from store {app_channel} with label {app_label}", mock_channel),
         call(f"Installing Version: {app_version}", mock_channel),
+        call("Application installation failed. Check logs for more details.", mock_channel)
+    ])
+
+
+def test_begin_install_proxyapp(resource, mocker, proxyapp_site_package, test_files_dir):
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
+    app_name = "proxyapp_test_app"
+    app_channel = "test_channel"
+    app_label = "main"
+    app_resource = resource(app_name, app_channel, app_label, app_type="proxyapp")
+    app_version = app_resource['latestVersion'][app_channel][app_label]
+    install_data = {
+        "name": app_name,
+        "label": app_label,
+        "channel": app_channel,
+        "version": app_version
+    }
+    subprocess_location = str(proxyapp_site_package / "subprocess")
+
+    mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
+    mocker.patch('tethysapp.app_store.begin_install.subprocess.__file__', subprocess_location)
+    mocker.patch('tethysapp.app_store.begin_install.get_resource', return_value=app_resource)
+    mock_list_proxy_apps = mocker.patch('tethysapp.app_store.begin_install.list_proxy_apps', return_value=[])
+    mock_create_proxy_app = mocker.patch('tethysapp.app_store.begin_install.create_proxy_app')
+    mock_download = mocker.patch('tethysapp.app_store.begin_install.mamba_download', return_value=True)
+
+    begin_install(install_data, mock_channel, mock_workspace)
+
+    mock_list_proxy_apps.assert_called()
+    mock_download.assert_called_with(app_resource, app_channel, app_label, app_version, mock_channel)
+    expected_proxy_app_data = yaml.safe_load((test_files_dir / "proxyapp.yaml").read_text())
+    mock_create_proxy_app.assert_called_with(expected_proxy_app_data, mock_channel)
+    expected_get_data_json = {
+        "data": {
+            "app_name": app_resource['name'],
+            "message": f"Proxy app {app_resource['name']} added"
+        },
+        "jsHelperFunction": "proxyAppInstallComplete",
+        "helper": "addModalHelper"
+    }
+    mock_ws.assert_has_calls([
+        call(f"Starting installation of app: {app_name} from store {app_channel} with label {app_label}", mock_channel),
+        call(f"Installing Version: {app_version}", mock_channel),
+        call(expected_get_data_json, mock_channel)
+    ])
+
+
+def test_begin_install_proxyapp_already_installed(resource, mocker, proxyapp):
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
+    app_name = "proxyapp_test_app"
+    app_channel = "test_channel"
+    app_label = "main"
+    app_resource = resource(app_name, app_channel, app_label, app_type="proxyapp")
+    app_version = app_resource['latestVersion'][app_channel][app_label]
+    install_data = {
+        "name": app_name,
+        "label": app_label,
+        "channel": app_channel,
+        "version": app_version
+    }
+    proxyapp = {"name": "test_app"}
+
+    mock_ws = mocker.patch('tethysapp.app_store.begin_install.send_notification')
+    mocker.patch('tethysapp.app_store.begin_install.get_resource', return_value=app_resource)
+    mock_list_proxy_apps = mocker.patch('tethysapp.app_store.begin_install.list_proxy_apps', return_value=[proxyapp])
+    mock_create_proxy_app = mocker.patch('tethysapp.app_store.begin_install.create_proxy_app')
+    mock_download = mocker.patch('tethysapp.app_store.begin_install.mamba_download', return_value=True)
+
+    begin_install(install_data, mock_channel, mock_workspace)
+
+    mock_list_proxy_apps.assert_called()
+    mock_download.assert_not_called()
+    mock_create_proxy_app.assert_not_called()
+    mock_ws.assert_has_calls([
+        call(f"Starting installation of app: {app_name} from store {app_channel} with label {app_label}", mock_channel),
+        call(f"Installing Version: {app_version}", mock_channel),
+        call("Proxy App is already installed with this name", mock_channel),
         call("Application installation failed. Check logs for more details.", mock_channel)
     ])

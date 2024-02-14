@@ -8,10 +8,7 @@ def mamba_uninstall(app_name, channel_layer):
     """Run a conda uninstall
 
     Args:
-        app_metadata (dict): Dictionary representing an app and its conda metadata
-        app_channel (str): Conda channel to use for the app install
-        app_label (str): Conda label to use for the app install
-        app_version (str): App version to use for app install
+        app_name (dict): Name of the app to uninstall
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
     """
     # Running the conda install as a subprocess to get more visibility into the running process
@@ -99,8 +96,8 @@ def mamba_download(app_metadata, app_channel, app_label, app_version, channel_la
             str_output = str(output.strip())
             logger.info(str_output)
             if (check_all_present(str_output, ['All requested packages already installed'])):
-                send_notification("Application package is already installed in this conda environment. Will " /
-                                  "try to reinstall", channel_layer)
+                send_notification("Application is already installed in this conda environment.",
+                                  channel_layer)
                 success = False
             if (check_all_present(str_output, ['Mamba Download Complete'])):
                 break

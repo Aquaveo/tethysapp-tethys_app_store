@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, call
+import yaml
 from tethysapp.app_store.update_handlers import update_app, send_update_msg, conda_update
 
 
@@ -91,6 +92,38 @@ def test_update_app(mocker):
     expected_data = {"restart_type": "update", "name": data["name"]}
     mock_conda_update.assert_called_with(data["name"], data["version"], data["channel"], data["label"], mock_channel)
     mock_restart.assert_called_with(data=expected_data, channel_layer=mock_channel, app_workspace=mock_workspace)
+
+
+def test_update_app_proxyapp(mocker, proxyapp_site_package, test_files_dir):
+    mock_send_update_msg = mocker.patch('tethysapp.app_store.update_handlers.send_update_msg')
+    mock_restart = mocker.patch('tethysapp.app_store.update_handlers.restart_server')
+    mock_conda_update = mocker.patch('tethysapp.app_store.update_handlers.conda_update')
+    mock_delete_proxy_app = mocker.patch('tethysapp.app_store.update_handlers.delete_proxy_app')
+    mock_create_proxy_app = mocker.patch('tethysapp.app_store.update_handlers.create_proxy_app')
+    subprocess_location = str(proxyapp_site_package / "subprocess")
+
+    mocker.patch('tethysapp.app_store.begin_install.subprocess.__file__', subprocess_location)
+    mock_channel = MagicMock()
+    mock_workspace = MagicMock()
+    data = {
+        "name": "proxyapp_test_app",
+        "app_type": "proxyapp",
+        "version": "1.0.0",
+        "channel": "conda_channel",
+        "label": "conda_label"
+    }
+
+    update_app(data, mock_channel, mock_workspace)
+
+    expected_data = {"restart_type": "update", "name": data["name"]}
+    mock_conda_update.assert_called_with(data["name"], data["version"], data["channel"], data["label"], mock_channel)
+    mock_restart.assert_called_with(data=expected_data, channel_layer=mock_channel, app_workspace=mock_workspace)
+    expected_data = data
+    expected_data['app_name'] = expected_data['name'].replace("proxyapp_", "")
+    mock_delete_proxy_app.assert_called_with(expected_data, mock_channel)
+    expected_proxy_app_data = yaml.safe_load((test_files_dir / "proxyapp.yaml").read_text())
+    mock_create_proxy_app.assert_called_with(expected_proxy_app_data, mock_channel)
+    mock_send_update_msg.assert_called_with("Proxy app has been updated.", mock_channel)
 
 
 def test_update_app_exception(mocker, caplog):

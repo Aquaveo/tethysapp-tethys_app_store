@@ -622,17 +622,19 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
         app["latestVersion"] = {conda_channel: {}}
 
         app["latestVersion"][conda_channel][conda_label] = app["versions"][conda_channel][conda_label][-1]
-        license = app["license"][conda_channel][conda_label].replace("\'", "\"")
+        license = app["license"][conda_channel][conda_label]
 
-        comp_dict = None
+        license_metadata = None
         compatible = None
         try:
-            comp_dict = json.loads(license)
+            if license:
+                license.replace("\'", "\"")
+            license_metadata = json.loads(license)
         except Exception:
             pass
 
-        if comp_dict and 'tethys_version' in comp_dict:
-            compatible = comp_dict['tethys_version']
+        if license_metadata and 'tethys_version' in license_metadata:
+            compatible = license_metadata['tethys_version']
 
         if compatible is None:
             compatible = "<=3.4.4"
@@ -656,11 +658,8 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
         # Check for metadata in the Search Description
         # That path will work for newly submitted apps with warehouse ver>0.25
         try:
-            if "license" not in app or app['license'][conda_channel][conda_label] is None:
+            if license is None:
                 raise ValueError
-            license_metadata = json.loads(app["license"][conda_channel][conda_label]
-                                          .replace("', '", '", "').replace("': '", '": "')
-                                          .replace("'}", '"}').replace("{'", '{"'))
 
             # create new one
             app = add_keys_to_app_metadata(license_metadata, app, [
