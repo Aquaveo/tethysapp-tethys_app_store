@@ -500,6 +500,9 @@ $(document).on('click', '.proxyAppUpdate', function(event) {
   let proxyTagList = updateProxyAppModal.find("#proxyTagList")
   proxyTagList.empty()
   proxyApp['tags'].split(",").forEach(function (tag_value) {
+    if (tag_value.includes("conda_channel_") || tag_value.includes("conda_labels_") || tag_value.includes("app_version_")) {
+      return
+    }
     const tag = document.createElement('li');
     if (tag_value !== '') {
       tag.innerText = tag_value;

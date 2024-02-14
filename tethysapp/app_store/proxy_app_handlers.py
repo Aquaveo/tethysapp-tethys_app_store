@@ -107,6 +107,9 @@ def update_proxy_app(install_data, channel_layer):
             logger.info(f"Attribute {app_key} does not exist")
 
         if app_key == "tags":
+            existing_tags = proxy_app.tags.split(",")
+            metadata_tags = [tag for tag in existing_tags if "conda_channel_" in tag or "conda_labels_" in tag or "app_version_" in tag]  # noqa: E501
+            app_value.extend(metadata_tags)
             app_value = ",".join(app_value)
         setattr(proxy_app, app_key, app_value)
         proxy_app.save()
