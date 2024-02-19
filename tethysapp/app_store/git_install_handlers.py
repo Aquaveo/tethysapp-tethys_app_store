@@ -17,27 +17,19 @@ from tethys_sdk.permissions import has_permission
 
 from django.http import JsonResponse, Http404, HttpResponse
 
-from django.core.cache import cache
 from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 from datetime import datetime
 
 from conda.cli.python_api import run_command as conda_run, Commands
 from .app import AppStore as app
-from .helpers import get_override_key, logger, CACHE_KEY
-from .installation_handlers import restart_server
+from .helpers import get_override_key, logger, restart_server, clear_github_cache_list
 
 FNULL = open(os.devnull, 'w')
 
 git_install_logger = logging.getLogger("warehouse_git_install_logger")
 git_install_logger.setLevel(logging.DEBUG)
 logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
-
-
-def clear_github_cache_list():
-    """Clears out the stored cache of GitHub installed apps.
-    """
-    cache.delete(CACHE_KEY)
 
 
 def run_pending_installs():
@@ -164,7 +156,7 @@ def continue_install(workspace_apps_path, logger, status_file_path, install_opti
         status_file_path (str): Path to the file tracking the app installation process
         install_options (dict): Dictionary containing the information for the application install
         app_name (str): Name of the application that is being installed
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     process = Popen(['tethys', 'db', 'sync'], stdout=PIPE, stderr=STDOUT)
     write_logs(logger, process.stdout, 'Tethys DB Sync : ')
@@ -205,7 +197,7 @@ def install_worker(workspace_apps_path, status_file_path, logger, develop, app_w
         status_file_path (str): Path to the file tracking the app installation process
         logger (Logger): Logger for the git install
         develop (boolean): True if running installing in dev mode. False if installing in production mode
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     logger.info("Installing dependencies...")
     file_path = Path(os.path.join(workspace_apps_path, 'install.yml'))
@@ -286,7 +278,7 @@ def get_status_main(request, app_workspace):
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Raises:
         ValidationError: install_id is not passed to the request or is None
@@ -314,7 +306,7 @@ def get_logs_main(request, app_workspace):
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Raises:
         ValidationError: install_id is not passed to the request or is None
@@ -349,7 +341,7 @@ def get_status(request, app_workspace):
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Returns:
         Web Resonse/Exception: Output of get_status_main
@@ -401,7 +393,7 @@ def get_logs(request, app_workspace):
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Returns:
         Web Resonse/Exception: Output of get_logs_main
@@ -453,7 +445,7 @@ def run_git_install_main(request, app_workspace):
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Input JSON Object:
 

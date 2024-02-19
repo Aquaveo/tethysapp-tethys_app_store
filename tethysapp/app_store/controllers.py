@@ -6,6 +6,7 @@ from tethys_sdk.routing import controller
 
 from .resource_helpers import get_stores_reformatted
 from .helpers import get_conda_stores, html_label_styles, get_color_label_dict
+from .proxy_app_handlers import list_proxy_apps
 ALL_RESOURCES = []
 CACHE_KEY = "warehouse_app_resources"
 
@@ -39,6 +40,8 @@ def home(request, app_workspace):
     incompatibleApps = object_stores_formatted_by_label_and_channel['incompatibleApps']
     tethysVersion = object_stores_formatted_by_label_and_channel['tethysVersion']
 
+    proxyApps = list_proxy_apps()
+
     context = {
         'storesData': available_stores,
         'show_stores': True if len(available_stores) > 0 else False,
@@ -46,6 +49,7 @@ def home(request, app_workspace):
         'labels_style_dict': labels_style_dict,
         'availableApps': availableApps,
         'installedApps': installedApps,
+        'proxyApps': proxyApps,
         'incompatibleApps': incompatibleApps,
         'tethysVersion': tethysVersion
     }

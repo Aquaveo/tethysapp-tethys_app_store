@@ -421,6 +421,18 @@
     border-color: var(--bs-gray);
 }
 
+.label-color-warning {
+    color: var(--bs-white);
+    background-color: var(--bs-warning);
+    border-color: var(--bs-warning);
+}
+
+.label-color-warning:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-gray);
+    border-color: var(--bs-gray);
+}
+
 .label-color-danger {
     color: var(--bs-white);
     background-color: var(--bs-danger);

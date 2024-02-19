@@ -1,0 +1,94 @@
+{% load static %}
+<div class="modal" id="submit-tethysapp-to-store-modal" style="z-index:2000;" tabindex="-1" role="dialog" aria-labelledby="submit-tethysapp-to-store-modal-label">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="submit-tethysapp-to-store-modal-label">Submit your application to the Tethys App Store</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="add-app-container">
+                <div>
+                    <p>
+                        Click <a href="//tethys-app-store.readthedocs.io/en/latest/appsubmit.html" target="_blank">Here</a> to get instructions on how to prepare your app for submission to the app store.</p>
+                    <p> Please enter the GitHub URL of your application Repo and an email address which will be notified once the build is complete and your application is available on the Tethys App Store</p>
+                </div>
+                 <div class="form-group">
+                    <label for="tethysapp_notifEmail">Notification Email</label>
+                    <input type="text" class="form-control notifEmail" id="tethysapp_notifEmail" placeholder="Email Address to notify on build">
+                </div>
+                <div id="tethysapp_notifEmail_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysapp_failMessage">A email for notifications must be provided</div>
+                <br>
+                <div class="form-group">
+                    <label for="tethysapp_githubURL">GitHub URL</label>
+                    <input type="text" class="form-control githubURL" id="tethysapp_githubURL" placeholder="GitHub Repository URL">
+                </div>
+                <div id="tethysapp_githubURL_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysapp_failMessage">A github url must be provided</div>
+                <br>
+                <div id="tethysapp_availableStores">
+                    <p class="title-class">Available Stores</p>
+                    
+                    <div id="tethysapp_channel_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysapp_failMessage">At least one channel must be selected</div>
+                    {% for store in storesData %}
+                        <div class="row_store_submission">
+                            <div class="dropdown-check-list-channels">
+                                <ul class="items">
+                                    <li><input type="checkbox" class="conda-channel-list-item" id="tethysapp_{{ store.conda_channel }}_channel"  name="{{ store.conda_channel }}" value="{{ store.conda_channel }}" {% if store.default %}checked{% endif %}>
+                                        <label class="conda-channel-list-item-label" for="tethysapp_{{ store.conda_channel }}_channel">
+                                            <div class="loader_and_title">
+                                                <div id="tethysapp_{{ store.conda_channel }}-spinner" class="spinner-border spinner-border-sm text-info" style="display:none;" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <p class="label-anaconda">{{ store.conda_channel }}</p>
+                                            </div>
+                                            <span class="conda-channel-list-item-custom-checkbox"></span>
+                                        </label>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div id="tethysapp_{{ store.conda_channel }}_labels" class="dropdown-check-list-labels {% if store.default is not True %}d-none{% endif %}" tabindex="100">
+                                <div>
+                                    <span>Please select the labels to use:</span>
+                                    <span class="anchor" onclick("anchor_dropdown(event)")>Labels</span>
+                                </div>
+                                <ul class="items">
+                                {% for conda_label in store.conda_labels %}
+                                    <li>
+                                        <input class="conda-label-list-item" id="tethysapp_{{ store.conda_channel }}_{{ conda_label.label_name }}_checkbox" type="checkbox" value='{{ conda_label.label_name }}' {% if conda_label.active %}checked{% endif %}/>
+                                        <label class="conda-label-list-item-label" id="tethysapp_{{ store.conda_channel }}_{{ conda_label.label_name }}_label" for="tethysapp_{{ store.conda_channel }}_{{ conda_label.label_name }}_checkbox">
+                                            <span>{{ conda_label.label_name }}</span>
+                                            <span class="conda-label-list-item-custom-checkbox"></span>
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                                </ul>
+                                <div id="tethysapp_{{ store.conda_channel }}_label_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white label_failMessage">At least one label must be selected for an active store</div>
+                            </div>
+                            <div id="tethysapp_{{ store.conda_channel }}_branchesList" class="branches-list"></div>
+                            <div>
+                                <div id="tethysapp_{{ store.conda_channel }}_successMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-success text-white">
+                                    <p>Your Tethys Application has been successfully queued for processing.You will be notified via email when you application is available on the Tethys App Store. <span id="tethysapp_{{ store.conda_channel }}_SuccessLinkMessage">Click <span id="tethysapp_{{ store.conda_channel }}_addSuccessLink">here</span> to follow the processing logs and inspect it for errors.</span></p>
+                                </div>
+                                <div id="tethysapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysapp_failMessage"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div> 
+                <div id="tethysapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysapp_failMessage"></div>
+                <button class="btn btn-primary pull-right mt-3" id="fetchRepoButton" onClick="getRepoForAdd()"> Fetch Repository </button>
+                <button class="btn btn-primary pull-right" style="display:none;" id="processBranchButton"> Submit </button>
+            </div>
+            <div class="modal-footer">
+                <div id="submitTethysAppLoaderText" class="loaderText"></div>
+                <div id="submitTethysAppLoaderEllipsis" class="lds-ellipsis pull-right">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitCancel"> Cancel </button>
+                <button class="btn btn-success pull-right" style="margin-top:10px;display:none;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitDone"> Done </button>
+            </div>
+        </div>
+    </div>
+</div>
+

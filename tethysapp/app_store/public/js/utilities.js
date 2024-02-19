@@ -177,7 +177,13 @@ function startWS(websocketServerLocation, n_content) {
     }
   }
 
-  notification_ws.onclose = function() {
+  notification_ws.onclose = function(e) {
+    if ("code" in e) {
+      if (e.code == 4004) {
+        console.log("User is unauthorized to access django channels")
+        return
+      }
+    }
     setServerOffline()
     // Try to reconnect in 1 second
     setTimeout(function() {

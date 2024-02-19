@@ -1,0 +1,11 @@
+version: $version
+name: $name
+
+requirements:
+  skip: false
+  conda:
+    channels:
+    packages:
+  pip:
+
+post:

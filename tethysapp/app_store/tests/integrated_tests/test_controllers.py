@@ -4,7 +4,7 @@ from unittest.mock import call, MagicMock
 import json
 
 
-def test_home_stores(mocker, tmp_path, store, mock_admin_get_request, resource):
+def test_home_stores(mocker, tmp_path, store, mock_admin_get_request, resource, proxy_app_install_data):
     request = mock_admin_get_request('/apps/app-store')
     active_store = store('active_default')
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
@@ -16,6 +16,7 @@ def test_home_stores(mocker, tmp_path, store, mock_admin_get_request, resource):
         'incompatibleApps': []
     }
     mocker.patch('tethysapp.app_store.controllers.get_stores_reformatted', return_value=object_stores)
+    mocker.patch('tethysapp.app_store.controllers.list_proxy_apps', return_value=[proxy_app_install_data])
     mock_render = mocker.patch('tethysapp.app_store.controllers.render')
     mocker.patch('tethysapp.app_store.controllers.tethys_version', "4.0.0")
 
@@ -34,6 +35,7 @@ def test_home_stores(mocker, tmp_path, store, mock_admin_get_request, resource):
         'labels_style_dict': expected_styles,
         'availableApps': object_stores['availableApps'],
         'installedApps': object_stores['installedApps'],
+        'proxyApps': [proxy_app_install_data],
         'incompatibleApps': object_stores['incompatibleApps'],
         'tethysVersion': "4.0.0"
     }
@@ -47,6 +49,7 @@ def test_home_no_stores(mocker, tmp_path, mock_admin_get_request):
     mocker.patch('tethys_apps.base.workspace.get_app_workspace', return_value=str(tmp_path))
     mocker.patch('tethys_apps.utilities.get_active_app')
     mocker.patch('tethysapp.app_store.controllers.get_conda_stores', return_value=[])
+    mocker.patch('tethysapp.app_store.controllers.list_proxy_apps', return_value=[])
     object_stores = {
         'availableApps': [],
         'installedApps': [],
@@ -66,6 +69,7 @@ def test_home_no_stores(mocker, tmp_path, mock_admin_get_request):
         'availableApps': [],
         'installedApps': [],
         'incompatibleApps': [],
+        'proxyApps': [],
         'tethysVersion': "4.0.0"
     }
     mock_render.assert_has_calls([

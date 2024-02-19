@@ -1,0 +1,21 @@
+{% load static %}
+<div class="card card-default installed-app-list hidden">
+    <div class="card-header showHandIcon" data-bs-toggle="collapse" href="#installedProxyApps">Installed Proxy Applications</div>
+    <div class="collapse show" id="installedProxyApps">
+        <div class="card-body">
+            <table data-search="true" data-show-search-clear-button="true" data-bs-toolbar="#toolbar" data-show-columns="true" id="installedProxyAppsTable" data-show-toggle="true" data-pagination="true">
+                <thead>
+                    <tr>
+                        <th data-field="name">Proxy App Name</th>
+                        <th data-field="endpoint">Proxy App Endpoint</th>
+                        <th data-field="enabled">Proxy App Enabled</th>
+                        <th data-field="show_in_apps_library">Proxy App Shown in Apps Library</th>
+                        <th data-field="installed" data-formatter="ProxyAppActionFormatter" data-events="operateEvents">Actions</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="card-footer ">
+        </div>
+    </div>
+</div>

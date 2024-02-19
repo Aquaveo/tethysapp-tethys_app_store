@@ -22,9 +22,40 @@ class TestApp(TethysAppBase):
         return [mock_setting]
 
 
+class ProxyApp:
+    name = "test_app"
+    description = "proxy app description"
+    endpoint = "https_endpoint"
+    logo_url = "logo_url.png"
+    tags = "tag1,tag2"
+    enabled = True
+    show_in_apps_library = True
+
+    def save(self):
+        pass
+
+
 @pytest.fixture()
 def tethysapp():
     return TestApp
+
+
+@pytest.fixture()
+def proxyapp():
+    return ProxyApp
+
+
+@pytest.fixture()
+def proxyapp_site_package(tmp_path, test_files_dir):
+    proxyapp_config = tmp_path / "site-packages" / "proxyapp_test_app" / "config"
+    proxyapp_config.mkdir(parents=True)
+    test_proxyapp_yml = test_files_dir / "proxyapp.yaml"
+    proxyapp_yml = proxyapp_config / "proxyapp.yaml"
+    shutil.copy(test_proxyapp_yml, proxyapp_yml)
+
+    (tmp_path / "subprocess").mkdir()
+
+    return tmp_path
 
 
 @pytest.fixture()
@@ -47,6 +78,19 @@ def test_files_dir():
     app_files_dir = current_dir / "files"
 
     return app_files_dir
+
+
+@pytest.fixture()
+def proxy_app_install_data():
+    return {
+        'app_name': 'test proxy app',
+        'endpoint': 'https://google.com',
+        'description': 'This is a test proxy app',
+        'logo_url': 'logo_url.png',
+        'tags': ['tag1', 'tag2', 'tag3'],
+        'enabled': True,
+        'show_in_apps_library': True
+    }
 
 
 @pytest.fixture
@@ -76,9 +120,13 @@ def all_active_stores(store):
 
 @pytest.fixture
 def fresh_resource():
-    def _fresh_resource(app_name, conda_channel, conda_label):
+    def _fresh_resource(app_name, conda_channel, conda_label, app_type=None):
+        if not app_type:
+            app_type = "tethysapp"
+
         return {
             'name': app_name,
+            'app_type': app_type,
             'installed': {conda_channel: {conda_label: False}},
             'versions': {conda_channel: {conda_label: ["1.0"]}},
             'versionURLs': {conda_channel: {conda_label: ["versionURL"]}},
@@ -93,9 +141,13 @@ def fresh_resource():
 
 @pytest.fixture
 def resource():
-    def _resource(app_name, conda_channel, conda_label):
+    def _resource(app_name, conda_channel, conda_label, app_type=None):
+        if not app_type:
+            app_type = "tethysapp"
+
         return {
             'name': app_name,
+            'app_type': app_type,
             'installed': {conda_channel: {conda_label: False}},
             'installedVersion': {conda_channel: {conda_label: "1.0"}},
             'latestVersion': {conda_channel: {conda_label: "1.0"}},

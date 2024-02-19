@@ -1,9 +1,9 @@
 import os
-import time
 import importlib
 import subprocess
 import tethysapp
 import site
+import yaml
 
 from django.core.cache import cache
 
@@ -11,6 +11,8 @@ from subprocess import call
 
 from .helpers import check_all_present, logger, send_notification
 from .resource_helpers import get_resource, get_app_instance_from_path
+from .proxy_app_handlers import create_proxy_app, list_proxy_apps
+from .mamba_helpers import mamba_download, mamba_install
 from tethys_apps.base.workspace import TethysWorkspace
 
 
@@ -115,76 +117,6 @@ def detect_app_dependencies(app_name, channel_layer, notification_method=send_no
     return
 
 
-def mamba_install(app_metadata, app_channel, app_label, app_version, channel_layer):
-    """Run a conda install with a application using the anaconda package
-
-    Args:
-        app_metadata (dict): Dictionary representing an app and its conda metadata
-        app_channel (str): Conda channel to use for the app install
-        app_label (str): Conda label to use for the app install
-        app_version (str): App version to use for app install
-        channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-    """
-    start_time = time.time()
-    send_notification("Mamba install may take a couple minutes to complete depending on how complicated the "
-                      "environment is. Please wait....", channel_layer)
-
-    latest_version = app_metadata['latestVersion'][app_channel][app_label]
-    if not app_version:
-        app_version = latest_version
-
-    # Running the conda install as a subprocess to get more visibility into the running process
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    script_path = os.path.join(dir_path, "scripts", "mamba_install.sh")
-
-    app_name = app_metadata['name'] + "=" + app_version
-
-    label_channel = f'{app_channel}'
-
-    if app_label != 'main':
-        label_channel = f'{app_channel}/label/{app_label}'
-
-    install_command = [script_path, app_name, label_channel]
-
-    # Running this sub process, in case the library isn't installed, triggers a restart.
-    p = subprocess.Popen(install_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    success = True
-    while True:
-        output = p.stdout.readline()
-        if output == '':
-            break
-        if output:
-            # Checkpoints for the output
-            str_output = str(output.strip())
-            logger.info(str_output)
-            if (check_all_present(str_output, ['Collecting package metadata', 'done'])):
-                send_notification("Package Metadata Collection: Done", channel_layer)
-            if (check_all_present(str_output, ['Solving environment', 'done'])):
-                send_notification("Solving Environment: Done", channel_layer)
-            if (check_all_present(str_output, ['Verifying transaction', 'done'])):
-                send_notification("Verifying Transaction: Done", channel_layer)
-            if (check_all_present(str_output, ['All requested packages already installed.'])):
-                send_notification("Application package is already installed in this conda environment.",
-                                  channel_layer)
-            if (check_all_present(str_output, ['libmamba Could not solve for environment specs', 'critical'])):
-                success = False
-                send_notification("Failed to resolve environment specs when installing.",
-                                  channel_layer)
-            if (check_all_present(str_output, ['Found conflicts!'])):
-                success = False
-                send_notification("Mamba install found conflicts. "
-                                  "Please try running the following command in your terminal's "
-                                  "conda environment to attempt a manual installation : "
-                                  f"mamba install -c {label_channel} {app_name}",
-                                  channel_layer)
-            if (check_all_present(str_output, ['Mamba Install Complete'])):
-                break
-
-    send_notification("Mamba install completed in %.2f seconds." % (time.time() - start_time), channel_layer)
-
-    return success
-
-
 def begin_install(installData, channel_layer, app_workspace):
     """Using the install data, this function will retrieve a specific app resource and install the application as well
     as update any app dependencies
@@ -192,7 +124,7 @@ def begin_install(installData, channel_layer, app_workspace):
     Args:
         installData (dict): User provided information about the application that should be installed
         channel_layer (Django Channels Layer): Asynchronous Django channel layer from the websocket consumer
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     resource = get_resource(installData["name"], installData['channel'], installData['label'], app_workspace)
     if not resource:
@@ -204,12 +136,40 @@ def begin_install(installData, channel_layer, app_workspace):
     send_notification(f"Installing Version: {installData['version']}", channel_layer)
 
     try:
-        successful_install = mamba_install(resource, installData['channel'], installData['label'],
-                                           installData["version"], channel_layer)
-        if not successful_install:
-            raise Exception("Mamba install script failed to install application.")
+        if resource['app_type'] == "proxyapp":
+            proxy_apps = list_proxy_apps()
+            installed_app = [app for app in proxy_apps if app['name'] == resource["name"].replace("proxyapp_", "")]
+            if installed_app:
+                message = "Proxy App is already installed with this name"
+                send_notification(message, channel_layer)
+                raise Exception(message)
 
-        detect_app_dependencies(resource['name'], channel_layer)
+            successful_install = mamba_download(resource, installData['channel'], installData['label'],
+                                                installData["version"], channel_layer)
+
+            site_packages = os.path.join(os.path.dirname(subprocess.__file__), "site-packages")
+            proxy_package = [package for package in os.listdir(site_packages) if resource["name"] in package][0]
+            proxyapp_yaml = os.path.join(site_packages, proxy_package, "config", "proxyapp.yaml")
+            with open(proxyapp_yaml) as f:
+                proxy_app_data = yaml.safe_load(f)
+
+            create_proxy_app(proxy_app_data, channel_layer)
+
+            get_data_json = {
+                "data": {
+                    "app_name": resource['name'],
+                    "message": f"Proxy app {resource['name']} added"
+                },
+                "jsHelperFunction": "proxyAppInstallComplete",
+                "helper": "addModalHelper"
+            }
+            send_notification(get_data_json, channel_layer)
+        else:
+            successful_install = mamba_install(resource, installData['channel'], installData['label'],
+                                               installData["version"], channel_layer)
+            if not successful_install:
+                raise Exception("Mamba install script failed to install application.")
+            detect_app_dependencies(resource['name'], channel_layer)
     except Exception as e:
         logger.error(e)
         send_notification("Application installation failed. Check logs for more details.", channel_layer)

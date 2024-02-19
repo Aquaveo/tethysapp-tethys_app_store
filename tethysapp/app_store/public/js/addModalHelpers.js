@@ -5,18 +5,18 @@ const addModalHelper = {
       // $("#failMessage").show()
 
 
-      $(`#${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#${validationData.conda_channel}_failMessage`).show()
-      $(`#${validationData.conda_channel}_spinner`).hide();
-      $("#loaderEllipsis").hide()
-      $("#loadingTextAppSubmit").text("")
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
+      $(`#tethysapp_${validationData.conda_channel}-spinner`).hide();
+      $("#submitTethysAppLoaderEllipsis").hide()
+      $("#submitTethysAppLoaderText").text("")
       $("#fetchRepoButton").prop("disabled", false)
     }
     else{
       // $("#failMessage").html(validationData.mssge_string)
       // $("#failMessage").show()
-      $(`#${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#${validationData.conda_channel}_failMessage`).show()
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
+      $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
       notification_ws.send(
           JSON.stringify({
               data: {
@@ -31,9 +31,9 @@ const addModalHelper = {
   showBranches: (branchesData, content, completeMessage, ws) => {
     // Clear loader and button:
 
-    $("#loaderEllipsis").hide()
+    $("#submitTethysAppLoaderEllipsis").hide()
     $("#fetchRepoButton").hide()
-    $("#loadingTextAppSubmit").text("")
+    $("#submitTethysAppLoaderText").text("")
 
     if (!("branches" in branchesData)) {
       sendNotification(
@@ -48,26 +48,16 @@ const addModalHelper = {
     let app_name = branchesData["app_name"]
 
     if (branches.length == 1) {
-      $(`#${conda_channel}_spinner`).show(); 
+      $(`#tethysapp_${conda_channel}-spinner`).show(); 
 
       sendNotification(
         `One branch found. Continuing packaging with ${branches[0]} branch.`,
-        // $("#branchesList")
         $(".branchesList")
 
       )
-      $("#loaderEllipsis").show()
+      $("#submitTethysAppLoaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
-      $("#loadingTextAppSubmit").text(`Please wait. Processing branch: ${branches[0]}`)
-
-      // notification_ws.send(
-      //   JSON.stringify({
-      //       data: {
-      //           url: githubURL
-      //       },
-      //       type: `validate_git_repo`
-      //   })
-      // )
+      $("#submitTethysAppLoaderText").text(`Please wait. Processing branch: ${branches[0]}`)
 
       notification_ws.send(
         JSON.stringify({
@@ -76,11 +66,11 @@ const addModalHelper = {
             app_name: app_name,
             conda_channel: conda_channel,
             conda_labels: conda_labels,
-            email: $("#notifEmail").val(),
-            dev_url: $("#githubURL").val()
+            email: $("#tethysapp_notifEmail").val(),
+            dev_url: $("#tethysapp_githubURL").val()
 
           },
-          type: `process_branch`
+          type: `submit_tethysapp_to_store`
         })
       )
       return
@@ -89,16 +79,16 @@ const addModalHelper = {
     // More than one branch available. Ask user for option:
     let branchesHTML = htmlHelpers.getBranches(conda_channel, branches)
     // $("#branchesList").append(branchesHTML)
-    $(`#${conda_channel}_branchesList`).append(branchesHTML)
+    $(`#tethysapp_${conda_channel}_branchesList`).append(branchesHTML)
 
     $("#processBranchButton").click((e) => {
-      $(`#${conda_channel}_spinner`).show();
+      $(`#tethysapp_${conda_channel}-spinner`).show();
 
       let branchName = $(`#${conda_channel}_add_branch`).val()
 
-      $("#loaderEllipsis").show()
+      $("#submitTethysAppLoaderEllipsis").show()
       $("#processBranchButton").prop("disabled", true)
-      $("#loadingTextAppSubmit").text( `Please wait. Processing branch: ${branchName}`)
+      $("#submitTethysAppLoaderText").text( `Please wait. Processing branch: ${branchName}`)
 
       notification_ws.send(
         JSON.stringify({
@@ -107,60 +97,76 @@ const addModalHelper = {
             app_name: app_name,
             conda_channel: conda_channel,
             conda_labels: conda_labels,
-            email: $("#notifEmail").val(),
-            dev_url: $("#githubURL").val()
+            email: $("#tethysapp_notifEmail").val(),
+            dev_url: $("#tethysapp_githubURL").val()
           },
-          type: `process_branch`
+          type: `submit_tethysapp_to_store`
         })
       )
     })
     $("#processBranchButton").show()
     // $("#failMessage").hide()
-    $(`#${conda_channel}_failMessage`).hide()
-
-
+    $(`#tethysapp${conda_channel}_failMessage`).hide()
   },
-  addComplete: (addData, content, completeMessage, ws) => {
-    $("#loaderEllipsis").hide()
+
+  tethysAppSubmitComplete: (addData, content, completeMessage, ws) => {
+    $("#submitTethysAppLoaderEllipsis").hide()
     $("#processBranchButton").hide()
-    $("#cancelAddButton").hide()
-    $("#loadingTextAppSubmit").text("")
+    $("#tethysappSubmitCancel").hide()
+    $("#submitTethysAppLoaderText").text("")
     if (addData.job_url) {
       
-      $(`#${addData.conda_channel}_addSuccessLink`).html(
+      $(`#tethysapp_${addData.conda_channel}_addSuccessLink`).html(
         `<a href="${addData.job_url}" target="_blank">here</a>`
       )
-      // $("#addSuccessLink").html(
-      //   `<a href="${addData.job_url}" target="_blank">here</a>`
-      // )
-      
     } else {
       // Hide the link part of the success message
-      $(`#${addData.conda_channel}_SuccessLinkMessage`).hide();
-      // $("#SuccessLinkMessage").hide()
-
+      $(`#tethysapp_${addData.conda_channel}_SuccessLinkMessage`).hide();
     }
-    $("#doneAddButton").show()
-    $("#submitNewButton").show()
-    $(`#${addData.conda_channel}_successMessage`).show();
-    $(`#${addData.conda_channel}_failMessage`).hide()
-    $(`#${addData.conda_channel}_spinner`).hide(); 
+    $("#tethysappSubmitDone").show()
+    $(`#tethysapp_${addData.conda_channel}_successMessage`).show();
+    $(`#tethysapp_${addData.conda_channel}_failMessage`).hide()
+    $(`#tethysapp_${addData.conda_channel}-spinner`).hide(); 
+  },
+
+  
+  proxyAppSubmitComplete: (addData, content, completeMessage, ws) => {
+    $("#submitProxyAppLoaderEllipsis").hide()
+    $("#submitProxyAppLoaderText").text("")
+    $("#proxyappSubmitCancel").hide()
+    if (addData.job_url) {
+      
+      $(`#proxyapp_${addData.conda_channel}_addSuccessLink`).html(
+        `<a href="${addData.job_url}" target="_blank">here</a>`
+      )
+    } else {
+      $(`#proxyapp_${addData.conda_channel}_SuccessLinkMessage`).hide();
+    }
+    $("#submitProxyApp").hide()
+    $("#proxyappSubmitDone").show()
+    $(`#proxyapp_${addData.conda_channel}_successMessage`).show();
+    $(`#proxyapp_${addData.conda_channel}_failMessage`).hide()
+    $(`#proxyapp_${addData.conda_channel}-spinner`).hide(); 
+  },
+
+  
+  proxyAppInstallComplete: (addData, content, completeMessage, ws) => {
+    sendNotification("install_complete", content)
   }
 }
 
-const getModalInput = () => {
-  let githubURL = $("#githubURL")[0].value
-
-  let notifEmail = $("#notifEmail")[0].value
+const getTethysSubmitModalInput = (modal_type) => {
+  let githubURL = $(`#${modal_type}_githubURL`).val()
+  let notifEmail = $(`#${modal_type}_notifEmail`).val()
 
   let active_stores = []
-  availableStores = $("#availableStores").children(".row_store_submission")
+  availableStores = $(`#${modal_type}_availableStores`).children(".row_store_submission")
   for (let i = 0; i < availableStores.length; i++) {
     let input_store = {"conda_channel": "", "conda_labels": []}
     let store = availableStores[i]
     let channel_checkbox = $(store).find(".conda-channel-list-item")[0]
     if (!channel_checkbox.checked) {
-      break;
+      continue;
     }
     input_store["conda_channel"] = channel_checkbox.value
 
@@ -168,7 +174,7 @@ const getModalInput = () => {
     for (let x = 0; x < labels_checkboxes.length; x++) {
       let label_checkbox = labels_checkboxes[x]
       if (!label_checkbox.checked) {
-        break;
+        continue;
       }
       input_store["conda_labels"].push(label_checkbox.value)
     }
@@ -179,73 +185,155 @@ const getModalInput = () => {
   return [githubURL, notifEmail, active_stores]
 }
 
-const disableModalInput = (disable_email=false, disable_gihuburl=false, disable_channels=false, disable_labels=false, disable_branches=false) => {
-
-  if (disable_email) {
-    $("#notifEmail").prop("disabled", true)
-    $("#notifEmail").css('opacity', '.5');
+const disableSubmitAppModalInput = (modal_type, disable_options) => {
+  let SubmitAppModal = $(`#submit-${modal_type}-to-store-modal`)
+  if (disable_options['disable_email']) {
+    SubmitAppModal.find(".notifEmail").prop("disabled", true)
+    SubmitAppModal.find(".notifEmail").css('opacity', '.5');
   }
 
-  if (disable_gihuburl) {
-    $("#githubURL").prop("disabled", true)
-    $("#githubURL").css('opacity', '.5');
+  if (disable_options['disable_gihuburl']) {
+    SubmitAppModal.find(".githubURL").prop("disabled", true)
+    SubmitAppModal.find(".githubURL").css('opacity', '.5');
   }
   
-  if (disable_channels) {
-    $(".conda-channel-list-item").each(function() {
+  if (disable_options['disable_channels']) {
+    SubmitAppModal.find(".conda-channel-list-item").each(function() {
       $(this).prop("disabled", true)
     })
     
-    $(".conda-channel-list-item-custom-checkbox").each(function() {
+    SubmitAppModal.find(".conda-channel-list-item-custom-checkbox").each(function() {
       $(this).css('background-color', 'lightgray');
       $(this).css('opacity', '.5');
     })
   }
 
-  if (disable_labels) {
-    $(".conda-label-list-item").each(function() {
+  if (disable_options['disable_labels']) {
+    SubmitAppModal.find(".conda-label-list-item").each(function() {
       $(this).prop("disabled", true)
     })
     
-    $(".conda-label-list-item-custom-checkbox").each(function() {
+    SubmitAppModal.find(".conda-label-list-item-custom-checkbox").each(function() {
       $(this).css('background-color', 'lightgray');
       $(this).css('opacity', '.5');
     })
   }
 
-  if (disable_branches) {
-    $(".add_branch").each(function() {
+  if (disable_options['disable_branches']) {
+    SubmitAppModal.find(".add_branch").each(function() {
       $(this).prop("disabled", true)
       $(this).css('opacity', '.5');
     })
   }
 }
 
+const getProxyModalInput = (modal_name) => {
+  let ProxyAppModal = $(`#${modal_name}`)
+  let proxyAppName = ProxyAppModal.find("#proxyAppName").val()
+  let proxyEndpoint = ProxyAppModal.find("#proxyEndpoint").val()
+  let proxyDescription = ProxyAppModal.find("#proxyDescription").val()
+  let proxyLogo = ProxyAppModal.find("#proxyLogo").val()
+  let proxyTags = []
+  ProxyAppModal.find("#proxyTagList").find(".tag-item").each(function () {
+    let tag = this.innerText
+    tag = tag.substring(0, tag.length-1)
+    proxyTags.push(tag)
+  })
+  let proxyEnabled = ProxyAppModal.find("#proxyEnabled")[0].checked
+  let proxyShown = ProxyAppModal.find("#proxyShown")[0].checked
+
+  return [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown]
+}
+
+const disableProxyAppModalInput = (modal_name) => {
+  let ProxyAppModal = $(`#${modal_name}`)
+  ProxyAppModal.find("#proxyAppName").prop("disabled", true)
+  ProxyAppModal.find("#proxyAppName").css('opacity', '.5');
+
+  ProxyAppModal.find("#proxyEndpoint").prop("disabled", true)
+  ProxyAppModal.find("#proxyEndpoint").css('opacity', '.5');
+
+  ProxyAppModal.find("#proxyDescription").prop("disabled", true)
+  ProxyAppModal.find("#proxyDescription").css('opacity', '.5');
+
+  ProxyAppModal.find("#proxyLogo").prop("disabled", true)
+  ProxyAppModal.find("#proxyLogo").css('opacity', '.5');
+
+  ProxyAppModal.find("#proxyTags").prop("disabled", true)
+  ProxyAppModal.find("#proxyTags").css('opacity', '.5');
+
+  ProxyAppModal.find(".tag-item-delete").each(function() {
+    $(this).prop("disabled", true)
+    $(this).css('opacity', '.5');
+  })
+
+  ProxyAppModal.find("#proxyEnabled").prop("disabled", true)
+  ProxyAppModal.find("#proxyEnabled").css('opacity', '.5');
+
+  ProxyAppModal.find("#proxyShown").prop("disabled", true)
+  ProxyAppModal.find("#proxyShown").css('opacity', '.5');
+}
+
+const createProxyApp = () => {
+  $(".proxyApp_failMessage").hide()
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("add-proxyapp-to-portal-modal")
+
+  let errors = false
+  if (!proxyAppName) {
+    $("#proxyAppName_failMessage").show()
+    errors = true
+  }
+
+  if (!proxyEndpoint) {
+    $("#proxyEndpoint_failMessage").show()
+    errors = true
+  }
+
+  if (errors) {
+    return
+  }
+
+  disableProxyAppModalInput("add-proxyapp-to-portal-modal")
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              app_name: proxyAppName,
+              endpoint: proxyEndpoint, 
+              description: proxyDescription, 
+              logo_url: proxyLogo, 
+              tags: proxyTags, 
+              enabled: proxyEnabled, 
+              show_in_apps_library: proxyShown
+          },
+          type: `create_proxy_app`
+      })
+  )
+  location.reload();
+}
+
 const getRepoForAdd = () => {
-  $("#notifEmail_failMessage").hide()
-  $("#githubURL_failMessage").hide()
   $(".label_failMessage").hide()
-  $('#channel_failMessage').hide()
-  let [githubURL, notifEmail, active_stores] = getModalInput()
+  $(".tethysapp_failMessage").hide()
+  let [githubURL, notifEmail, active_stores] = getTethysSubmitModalInput("tethysapp")
 
   let errors = false
   if (!githubURL) {
-    $("#githubURL_failMessage").show()
+    $("#tethysapp_githubURL_failMessage").show()
     errors = true
   }
 
   if (!notifEmail) {
-    $("#notifEmail_failMessage").show()
+    $("#tethysapp_notifEmail_failMessage").show()
     errors = true
   }
 
   if (active_stores.length == 0) {
-    $('#channel_failMessage').show()
+    $('#tethysapp_channel_failMessage').show()
     errors = true
   } else {
     for (let i = 0; i < active_stores.length; i++) {
       if (active_stores[i].conda_labels.length == 0) {
-        $(`#${active_stores[i].conda_channel}_label_failMessage`).show()
+        $(`#tethysapp_${active_stores[i].conda_channel}_label_failMessage`).show()
         errors = true
       }
     }
@@ -255,10 +343,13 @@ const getRepoForAdd = () => {
     return
   }
 
-  $("#loaderEllipsis").show()
+  $("#submitTethysAppLoaderEllipsis").show()
   $("#fetchRepoButton").prop("disabled", true)
-  $("#loadingTextAppSubmit").text("Please wait. Fetching GitHub Repo")
-  disableModalInput(disable_email=true, disable_gihuburl=true, disable_channels=true, disable_labels=true)
+  $("#submitTethysAppLoaderText").text("Please wait. Fetching GitHub Repo")
+  disable_options = {
+    disable_email: true, disable_gihuburl: true, disable_channels: true, disable_labels: true, disable_branches: false
+  }
+  disableSubmitAppModalInput("tethysapp", disable_options)
   notification_ws.send(
       JSON.stringify({
           data: {
@@ -270,8 +361,45 @@ const getRepoForAdd = () => {
   )
 }
 
+function UpdateProxyApp() {
+  $(".proxyApp_failMessage").hide()
+  let [proxyAppName, proxyEndpoint, proxyDescription, proxyLogo, proxyTags, proxyEnabled, proxyShown] = getProxyModalInput("update-proxyapp-modal")
+
+  let errors = false
+  if (!proxyAppName) {
+    $("#proxyAppName_failMessage").show()
+    errors = true
+  }
+
+  if (!proxyEndpoint) {
+    $("#proxyEndpoint_failMessage").show()
+    errors = true
+  }
+
+  if (errors) {
+    return
+  }
+
+  disableProxyAppModalInput("update-proxyapp-modal")
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              app_name: proxyAppName,
+              endpoint: proxyEndpoint, 
+              description: proxyDescription, 
+              logo_url: proxyLogo, 
+              tags: proxyTags, 
+              enabled: proxyEnabled, 
+              show_in_apps_library: proxyShown
+          },
+          type: `update_proxy_app`
+      })
+  )
+  location.reload();
+}
+
 $(document).on('click', ".anchor", function() {
-  let checkList = $(this).parents(".dropdown-check-list")[0]
+  let checkList = $(this).parents(".dropdown-check-list-labels")[0]
   if (checkList.classList.contains('visible')){
     checkList.classList.remove('visible');
   }
@@ -281,20 +409,165 @@ $(document).on('click', ".anchor", function() {
 })
 
 $(document).on('change', ".conda-channel-list-item", function() {
-  let conda_channel = this.id;
-  let branch_select = $(`#${conda_channel}_branchesList`)[0];
-  let label_select = $(`#${conda_channel}_labels`)[0];
+  let channel_select = $(this).parents(".dropdown-check-list-channels")
+  let label_select = channel_select.siblings(".dropdown-check-list-labels")[0];
   if(this.checked){
     label_select.classList.remove('d-none')
-    branch_select.classList.remove('d-none')
   } else {
     label_select.classList.add('d-none')
-    branch_select.classList.add('d-none')
+  }
+
+  let branch_selects = channel_select.siblings(".branches-list");
+  if (branch_selects.length > 0) {
+    let branch_select = branch_selects[0];
+    if(this.checked){
+      branch_select.classList.remove('d-none')
+    } else {
+      branch_select.classList.add('d-none')
+    }
   }
 })
 
-$(document).on('hidden.bs.modal', '#add-app-modal', function() {
-  $('#add-app-modal').remove();
-  var originalAddModalClone = originalAddModal.clone();
-  $('body').append(originalAddModalClone);
+$(document).on('hidden.bs.modal', '#submit-tethysapp-to-store-modal', function() {
+  $('#submit-tethysapp-to-store-modal').remove();
+  var originalTethysSubmitStoreModalClone = originalTethysSubmitStoreModal.clone();
+  $('body').append(originalTethysSubmitStoreModalClone);
+});
+
+$(document).on('hidden.bs.modal', '#add-proxyapp-to-portal-modal', function() {
+  $('#add-proxyapp-to-portal-modal').remove();
+  var originalProxyAddPortalModalClone = originalProxyAddPortalModal.clone();
+  $('body').append(originalProxyAddPortalModalClone);
+});
+
+$(document).on('hidden.bs.modal', '#submit-proxyapp-to-store-modal', function() {
+  $('#submit-proxyapp-to-store-modal').remove();
+  var originalProxySubmitStoreModalClone = originalProxySubmitStoreModal.clone();
+  $('body').append(originalProxySubmitStoreModalClone);
+});
+
+
+$(document).on('keydown', '#proxyTags', function(event) {
+  const tags = $(this).siblings("#proxyTagList")[0]; 
+
+  if (event.key === 'Enter' || event.key === 'Tab') { 
+      event.preventDefault(); 
+      const tag = document.createElement('li');
+      const tagContent = this.value.trim(); 
+      if (tagContent !== '') {
+        tag.innerText = tagContent;
+        tag.classList.add("tag-item");
+        tag.innerHTML += '<button class="tag-item-delete">X</button>'; 
+        tags.appendChild(tag);
+        this.value = ''; 
+    } 
+  } 
+});
+
+
+$(document).on('click', '#proxyTagList', function(event) {
+  if (event.target.classList.contains('tag-item-delete')) { 
+    event.target.parentNode.remove(); 
+  } 
+});
+
+
+$(document).on('click', '.proxyAppDelete', function(event) {
+  let proxyAppName = this.id.split("_")[0]
+  notification_ws.send(
+    JSON.stringify({
+        data: {
+          app_name: proxyAppName
+        },
+        type: `delete_proxy_app`
+    })
+  )
+  location.reload();
+});
+
+
+$(document).on('click', '.proxyAppUpdate', function(event) {
+  let proxyAppName = this.id.split("_")[0]
+  let proxyApp = proxyApps.filter(obj => {return obj.name === proxyAppName})[0]
+  let updateProxyAppModal = $('#update-proxyapp-modal')
+  updateProxyAppModal.find("#proxyAppName")[0].value = proxyAppName
+  updateProxyAppModal.find("#proxyEndpoint")[0].value = proxyApp['endpoint']
+  updateProxyAppModal.find("#proxyDescription")[0].value = proxyApp['description']
+  updateProxyAppModal.find("#proxyLogo")[0].value = proxyApp['logo']
+  updateProxyAppModal.find("#proxyEnabled")[0].checked = proxyApp['enabled']
+  updateProxyAppModal.find("#proxyShown")[0].checked = proxyApp['show_in_apps_library']
+
+  let proxyTagList = updateProxyAppModal.find("#proxyTagList")
+  proxyTagList.empty()
+  proxyApp['tags'].split(",").forEach(function (tag_value) {
+    if (tag_value.includes("conda_channel_") || tag_value.includes("conda_labels_") || tag_value.includes("app_version_")) {
+      return
+    }
+    const tag = document.createElement('li');
+    if (tag_value !== '') {
+      tag.innerText = tag_value;
+      tag.classList.add("tag-item");
+      tag.innerHTML += '<button class="tag-item-delete">X</button>'; 
+      proxyTagList[0].appendChild(tag);
+    }
+  })
+  updateProxyAppModal.modal('show');
+});
+
+
+$(document).on('click', '.proxyAppUploadToStore', function(event) {
+  let proxyAppName = this.id.split("_")[0]
+  let submitProxyAppModal = $('#submit-proxyapp-to-store-modal')
+  submitProxyAppModal.find(".modal-header").find("#submitProxyAppName")[0].innerHTML = proxyAppName
+  submitProxyAppModal.find(".modal-footer").find("#submitProxyAppName")[0].innerHTML = proxyAppName
+  submitProxyAppModal.modal("show")
+});
+
+
+$(document).on('click', '#submitProxyApp', function(event) {
+  $(".label_failMessage").hide()
+  $(".proxyapp_failMessage").hide()
+  let submitProxyAppModal = $('#submit-proxyapp-to-store-modal')
+  let proxyAppName = submitProxyAppModal.find(".modal-header").find("#submitProxyAppName")[0].innerHTML
+  let [_, notifEmail, active_stores] = getTethysSubmitModalInput("proxyapp")
+
+  let errors = false
+  if (!notifEmail) {
+    $("#proxyapp_notifEmail_failMessage").show()
+    errors = true
+  }
+
+  if (active_stores.length == 0) {
+    $('#proxyapp_channel_failMessage').show()
+    errors = true
+  } else {
+    for (let i = 0; i < active_stores.length; i++) {
+      if (active_stores[i].conda_labels.length == 0) {
+        $(`#proxyapp_${active_stores[i].conda_channel}_label_failMessage`).show()
+        errors = true
+      }
+    }
+  }
+
+  if (errors) {
+    return
+  }
+
+  disable_options = {
+    disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true, disable_branches: false
+  }
+  disableSubmitAppModalInput("proxyapp", disable_options)
+  $("#submitProxyAppLoaderEllipsis").show()
+  $("#submitProxyAppLoaderText").text( `Please wait. Submitting ${proxyAppName} to the app store`)
+  $("#submitProxyApp").prop("disabled", true)
+  notification_ws.send(
+      JSON.stringify({
+          data: {
+              app_name: proxyAppName,
+              active_stores: active_stores,
+              notification_email: notifEmail
+          },
+          type: `submit_proxy_app`
+      })
+  )
 });

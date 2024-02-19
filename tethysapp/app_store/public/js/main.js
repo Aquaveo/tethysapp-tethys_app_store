@@ -11,7 +11,8 @@ var installedApps = {}
 var updateData = {}
 var tethysVersion = ""
 var storesDataList = []
-var originalAddModal = ""
+var originalTethysSubmitStoreModal = ""
+var originalProxyAddPortalModal = ""
 // End Vars
 const settingsHelper = {
     processCustomSettings: (settingsData, n_content, completeMessage, ws) => {
@@ -343,7 +344,7 @@ const updateTethysPlatformCompatibility_new = (app, selectedVersion,channel,labe
     $("#tethysPlatformVersion").text('Tethys Platform Compatibility: ' + platform_compatibility)
 }
 
-const startInstall = (appName,channel_app,label_app,current_version) => {
+const startInstall = (appName, channel_app, label_app, current_version) => {
     showLoader()
     $(`#${appName}_installer`).prop("disabled", true)
     $(`#${appName}_installer`).css('opacity', '.5');
@@ -409,7 +410,12 @@ const uninstall = () => {
 }
 
 const update = () => {
+    if (jQuery.isEmptyObject(updateData)) {
+        $("#update_failMessage").show()
+        return
+    }
     // Hide Elements
+    $("#update_failMessage").hide()
     $("#update-app-notice").hide()
     $("#yes-update").hide()
     $("#no-update").hide()
@@ -425,7 +431,6 @@ const update = () => {
 
 
     $("#update-processing-label").html(
-
         `Updating to: ${htmlStr}`
     )
     notification_ws.send(
@@ -503,6 +508,7 @@ $(document).ready(function() {
     availableApps = JSON.parse(document.getElementById('availableAppsList').textContent);
     installedApps = JSON.parse(document.getElementById('installedAppsList').textContent);
     incompatibleApps = JSON.parse(document.getElementById('incompatibleAppsList').textContent);
+    proxyApps = JSON.parse(document.getElementById('proxyAppsList').textContent);
     tethysVersion = JSON.parse(document.getElementById('tethysVersion').textContent);
     
     $("#mainAppLoader").hide()
@@ -535,7 +541,9 @@ $(document).ready(function() {
         sendNotification("install_complete", n_content)
     })
     
-    originalAddModal = $('#add-app-modal').clone()
+    originalTethysSubmitStoreModal = $('#submit-tethysapp-to-store-modal').clone()
+    originalProxyAddPortalModal = $('#add-proxyapp-to-portal-modal').clone()
+    originalProxySubmitStoreModal = $('#submit-proxyapp-to-store-modal').clone()
 
     $("#doneInstallButton").click(() => reloadCacheRefresh())
     $("#doneUninstallButton").click(() => reloadCacheRefresh())

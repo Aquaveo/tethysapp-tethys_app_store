@@ -8,7 +8,7 @@ from subprocess import (Popen, PIPE, STDOUT)
 from pathlib import Path
 
 from .git_install_handlers import write_logs
-from .helpers import logger
+from .helpers import logger, restart_server
 from tethys_cli.scaffold_commands import APP_PATH, APP_PREFIX, get_random_color, render_path, TEMPLATE_SUFFIX
 
 from rest_framework.decorators import api_view, authentication_classes
@@ -17,7 +17,6 @@ from rest_framework.authentication import TokenAuthentication
 
 from django.http import JsonResponse
 from tethys_sdk.routing import controller
-from .installation_handlers import restart_server
 
 
 def install_app(app_path, project_name, app_workspace):
@@ -26,7 +25,7 @@ def install_app(app_path, project_name, app_workspace):
     Args:
         app_path (str): Path to the scaffolded application
         project_name (str): Name of the project
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     logger.info("Running scaffolded application install....")
     process = Popen(['tethys', 'install', "-d", "-q"],
@@ -43,7 +42,7 @@ def get_develop_dir(app_workspace):
     """Create if needed and retrieve the develop directory where the app will be scaffolded
 
     Args:
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Returns:
         str: Path to the develop directory where the scaffolded app resides
@@ -103,7 +102,7 @@ def scaffold_command(request, app_workspace):
 
     Args:
         request (Django Request): Django request object containing information about the user and user request
-        app_workspace (str): Path pointing to the app workspace within the app store
+        app_workspace (TethysWorkspace): workspace object bound to the app workspace.
 
     Input JSON Object:
 

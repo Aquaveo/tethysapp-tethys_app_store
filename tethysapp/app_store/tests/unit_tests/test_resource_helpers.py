@@ -197,6 +197,7 @@ def test_merge_channels_of_apps(store_with_resources):
         'availableApps': {
             available_app_name: {
                 'name': available_app_name,
+                'app_type': "tethysapp",
                 'installed': {store1['conda_channel']: {'main': False}, store2['conda_channel']: {'dev': False}},
                 'installedVersion': {store1['conda_channel']: {'main': "1.0"},
                                      store2['conda_channel']: {'dev': "1.0"}},
@@ -223,6 +224,7 @@ def test_merge_channels_of_apps(store_with_resources):
         'installedApps': {
             installed_app_name: {
                 'name': installed_app_name,
+                'app_type': "tethysapp",
                 'installed': {store1['conda_channel']: {'main': False}, store2['conda_channel']: {'main': False}},
                 'installedVersion': {store1['conda_channel']: {'main': "1.0"},
                                      store2['conda_channel']: {'main': "1.0"}},
@@ -249,6 +251,7 @@ def test_merge_channels_of_apps(store_with_resources):
         'incompatibleApps': {
             incompatible_app_name: {
                 'name': incompatible_app_name,
+                'app_type': "tethysapp",
                 'installed': {store1['conda_channel']: {'dev': False}},
                 'installedVersion': {store1['conda_channel']: {'dev': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'dev': "1.0"}},
@@ -301,6 +304,7 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
         'installedApps': {
             installed_app_name: {
                 'name': installed_app_name,
+                'app_type': "tethysapp",
                 'installed': {store1['conda_channel']: {'main': False}, store2['conda_channel']: {'main': False}},
                 'installedVersion': {store1['conda_channel']: {'main': "1.0"},
                                      store2['conda_channel']: {'main': "1.0"}},
@@ -327,6 +331,7 @@ def test_merge_channels_of_apps_missing_app(store_with_resources):
         'incompatibleApps': {
             incompatible_app_name: {
                 'name': incompatible_app_name,
+                'app_type': "tethysapp",
                 'installed': {store1['conda_channel']: {'dev': False}},
                 'installedVersion': {store1['conda_channel']: {'dev': "1.0"}},
                 'latestVersion': {store1['conda_channel']: {'dev': "1.0"}},
@@ -423,6 +428,7 @@ def test_merge_labels_single_store(store, resource):
     ref_object_stores = merge_labels_single_store(object_stores[conda_channel], conda_channel, 'incompatibleApps')
     expected_object_stores = expected_object_stores = {'test_app2': {
         'name': "test_app2",
+        'app_type': "tethysapp",
         'installed': {active_store['conda_channel']: {'main': False, 'dev': False}},
         'installedVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
         'latestVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
@@ -508,6 +514,7 @@ def test_merge_labels_for_app_in_store(store, resource):
 
     expected_object_stores = {'test_app2': {
         'name': "test_app2",
+        'app_type': "tethysapp",
         'installed': {active_store['conda_channel']: {'main': False, 'dev': False}},
         'installedVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
         'latestVersion': {active_store['conda_channel']: {'main': "1.0", 'dev': "1.0"}},
@@ -915,11 +922,11 @@ def test_get_resource_none(tmp_path, mocker):
     assert resource_response is None
 
 
-def test_check_if_app_installed_installed(mocker):
+def test_check_if_app_installed_tethysapp_installed(mocker):
     conda_run_resp = json.dumps([{"channel": "conda_channel", 'version': '1.0'}])
     mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 0])
 
-    response = check_if_app_installed("test_app")
+    response = check_if_app_installed("test_app", app_type="tethysapp")
 
     expected_response = {
         'isInstalled': True,
@@ -929,14 +936,61 @@ def test_check_if_app_installed_installed(mocker):
     assert response == expected_response
 
 
-def test_check_if_app_installed_not_installed(mocker):
+def test_check_if_app_installed_tethysapp_conda_error(mocker):
+    conda_run_resp = json.dumps([{"channel": "conda_channel", 'version': '1.0'}])
+    mock_shutil = mocker.patch('tethysapp.app_store.resource_helpers.shutil')
+    mock_conda_run = mocker.patch('tethysapp.app_store.resource_helpers.conda_run')
+    mock_conda_run.side_effect = [Exception("Path not found: /path/to/error/package/info_file"),
+                                  [conda_run_resp, "", 0]]
+
+    response = check_if_app_installed("test_app", app_type="tethysapp")
+
+    expected_response = {
+        'isInstalled': True,
+        'channel': "conda_channel",
+        'version': '1.0'
+    }
+    assert response == expected_response
+    mock_shutil.rmtree.assert_called_with("/path/to/error/package")
+
+
+def test_check_if_app_installed_tethysapp_not_installed(mocker):
     conda_run_resp = json.dumps([{}])
     mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 10])
+
+    response = check_if_app_installed("test_app", app_type="tethysapp")
+
+    expected_response = {
+        'isInstalled': False
+    }
+    assert response == expected_response
+
+
+def test_check_if_app_installed_proxyapp_installed(mocker):
+    proxy_app = {"name": "test_app", "tags": "conda_channel_test_channel,app_version_1.0"}
+    mocker.patch('tethysapp.app_store.resource_helpers.list_proxy_apps', return_value=[proxy_app])
+
+    response = check_if_app_installed("proxyapp_test_app", app_type="proxyapp")
+
+    expected_response = {
+        'isInstalled': True,
+        'channel': "test_channel",
+        'version': '1.0'
+    }
+    assert response == expected_response
+
+
+def test_check_if_app_installed_no_app_type(mocker):
+    conda_run_resp = json.dumps([{"channel": "conda_channel", 'version': '1.0'}])
+    mocker.patch('tethysapp.app_store.resource_helpers.conda_run', return_value=[conda_run_resp, "", 0])
+    mocker.patch('tethysapp.app_store.resource_helpers.list_proxy_apps', return_value=[])
 
     response = check_if_app_installed("test_app")
 
     expected_response = {
-        'isInstalled': False
+        'isInstalled': True,
+        'channel': "conda_channel",
+        'version': '1.0'
     }
     assert response == expected_response
 
