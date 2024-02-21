@@ -7,6 +7,11 @@ else
     MAMBA_COMMAND=mamba
 fi
 
-$MAMBA_COMMAND install -y --freeze-installed -q -c $2 -c tethysplatform -c conda-forge $1
+if $MAMBA_COMMAND install -y --freeze-installed -q -c $2 -c tethysplatform -c conda-forge $1; then
+    echo "Mamba Install Success"
+else
+    echo "Mamba failed. Trying conda now"
+    conda install -y --freeze-installed -q -c $2 -c tethysplatform -c conda-forge $1 || echo "Conda Install Success"
+fi
 
-echo "Mamba Install Complete"
+echo "Install Complete"

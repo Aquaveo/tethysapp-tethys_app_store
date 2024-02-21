@@ -25,7 +25,12 @@ resource_files += find_resource_files('tethysapp/' + app_package + '/application
 
 
 # -- Python Dependencies -- #
-dependencies = []
+dependencies = [
+    "gitpython",
+    "toml",
+    "semver",
+    "pygithub"
+]
 
 setup(
     name=release_package,

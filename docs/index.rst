@@ -12,8 +12,9 @@ The Tethys App Store is similar in concept to the iOS App Store for Apple mobile
   :caption: Table of Contents
   :maxdepth: 2
 
-  install
-  app-submit
+  get-started
+  manage-tethysapp
+  manage-proxyapp
   production
   compatibility
   github-install

@@ -225,7 +225,7 @@ function addHtmlForUpdateApp(row){
     for(channel in row['updateAvailable']){
       for(label in row['updateAvailable'][channel]){
         if(row['updateAvailable'][channel][label]){
-          html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Rebase"><button type="button" id="${channel}_${label}_update" class="custom-label label-color-primary label-outline-xs">Rebase</button></a>`  
+          html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Update"><button type="button" id="${channel}_${label}_update" class="custom-label label-color-primary label-outline-xs">Update</button></a>`  
         }
       }
     }
@@ -251,7 +251,7 @@ function mergedOperateFormatter(value, row, index){
         html_str += `<a class="uninstall button-spaced" href="javascript:void(0)" title="Uninstall">
         <button type="button" id="${channel}__${label}__uninstall" class="custom-label label-color-danger label-outline-xs"><i class="bi bi-dash-lg"></i> Uninstall</button>
         </a>`
-        html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Rebase"><button type="button" id="${channel}_${label}_update" class="custom-label label-color-warning label-outline-xs"><i class="bi bi-stack"></i> Rebase </button></a>`  
+        html_str +=`<a class="update button-spaced" href="javascript:void(0)" title="Update"><button type="button" id="${channel}_${label}_update" class="custom-label label-color-warning label-outline-xs"><i class="bi bi-stack"></i> Update </button></a>`  
       }
     }
   }
@@ -587,7 +587,7 @@ function eventClickDropdown(e) {
 
 function eventClickDropdownUpdate(e) {
   let app_channel_label_version = e.target.id
-  let app_channel_label_version_list = app_channel_label_version.split("__")
+  let app_channel_label_version_list = app_channel_label_version.split("_")
   chooseVersion(app_channel_label_version_list[3], app_channel_label_version_list[0],app_channel_label_version_list[1],app_channel_label_version_list[2],'update-app-notice')
   // app_channel_label_version
 
