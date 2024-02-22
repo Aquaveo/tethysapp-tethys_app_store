@@ -169,8 +169,12 @@ def mamba_install(app_metadata, app_channel, app_label, app_version, channel_lay
                                   "conda environment to attempt a manual installation : "
                                   f"mamba install -c {label_channel} {app_name}",
                                   channel_layer)
+            if (check_all_present(str_output, ['Mamba failed. Trying conda now.'])):
+                success = False
+                send_notification("Install failed using mamba. Trying now with conda.", channel_layer)
             if (check_all_present(str_output, ['Conda Install Success'])):
                 success = True
+                send_notification("Install succeeded with conda.", channel_layer)
             if (check_all_present(str_output, ['Install Complete'])):
                 break
 

@@ -29,7 +29,13 @@ dependencies = [
     "gitpython",
     "toml",
     "semver",
-    "pygithub"
+    "pygithub",
+    "pytest",
+    "pytest-cov",
+    "pytest-django",
+    "pytest-lazy-fixtures",
+    "pytest-mock",
+    "pytest-asyncio"
 ]
 
 setup(

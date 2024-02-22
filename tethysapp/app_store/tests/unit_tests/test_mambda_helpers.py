@@ -130,7 +130,8 @@ def test_mamba_install_success(resource, mocker):
     mock_time.time.side_effect = [10, 20]
     mock_sp.Popen().stdout.readline.side_effect = [
         "Running Mamba Install", "Collecting package metadata: done", "Solving environment: done",
-        "Verifying transaction: done", "All requested packages already installed.", "Mamba Install Complete"]
+        "Verifying transaction: done", "All requested packages already installed.", "Mamba Install Success",
+        "Install Complete"]
 
     successful_install = mamba_install(app_resource, app_channel, app_label, app_version, mock_channel)
 
@@ -146,7 +147,7 @@ def test_mamba_install_success(resource, mocker):
     assert successful_install
 
 
-def test_mamba_install_output_failure(resource, mocker):
+def test_mamba_install_mamba_failure_conda_success(resource, mocker):
     app_channel = "test_channel"
     app_label = "dev"
     app_version = ""
@@ -157,7 +158,8 @@ def test_mamba_install_output_failure(resource, mocker):
     mock_time = mocker.patch('tethysapp.app_store.mamba_helpers.time')
     mock_time.time.side_effect = [10, 20]
     mock_sp.Popen().stdout.readline.side_effect = [
-        "Running Mamba Install", "critical libmamba Could not solve for environment specs", "Mamba Install Complete"]
+        "Running Mamba Install", "critical libmamba Could not solve for environment specs",
+        "Mamba failed. Trying conda now.", "Conda Install Success", "Install Complete"]
 
     successful_install = mamba_install(app_resource, app_channel, app_label, app_version, mock_channel)
 
@@ -165,6 +167,34 @@ def test_mamba_install_output_failure(resource, mocker):
         call("Mamba install may take a couple minutes to complete depending on how complicated the "
              "environment is. Please wait....", mock_channel),
         call("Failed to resolve environment specs when installing.", mock_channel),
+        call("Install failed using mamba. Trying now with conda.", mock_channel),
+        call("Install succeeded with conda.", mock_channel),
+        call("Mamba install completed in 10.00 seconds.", mock_channel)
+    ])
+    assert successful_install
+
+
+def test_mamba_install_mamba_failure_conda_failure(resource, mocker):
+    app_channel = "test_channel"
+    app_label = "dev"
+    app_version = ""
+    app_resource = resource("test_app", app_channel, app_label)
+    mock_channel = MagicMock()
+    mock_ws = mocker.patch('tethysapp.app_store.mamba_helpers.send_notification')
+    mock_sp = mocker.patch('tethysapp.app_store.mamba_helpers.subprocess')
+    mock_time = mocker.patch('tethysapp.app_store.mamba_helpers.time')
+    mock_time.time.side_effect = [10, 20]
+    mock_sp.Popen().stdout.readline.side_effect = [
+        "Running Mamba Install", "critical libmamba Could not solve for environment specs",
+        "Mamba failed. Trying conda now.", "Install Complete"]
+
+    successful_install = mamba_install(app_resource, app_channel, app_label, app_version, mock_channel)
+
+    mock_ws.assert_has_calls([
+        call("Mamba install may take a couple minutes to complete depending on how complicated the "
+             "environment is. Please wait....", mock_channel),
+        call("Failed to resolve environment specs when installing.", mock_channel),
+        call("Install failed using mamba. Trying now with conda.", mock_channel),
         call("Mamba install completed in 10.00 seconds.", mock_channel)
     ])
     assert not successful_install
@@ -182,7 +212,7 @@ def test_mamba_install_output_failure2(resource, mocker):
     mock_time = mocker.patch('tethysapp.app_store.mamba_helpers.time')
     mock_time.time.side_effect = [10, 20]
     mock_sp.Popen().stdout.readline.side_effect = [
-        "Running Mamba Install", "Found conflicts!", "Mamba Install Complete"]
+        "Running Mamba Install", "Found conflicts!", "Install Complete"]
 
     successful_install = mamba_install(app_resource, app_channel, app_label, app_version, mock_channel)
 
