@@ -25,7 +25,18 @@ resource_files += find_resource_files('tethysapp/' + app_package + '/application
 
 
 # -- Python Dependencies -- #
-dependencies = []
+dependencies = [
+    "gitpython",
+    "toml",
+    "semver",
+    "pygithub",
+    "pytest",
+    "pytest-cov",
+    "pytest-django",
+    "pytest-lazy-fixtures",
+    "pytest-mock",
+    "pytest-asyncio"
+]
 
 setup(
     name=release_package,
