@@ -587,8 +587,8 @@ function eventClickDropdown(e) {
 
 function eventClickDropdownUpdate(e) {
   let app_channel_label_version = e.target.id
-  let app_channel_label_version_list = app_channel_label_version.split("_")
-  chooseVersion(app_channel_label_version_list[3], app_channel_label_version_list[0],app_channel_label_version_list[1],app_channel_label_version_list[2],'update-app-notice')
+  let app_channel_label_version_list = app_channel_label_version.split("__")
+  chooseVersion(app_channel_label_version_list[4], app_channel_label_version_list[3], app_channel_label_version_list[0], app_channel_label_version_list[1], app_channel_label_version_list[2], 'update-app-notice')
   // app_channel_label_version
 
 }

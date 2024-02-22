@@ -293,7 +293,7 @@ const getVersionsHTML_dropdown = (app,checkIfNeeded,isUpdate) => {
                 for (sinlge_version in versions_obj[channel][label]){
                     // string_dropdown += `<li><a class="dropdown-item" href="#">${versions_obj[channel][label][sinlge_version]}</a></li>`
                     string_dropdown +=`<li><a class="${class_html} button-spaced dropdown-item" href="javascript:void(0)" title="Install">
-                        <button type="button" id="${channel}_${label}_${versions_obj[channel][label][sinlge_version]}_${app['name']}_install" class="label_dropdown custom-label label-color-${color_icon} label-outline-xs">${versions_obj[channel][label][sinlge_version]}</button>
+                    <button type="button" id="${channel}__${label}__${versions_obj[channel][label][sinlge_version]}__${app['app_type']}__${app['name']}__install" class="label_dropdown custom-label label-color-${color_icon} label-outline-xs">${versions_obj[channel][label][sinlge_version]}</button>
                     </a></li>`
                 }
                 string_dropdown += `</ul></li>`;
