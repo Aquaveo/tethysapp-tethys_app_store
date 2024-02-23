@@ -300,8 +300,8 @@ def test_restart_server_dev_server(mocker, caplog, tmp_path):
     mock_ws.assert_called_with(f"Running Syncstores for app: {data['name']}", mock_channel)
     mock_run_process.assert_called_with(['python', "manage_path", 'syncstores', data["name"], '-f'])
     assert "Dev Mode. Attempting to restart by changing file" in caplog.messages
-    model_py = app_files / "model.py"
-    assert model_py.read_text() == f'print("{data["name"]} installed in dev mode")\n'
+    dev_restart_file_py = app_files / "dev_restart_file.py"
+    assert dev_restart_file_py.read_text() == f'print("{data["name"]} installed in dev mode")\n'
 
 
 def test_restart_server_dev_server_install_scaffold_running(mocker, caplog, tmp_path):
@@ -334,8 +334,8 @@ def test_restart_server_dev_server_install_scaffold_running(mocker, caplog, tmp_
     mock_ws.assert_called_with(f"Running Syncstores for app: {data['name']}", mock_channel)
     mock_run_process.assert_called_with(['python', "manage_path", 'syncstores', data["name"], '-f'])
     assert "Dev Mode. Attempting to restart by changing file" in caplog.messages
-    model_py = app_files / "model.py"
-    assert model_py.read_text() == f'print("{data["name"]} installed in dev mode")\n'
+    dev_restart_file_py = app_files / "dev_restart_file.py"
+    assert dev_restart_file_py.read_text() == f'print("{data["name"]} installed in dev mode")\n'
 
 
 def test_restart_server_prod_server_run_collect_all(mocker, caplog, tmp_path):

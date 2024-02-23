@@ -1,5 +1,5 @@
 from tethys_sdk.base import TethysAppBase
-from tethys_sdk.app_settings import CustomSetting, JSONCustomSetting, SecretCustomSetting
+from tethys_sdk.app_settings import CustomSetting, JSONCustomSetting, SecretCustomSetting,PersistentStoreDatabaseSetting
 from tethys_sdk.permissions import Permission, PermissionGroup
 
 
@@ -59,3 +59,19 @@ class AppStore(TethysAppBase):
                 required=False
             ),
         )
+
+
+    def persistent_store_settings(self):
+        """
+        Define Persistent Store Settings.
+        """
+        ps_settings = (
+            PersistentStoreDatabaseSetting(
+                name='primary_db',
+                description='primary database',
+                initializer='app_store.model.init_primary_db',
+                required=True
+            ),
+        )
+
+        return ps_settings

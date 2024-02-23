@@ -344,7 +344,7 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
 
         logger.info("Dev Mode. Attempting to restart by changing file")
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, 'model.py')
+        file_path = os.path.join(dir_path, 'dev_restart_file.py')
         with open(file_path, "w") as f:
             f.write(f'print("{data["name"]} installed in dev mode")')
             f.write("\n")
