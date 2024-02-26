@@ -474,6 +474,146 @@ def check_if_app_installed(app_name, app_type=None):
     return return_obj
 
 
+def upload_conda_applications_to_db(app_workspace, conda_channel, conda_label):
+    conda_search_channel = conda_channel
+    if conda_label != 'main':
+        conda_search_channel = f'{conda_channel}/label/{conda_label}'
+
+    # Look for packages:
+    logger.info(f"Retrieving applications from {conda_search_channel}")
+    [resp, err, code] = conda_run(Commands.SEARCH,
+                                    ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
+
+    if code != 0:
+        # In here maybe we just try re running the install
+        raise Exception(f"ERROR: Couldn't search packages in the {conda_search_channel} channel")
+
+    conda_search_result = json.loads(resp)
+
+    resource_metadata = []
+    logger.info("Total Apps Found:" + str(len(conda_search_result)))
+    if 'The following packages are not available from current channels' in conda_search_result.get('error', ""):
+        logger.info(f'no packages found with the label {conda_label} in channel {conda_channel}')
+        return resource_metadata
+
+    for app_name in conda_search_result:
+        for conda_version in conda_search_result[app_name]:
+            version = conda_version.get('version')
+            version_url = conda_version.get('url')
+            license = conda_version.get('license')
+            
+            if license:
+                app_version_metadata = get_license_metadata(license)
+            else:
+                app_version_metadata = get_meta_yaml_metadata(
+                    app_name, app_workspace, conda_channel, conda_label, version, version_url
+                )
+                
+            app_type = app_version_metadata['app_type']
+            compatibility = app_version_metadata['compatibility']
+            author = app_version_metadata['author']
+            author_email = app_version_metadata['author_email']
+            description = app_version_metadata['description']
+            license = app_version_metadata['license']
+            keywords = app_version_metadata['keywords']
+            dev_url = app_version_metadata['dev_url']
+            breakpoint()
+            print(app_version_metadata)
+
+
+def get_license_metadata(license_data):
+    license_json = json.loads(license_data.replace("\'", "\""))
+    app_type = license_json.get('app_type', 'tethysapp')
+    if 'tethys_version' in license_json:
+        compatibility = license_json.get('tethys_version', '<=3.4.4')
+
+    author = license_json.get("author")
+    author_email = license_json.get("author_email")
+    description = license_json.get("description")
+    license = license_json.get("license")
+    keywords = license_json.get("keywords")
+    dev_url = license_json.get("url")
+    
+    return_object = {
+        "app_type": app_type,
+        "compatibility": compatibility,
+        "author": author,
+        "author_email": author_email,
+        "description": description,
+        "license": license,
+        "keywords": keywords,
+        "dev_url": dev_url
+    }
+    
+    return return_object
+
+
+def get_meta_yaml_metadata(app_name, app_workspace, conda_channel, conda_label, version, version_url):
+    workspace_folder = os.path.join(app_workspace.path, 'apps')
+    if not os.path.exists(workspace_folder):
+        os.makedirs(workspace_folder)
+        
+    # There wasn't json found in license. Get Metadata from downloading the file
+    conda_label_path = os.path.join(workspace_folder, conda_channel, conda_label)
+    app_path = os.path.join(conda_label_path, app_name)
+    app_version_path = os.path.join(app_path, version)
+    output_path = os.path.join(app_path, version)
+    
+    if not os.path.exists(app_version_path):
+        if not os.path.exists(conda_label_path):
+            os.makedirs(conda_label_path)
+            
+        if not os.path.exists(app_path):
+            os.makedirs(app_path)
+
+        logger.info("License field metadata not found. Downloading: " + app_name)
+        urllib.request.urlretrieve(version_url, app_path)
+
+        if os.path.exists(output_path):
+            # Clear the output extracted folder
+            shutil.rmtree(output_path)
+
+        shutil.unpack_archive(app_path, output_path)
+
+    # Get Meta.Yaml for this file
+    try:
+        meta_yaml_path = os.path.join(output_path, 'info', 'recipe', 'meta.yaml')
+        if os.path.exists(meta_yaml_path):
+            with open(meta_yaml_path) as f:
+                meta_yaml = yaml.safe_load(f)
+                # Add metadata to the resources object.
+                meta_about = meta_yaml.get("about", {})
+                meta_extra = meta_yaml.get("extra", {})
+
+                app_type = meta_extra.get('app_type', 'tethysapp')
+                if 'tethys_version' in meta_extra:
+                    compatibility = meta_extra.get('tethys_version', '<=3.4.4')
+
+                author = meta_about.get("author")
+                author_email = meta_extra.get("author_email")
+                description = meta_about.get("description")
+                license = meta_about.get("license")
+                keywords = meta_extra.get("keywords")
+                dev_url = meta_extra.get("url")
+        else:
+            logger.info("No yaml file available to retrieve metadata")
+    except Exception as e:
+        logger.info("Error happened while downloading package for metadata")
+        logger.error(e)
+    
+    return_object = {
+        "app_type": app_type,
+        "compatibility": compatibility,
+        "author": author,
+        "author_email": author_email,
+        "description": description,
+        "license": license,
+        "keywords": keywords,
+        "dev_url": dev_url
+    }
+    
+    return return_object
+
 def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=None, refresh=False):
     """Perform a conda search with the given channel and label to get all the available resources for potential
     installation

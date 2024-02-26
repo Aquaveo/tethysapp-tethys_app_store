@@ -1,9 +1,12 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, ForeignKeyConstraint, UniqueConstraint
+from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.exc import IntegrityError
+from tethys_sdk.workspaces import get_app_workspace
 
 from .app import AppStore as app
+from .helpers import get_conda_stores
+from .resource_helpers import upload_conda_applications_to_db
 
 Base = declarative_base()
 
@@ -80,8 +83,12 @@ def init_primary_db(engine, first_time):
 
     # Add data
     if first_time:
-        add_new_application("test_application", "conda_channel", "tethysapp")
-        add_new_application("test_application2", "conda_channel", "tethysapp2")
+        app_workspace = get_app_workspace(app)
+        available_stores = get_conda_stores()
+        for store in available_stores:
+            conda_channel = store['conda_channel']
+            for conda_label in store['conda_labels']:
+                upload_conda_applications_to_db(app_workspace, conda_channel, conda_label)
     else:
         breakpoint()
         Session = app.get_persistent_store_database('primary_db', as_sessionmaker=True)
