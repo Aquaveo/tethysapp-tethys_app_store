@@ -441,7 +441,6 @@ window.operateEvents = {
     let n_div = $("#notification")
     let n_content = $("#notification .lead")
     let isUsingIncompatible = $(e.target).attr("class").includes("incompatible-app")
-    let appList = isUsingIncompatible ? incompatibleApps : availableApps
     n_content.empty();
     n_div.modal({ backdrop: "static", keyboard: false })
     n_div.modal('show')
@@ -451,7 +450,6 @@ window.operateEvents = {
     // Setup Versions
     let appName = row['name'];
     $("#installingAppName").text(appName)
-    installData["name"] = appName
     let channel_and_label = get_channel_label_from_id(e);
     let selectedVersion = e.target.innerText;
     let app_type = row['app_type'];
@@ -495,9 +493,9 @@ window.operateEvents = {
   },
 
   "click .update": function(e, value, row, index) {
-    let n_content = $("#update-notices .lead")
-    // Find The installed App's version
-    let installedApp = row["name"]
+    $("#update-app-notice").empty()
+    $("#update_failMessage").hide()
+    updateData = {}
     for(channel in row['installedVersion']){
       for(label in row['installedVersion'][channel]){
         let htmlCurrentVersion = '';

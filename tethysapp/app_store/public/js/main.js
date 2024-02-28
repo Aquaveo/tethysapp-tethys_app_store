@@ -349,7 +349,12 @@ const startInstall = (appName, channel_app, label_app, current_version) => {
     $(`#${appName}_installer`).prop("disabled", true)
     $(`#${appName}_installer`).css('opacity', '.5');
     installRunning = true
-    installData["version"] = current_version
+    installData = {
+        name: appName,
+        channel: channel_app,
+        label: label_app,
+        version: current_version
+    }
 
     notification_ws.send(
         JSON.stringify({
@@ -393,6 +398,8 @@ function dismissAddRelatedObjectPopup(win, newId, newRepr) {
         })
     )
 }
+
+
 
 const uninstall = () => {
     // Hide Elements

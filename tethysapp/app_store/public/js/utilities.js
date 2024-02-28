@@ -87,7 +87,6 @@ const sendNotification = (message, n_content) => {
         type: `restart_server`
       })
     )
-    resetInstallStatus()
   } else if (message == "Uninstall completed. Restarting server...") {
     inRestart = true
     notification_ws.send(
@@ -127,6 +126,7 @@ function startWS(websocketServerLocation, n_content) {
         $("#doneInstallButton").show()
         // Hide Cancel Button
         $("#mainCancel").hide()
+        resetInstallStatus()
       }
     }
     // Check if we have any updateData
