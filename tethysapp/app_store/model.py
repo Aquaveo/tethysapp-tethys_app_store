@@ -1,5 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, UniqueConstraint, desc, func
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.exc import IntegrityError
 from conda.cli.python_api import run_command as conda_run, Commands
@@ -338,31 +339,42 @@ def get_available_apps():
     session = Session()
     
     row_number_column = func.row_number().over(partition_by=Application.id, order_by=(Version.app_version_major.desc(),Version.app_version_minor.desc(),Version.app_version_patch.desc())).label("row_number")
-    subquery = session.query(
+    latest_version_subquery = session.query(
+        Application.id,
         Application.app_name,
         Application.app_type,
         Application.conda_channel,
         Application.conda_label,
         Version.app_version,
         Version.installed,
+        Version.compatibility,
         row_number_column
     ).join(Application).subquery()
+
+    app_versions_agg = func.array_agg(Version.app_version).label('app_versions')
+    all_versions_subquery = session.query(
+        Version.app_id,
+        app_versions_agg
+    ).group_by(Version.app_id).subquery()
     
     available_apps = session.query(
-        subquery
-    ).filter(
-        subquery.c.row_number == 1
-    ).all()
-    
+        latest_version_subquery,
+        all_versions_subquery.c.app_versions
+    ).join(
+        all_versions_subquery, all_versions_subquery.c.app_id == latest_version_subquery.c.id
+    ).filter(latest_version_subquery.c.row_number == 1).all()
+
     available_apps_list = []
     for application in available_apps:
         app_dict = {
-            "name": application[0],
-            "app_type": application[1],
-            "conda_channel": application[2],
-            "conda_label": application[3],
-            "latestVersion": application[4],
-            "installed": application[5],
+            "name": application[1],
+            "app_type": application[2],
+            "conda_channel": application[3],
+            "conda_label": application[4],
+            "latestVersion": application[5],
+            "installed": application[6],
+            "compatibility": application[7],
+            "versions": application[9],
         }
         available_apps_list.append(app_dict)
     
