@@ -61,12 +61,6 @@
     color: var(--bs-primary);
     text-decoration: none;
 }
-.custom-label:active {
-    background-image: none;
-    outline: 0;
-    -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
-    box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
-}
 
 .channels_container{
     display: flex;
@@ -134,6 +128,12 @@
     border-color: var(--bs-blue);
 }
 
+.nav-link.active .label-outline-blue {
+    color: var(--bs-white);
+    background-color: var(--bs-blue);
+    border-color: var(--bs-blue);
+}
+
 /* indigo outline label */
 .label-outline-indigo {
     color:  var(--bs-indigo);
@@ -141,6 +141,12 @@
 }
 
 .label-outline-indigo:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-indigo);
+    border-color: var(--bs-indigo);
+}
+
+.nav-link.active .label-outline-indigo {
     color: var(--bs-white);
     background-color: var(--bs-indigo);
     border-color: var(--bs-indigo);
@@ -158,12 +164,25 @@
     border-color: var(--bs-purple);
 }
 
+.nav-link.active .label-outline-purple {
+    color: var(--bs-white);
+    background-color: var(--bs-purple);
+    border-color: var(--bs-purple);
+}
+
 /* pink outline label */
 .label-outline-pink {
     color:  var(--bs-pink);
     border-color:  var(--bs-pink);
 }
+
 .label-outline-pink:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-pink);
+    border-color: var(--bs-pink);
+}
+
+.nav-link.active .label-outline-pink {
     color: var(--bs-white);
     background-color: var(--bs-pink);
     border-color: var(--bs-pink);
@@ -181,6 +200,12 @@
     border-color: var(--bs-red);
 }
 
+.nav-link.active .label-outline-red {
+    color: var(--bs-white);
+    background-color: var(--bs-red);
+    border-color: var(--bs-red);
+}
+
  /* orange outline label */
  .label-outline-orange {
     color:  var(--bs-orange);
@@ -193,13 +218,25 @@
     border-color: var(--bs-orange);
 }
 
+.nav-link.active .label-outline-orange {
+    color: var(--bs-white);
+    background-color: var(--bs-orange);
+    border-color: var(--bs-orange);
+}
+
  /* yellow outline label */
  .label-outline-yellow {
-    color:  var(--bs-orange);
-    border-color:  var(--bs-orange);
+    color:  var(--bs-yellow);
+    border-color:  var(--bs-yellow);
 }
 
 .label-outline-yellow:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-yellow);
+    border-color: var(--bs-yellow);
+}
+
+.nav-link.active .label-outline-yellow {
     color: var(--bs-white);
     background-color: var(--bs-yellow);
     border-color: var(--bs-yellow);
@@ -216,6 +253,13 @@
     background-color: var(--bs-green);
     border-color: var(--bs-green);
 }
+
+.nav-link.active .label-outline-green {
+    color: var(--bs-white);
+    background-color: var(--bs-green);
+    border-color: var(--bs-green);
+}
+
  /* teal outline label */
  .label-outline-teal {
     color:  var(--bs-teal);
@@ -223,6 +267,12 @@
 }
 
 .label-outline-teal:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-teal);
+    border-color: var(--bs-teal);
+}
+
+.nav-link.active .label-outline-teal {
     color: var(--bs-white);
     background-color: var(--bs-teal);
     border-color: var(--bs-teal);
@@ -240,6 +290,12 @@
     border-color: var(--bs-cyan);
 }
 
+.nav-link.active .label-outline-cyan {
+    color: var(--bs-white);
+    background-color: var(--bs-cyan);
+    border-color: var(--bs-cyan);
+}
+
  /* gray outline label */
  .label-outline-gray {
     color:  var(--bs-gray);
@@ -247,6 +303,12 @@
 }
 
 .label-outline-gray:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-gray);
+    border-color: var(--bs-gray);
+}
+
+.nav-link.active .label-outline-gray {
     color: var(--bs-white);
     background-color: var(--bs-gray);
     border-color: var(--bs-gray);
@@ -264,6 +326,12 @@
     border-color: var(--bs-gray-dark);
 }
 
+.nav-link.active .label-outline-gray-dark {
+    color: var(--bs-white);
+    background-color: var(--bs-gray-dark);
+    border-color: var(--bs-gray-dark);
+}
+
  /* primary outline label */
  .label-outline-primary {
     color:  var(--bs-primary);
@@ -271,6 +339,12 @@
 }
 
 .label-outline-primary:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.nav-link.active .label-outline-primary {
     color: var(--bs-white);
     background-color: var(--bs-primary);
     border-color: var(--bs-primary);
@@ -287,6 +361,13 @@
     background-color: var(--bs-secondary);
     border-color: var(--bs-secondary);
 }
+
+.nav-link.active .label-outline-secondary {
+    color: var(--bs-white);
+    background-color: var(--bs-secondary);
+    border-color: var(--bs-secondary);
+}
+
  /* success outline label */
  .label-outline-success {
     color:  var(--bs-success);
@@ -294,6 +375,12 @@
 }
 
 .label-outline-success:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+.nav-link.active .label-outline-success {
     color: var(--bs-white);
     background-color: var(--bs-success);
     border-color: var(--bs-success);
@@ -311,6 +398,12 @@
     border-color: var(--bs-info);
 }
 
+.nav-link.active .label-outline-info {
+    color: var(--bs-white);
+    background-color: var(--bs-info);
+    border-color: var(--bs-info);
+}
+
  /* warning outline label */
  .label-outline-warning {
     color:  var(--bs-warning);
@@ -318,6 +411,12 @@
 }
 
 .label-outline-warning:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-warning);
+    border-color: var(--bs-warning);
+}
+
+.nav-link.active .label-outline-warning {
     color: var(--bs-white);
     background-color: var(--bs-warning);
     border-color: var(--bs-warning);
@@ -335,6 +434,12 @@
     border-color: var(--bs-danger);
 }
 
+.nav-link.active .label-outline-danger {
+    color: var(--bs-white);
+    background-color: var(--bs-danger);
+    border-color: var(--bs-danger);
+}
+
  /* light outline label */
  .label-outline-light {
     color:  var(--bs-light);
@@ -342,6 +447,12 @@
 }
 
 .label-outline-light:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-light);
+    border-color: var(--bs-light);
+}
+
+.nav-link.active .label-outline-light {
     color: var(--bs-white);
     background-color: var(--bs-light);
     border-color: var(--bs-light);
@@ -359,6 +470,12 @@
     border-color: var(--bs-dark);
 }
 
+.nav-link.active .label-outline-dark {
+    color: var(--bs-white);
+    background-color: var(--bs-dark);
+    border-color: var(--bs-dark);
+}
+
  /* dark outline label */
  .label-outline-dark {
     color:  var(--bs-dark);
@@ -366,6 +483,12 @@
 }
 
 .label-outline-dark:hover {
+    color: var(--bs-white);
+    background-color: var(--bs-dark);
+    border-color: var(--bs-dark);
+}
+
+.nav-link.active .label-outline-dark {
     color: var(--bs-white);
     background-color: var(--bs-dark);
     border-color: var(--bs-dark);
