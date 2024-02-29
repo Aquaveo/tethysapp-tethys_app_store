@@ -17,6 +17,7 @@ import yaml
 from .helpers import logger, get_conda_stores
 from .proxy_app_handlers import list_proxy_apps
 from conda.cli.python_api import run_command as conda_run, Commands
+from conda.exceptions import PackagesNotFoundError
 
 
 def clear_conda_channel_cache(data, channel_layer):
@@ -491,6 +492,7 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
     Returns:
         dict: Dictionary representing all the conda channel applications and metadata
     """
+    resource_metadata = []
     if not cache_key:
         cache_key = conda_channel
 
@@ -504,16 +506,16 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
 
         # Look for packages:
         logger.info("Refreshing list of apps cache")
-        [resp, err, code] = conda_run(Commands.SEARCH,
-                                      ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
+        try:
+            [resp, err, code] = conda_run(Commands.SEARCH, ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
+        except PackagesNotFoundError:
+            return resource_metadata
 
         if code != 0:
             # In here maybe we just try re running the install
             raise Exception(f"ERROR: Couldn't search packages in the {conda_search_channel} channel")
 
         conda_search_result = json.loads(resp)
-
-        resource_metadata = []
         logger.info("Total Apps Found:" + str(len(conda_search_result)))
         if 'The following packages are not available from current channels' in conda_search_result.get('error', ""):
             logger.info(f'no packages found with the label {conda_label} in channel {conda_channel}')

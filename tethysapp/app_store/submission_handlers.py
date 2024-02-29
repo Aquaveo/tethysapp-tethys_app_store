@@ -9,7 +9,7 @@ import json
 import time
 import re
 from pathlib import Path
-from github.GithubException import UnknownObjectException, BadCredentialsException
+from github.GithubException import UnknownObjectException, BadCredentialsException, GithubException
 
 from .helpers import logger, send_notification, apply_template, parse_setup_file, get_setup_path, get_conda_stores
 
@@ -370,7 +370,7 @@ def fix_setup(setup_py):
             if "import find_all_resource_files" in line or "import find_resource_files" in line:
                 print("from setup_helper import find_all_resource_files", end='\n')
 
-            elif "namespace =" in line:
+            elif "TethysAppBase.package_namespace" in line:
                 new_replace_line = line.replace("TethysAppBase.package_namespace", "namespace")
                 print(new_replace_line, end='')
 
@@ -441,7 +441,10 @@ def get_head_and_tag_names(tethysapp_remote):
     Returns:
         list: list of tags, heads, and remote references for the repository
     """
-    return [ref.ref for ref in tethysapp_remote.get_git_refs()]
+    try:
+        return [ref.ref for ref in tethysapp_remote.get_git_refs()]
+    except GithubException:
+        return []
 
 
 def create_current_tag_version(current_version, heads_names_list):
