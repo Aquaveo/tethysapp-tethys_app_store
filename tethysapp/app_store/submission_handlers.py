@@ -9,11 +9,22 @@ import json
 import time
 import re
 from pathlib import Path
-from github.GithubException import UnknownObjectException, BadCredentialsException
+from github.GithubException import (
+    UnknownObjectException,
+    BadCredentialsException,
+    GithubException,
+)
 
-from .helpers import logger, send_notification, apply_template, parse_setup_file, get_setup_path, get_conda_stores
+from .helpers import (
+    logger,
+    send_notification,
+    apply_template,
+    parse_setup_file,
+    get_setup_path,
+    get_conda_stores,
+)
 
-CHANNEL_NAME = 'tethysapp'
+CHANNEL_NAME = "tethysapp"
 
 
 def update_pip_dependencies(github_dir):
@@ -22,11 +33,11 @@ def update_pip_dependencies(github_dir):
     Args:
         github_dir (str): The directory path that contains the cloned github repository
     """
-    install_yml = os.path.join(github_dir, 'install.yml')
-    app_files_dir = os.path.join(github_dir, 'tethysapp')
+    install_yml = os.path.join(github_dir, "install.yml")
+    app_files_dir = os.path.join(github_dir, "tethysapp")
 
     app_folders = next(os.walk(app_files_dir))[1]
-    app_scripts_path = os.path.join(app_files_dir, app_folders[0], 'scripts')
+    app_scripts_path = os.path.join(app_files_dir, app_folders[0], "scripts")
 
     Path(app_scripts_path).mkdir(parents=True, exist_ok=True)
 
@@ -34,8 +45,8 @@ def update_pip_dependencies(github_dir):
         install_yml_file = yaml.safe_load(f)
 
     # Dynamically create an bash install script for pip install dependency
-    if ("pip" in install_yml_file['requirements']):
-        pip_deps = install_yml_file['requirements']["pip"]
+    if "pip" in install_yml_file["requirements"]:
+        pip_deps = install_yml_file["requirements"]["pip"]
         if pip_deps is not None:
             logger.info("Pip dependencies found")
             pre_link = os.path.join(app_scripts_path, "install_pip.sh")
@@ -47,7 +58,9 @@ def update_pip_dependencies(github_dir):
             os.chmod(pre_link, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, keywords=None, email=""):
+def update_anaconda_dependencies(
+    github_dir, recipe_path, source_files_path, keywords=None, email=""
+):
     """Updates the anaconda package dependencies for the submitted github application. This file will be used in the
     github actions to build the anaconda package for the application.
 
@@ -58,9 +71,9 @@ def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, key
         keywords (list, optional): Keywords in the extra section of the anaconda packages meta yaml. Defaults to None.
         email (str, optional): Author email in the extra section of the anaconda packages meta yaml. Defaults to "".
     """
-    install_yml = os.path.join(github_dir, 'install.yml')
-    meta_yaml = os.path.join(source_files_path, 'meta_reqs.yaml')
-    meta_extras = os.path.join(source_files_path, 'meta_extras.yaml')
+    install_yml = os.path.join(github_dir, "install.yml")
+    meta_yaml = os.path.join(source_files_path, "meta_reqs.yaml")
+    meta_extras = os.path.join(source_files_path, "meta_extras.yaml")
 
     with open(install_yml) as f:
         install_yml_file = yaml.safe_load(f)
@@ -74,13 +87,15 @@ def update_anaconda_dependencies(github_dir, recipe_path, source_files_path, key
     if not keywords:
         keywords = []
 
-    meta_extras_file['extra']['author_email'] = email
-    meta_extras_file['extra']['keywords'] = keywords
+    meta_extras_file["extra"]["author_email"] = email
+    meta_extras_file["extra"]["keywords"] = keywords
 
-    meta_yaml_file['requirements']['run'] = install_yml_file['requirements']['conda']['packages']
+    meta_yaml_file["requirements"]["run"] = install_yml_file["requirements"]["conda"][
+        "packages"
+    ]
 
     # Add additional package metadata to meta.yml for anaconda packaging
-    with open(os.path.join(recipe_path, 'meta.yaml'), 'a') as f:
+    with open(os.path.join(recipe_path, "meta.yaml"), "a") as f:
         yaml.safe_dump(meta_extras_file, f, default_flow_style=False)
         f.write("\n")
         yaml.safe_dump(meta_yaml_file, f, default_flow_style=False)
@@ -103,7 +118,9 @@ def get_github_repo(repo_name, organization):
         return tethysapp_repo
 
     except UnknownObjectException as e:
-        logger.info(f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}")
+        logger.info(
+            f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}"
+        )
         logger.info(f"Creating a new repository at {organization.login}/{repo_name}")
         tethysapp_repo = organization.create_repo(
             repo_name,
@@ -144,7 +161,7 @@ def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
     Returns:
         str: Path to the submitted application
     """
-    github_dir = os.path.join(app_workspace.path, 'gitsubmission', conda_channel)
+    github_dir = os.path.join(app_workspace.path, "gitsubmission", conda_channel)
 
     if not os.path.exists(github_dir):
         os.makedirs(github_dir)
@@ -168,14 +185,16 @@ def initialize_local_repo(github_url, active_store, channel_layer, app_workspace
     """
     # Create/Refresh github directories within the app workspace for the given channel
     app_name = github_url.split("/")[-1].replace(".git", "")
-    app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, active_store['conda_channel'])
+    app_github_dir = get_gitsubmission_app_dir(
+        app_workspace, app_name, active_store["conda_channel"]
+    )
 
     if os.path.exists(app_github_dir):
         shutil.rmtree(app_github_dir)
 
     # Initialize the github repo and fetch
     repo = git.Repo.init(app_github_dir)
-    origin = repo.create_remote('origin', github_url)
+    origin = repo.create_remote("origin", github_url)
     origin.fetch()
 
     # Get remote branches and get list of branch names
@@ -186,11 +205,11 @@ def initialize_local_repo(github_url, active_store, channel_layer, app_workspace
         "data": {
             "branches": branches,
             "app_name": app_name,
-            "conda_channel": active_store['conda_channel'],
-            "conda_labels": active_store['conda_labels'],
+            "conda_channel": active_store["conda_channel"],
+            "conda_labels": active_store["conda_labels"],
         },
         "jsHelperFunction": "showBranches",
-        "helper": "addModalHelper"
+        "helper": "addModalHelper",
     }
     send_notification(get_data_json, channel_layer)
 
@@ -205,12 +224,12 @@ def generate_label_strings(conda_labels):
         str: A string of the conda label with additional labels and a --label prefix. i.e
             'main --label dev'
     """
-    labels_string = ''
+    labels_string = ""
     for i in range(len(conda_labels)):
         if i < 1:
             labels_string += conda_labels[i]
         else:
-            labels_string += f' --label {conda_labels[i]}'
+            labels_string += f" --label {conda_labels[i]}"
 
     return labels_string
 
@@ -222,10 +241,10 @@ def create_tethysapp_warehouse_release(repo, branch):
         repo (github.Github.Repository): github repository class for the organization
         branch (str): name of the existing local branch
     """
-    if 'tethysapp_warehouse_release' not in repo.heads:
-        repo.create_head('tethysapp_warehouse_release')
+    if "tethysapp_warehouse_release" not in repo.heads:
+        repo.create_head("tethysapp_warehouse_release")
     else:
-        repo.git.checkout('tethysapp_warehouse_release')
+        repo.git.checkout("tethysapp_warehouse_release")
         repo.git.merge(branch)
 
 
@@ -281,15 +300,20 @@ def create_upload_command(labels_string, source_files_path, recipe_path):
         source_files_path (str): Path to the source files in the app store repo
         recipe_path (str): Path to the conda recipes in the cloned application
     """
-    label = {'label_string': labels_string}
-    if os.path.exists(os.path.join(recipe_path, 'upload_command.txt')):
-        os.remove(os.path.join(recipe_path, 'upload_command.txt'))
+    label = {"label_string": labels_string}
+    if os.path.exists(os.path.join(recipe_path, "upload_command.txt")):
+        os.remove(os.path.join(recipe_path, "upload_command.txt"))
 
-    shutil.copyfile(os.path.join(source_files_path, 'upload_command.txt'),
-                    os.path.join(recipe_path, 'upload_command.txt'))
+    shutil.copyfile(
+        os.path.join(source_files_path, "upload_command.txt"),
+        os.path.join(recipe_path, "upload_command.txt"),
+    )
 
-    apply_template(os.path.join(source_files_path, 'upload_command.txt'),
-                   label, os.path.join(recipe_path, 'upload_command.txt'))
+    apply_template(
+        os.path.join(source_files_path, "upload_command.txt"),
+        label,
+        os.path.join(recipe_path, "upload_command.txt"),
+    )
 
 
 def get_keywords_and_email(setup_path_data):
@@ -303,7 +327,9 @@ def get_keywords_and_email(setup_path_data):
     """
     keywords = setup_path_data.get("keywords")
     if keywords:
-        keywords = keywords.replace(' ', '').replace('"', '').replace("'", '').split(',')
+        keywords = (
+            keywords.replace(" ", "").replace('"', "").replace("'", "").split(",")
+        )
     else:
         keywords = []
         logger.warning("No keywords found in setup file")
@@ -315,8 +341,15 @@ def get_keywords_and_email(setup_path_data):
     return keywords, email
 
 
-def create_template_data_for_install(app_github_dir, dev_url, setup_path_data, app_name=None, app_version=None,
-                                     source_files_path=None, proxyapp=False):
+def create_template_data_for_install(
+    app_github_dir,
+    dev_url,
+    setup_path_data,
+    app_name=None,
+    app_version=None,
+    source_files_path=None,
+    proxyapp=False,
+):
     """Join the install_data information with the setup_py information to create template data for conda install
 
     Args:
@@ -326,13 +359,10 @@ def create_template_data_for_install(app_github_dir, dev_url, setup_path_data, a
     Returns:
         dict: master dictionary use for templates, specifically for conda install
     """
-    install_yml = os.path.join(app_github_dir, 'install.yml')
+    install_yml = os.path.join(app_github_dir, "install.yml")
     if not os.path.exists(install_yml):
         install_template = os.path.join(source_files_path, "install_template.yml")
-        template_data = {
-            "name": app_name,
-            "version": app_version
-        }
+        template_data = {"name": app_name, "version": app_version}
         apply_template(install_template, template_data, install_yml)
 
     with open(install_yml) as f:
@@ -341,15 +371,14 @@ def create_template_data_for_install(app_github_dir, dev_url, setup_path_data, a
             additional_data = {"app_type": "proxyapp", "tethys_version": ">=3.0.0"}
         else:
             additional_data = {
-                "app_type": "tethysapp", "tethys_version": install_yml_file.get('tethys_version', '<=3.4.4'),
-                "dev_url": dev_url
+                "app_type": "tethysapp",
+                "tethys_version": install_yml_file.get("tethys_version", "<=3.4.4"),
+                "dev_url": dev_url,
             }
 
         metadata_dict = {**setup_path_data, **additional_data}
 
-    template_data = {
-        'metadataObj': json.dumps(metadata_dict).replace('"', "'")
-    }
+    template_data = {"metadataObj": json.dumps(metadata_dict).replace('"', "'")}
     return template_data
 
 
@@ -365,34 +394,40 @@ def fix_setup(setup_py):
     rel_package = ""
     with fileinput.FileInput(setup_py, inplace=True) as f:
         for line in f:
-            # logger.info(line)
+            if (
+                "import find_all_resource_files" in line
+                or "import find_resource_files" in line
+            ):
+                print("from setup_helper import find_all_resource_files", end="\n")
 
-            if "import find_all_resource_files" in line or "import find_resource_files" in line:
-                print("from setup_helper import find_all_resource_files", end='\n')
+            elif "setup(" in line:
+                print(line, end="")
 
-            elif "namespace =" in line:
-                new_replace_line = line.replace("TethysAppBase.package_namespace", "namespace")
-                print(new_replace_line, end='')
-
-            elif ("setup(" in line):
-                print(line, end='')
-
-            elif ("app_package = " in line):
+            elif "app_package=" in line.replace(" ", ""):
                 rel_package = re.findall("app_package = ['\"](.*)['\"]", line)[0]
-                print("namespace = 'tethysapp'")
-                print(line, end='')
+                print('namespace = "tethysapp"')
+                print(line, end="")
 
             elif "from tethys_apps.base.app_base import TethysAppBase" in line:
-                print('', end='')
+                print("", end="")
 
-            elif "resource_files = find_resource_files" in line:
-                print("resource_files = find_all_resource_files(app_package, namespace)", end='\n')
+            elif "resource_files=find_resource_files" in line.replace(" ", ""):
+                print(
+                    "resource_files = find_all_resource_files(app_package, namespace)",
+                    end="\n",
+                )
 
-            elif "resource_files += find_resource_files" in line:
-                print('', end='')
+            elif "resource_files+=find_resource_files" in line.replace(" ", ""):
+                print("", end="")
+
+            elif "TethysAppBase.package_namespace" in line:
+                new_replace_line = line.replace(
+                    "TethysAppBase.package_namespace", "namespace"
+                )
+                print(new_replace_line, end="")
 
             else:
-                print(line, end='')
+                print(line, end="")
     return rel_package
 
 
@@ -402,7 +437,7 @@ def remove_init_file(app_github_dir):
     Args:
         install_data (dict): Data from the application submission form by the user
     """
-    init_path = os.path.join(app_github_dir, '__init__.py')
+    init_path = os.path.join(app_github_dir, "__init__.py")
 
     if os.path.exists(init_path):
         os.remove(init_path)
@@ -417,17 +452,19 @@ def apply_main_yml_template(source_files_path, workflows_path, rel_package, emai
         rel_package (str): The name of the application packge
         email (dict): Email that will receive a notification from the github actions
     """
-    source = os.path.join(source_files_path, 'main_template.yaml')
-    destination = os.path.join(workflows_path, 'main.yaml')
-    app_name = rel_package.replace("app_package", '').replace("=", '').replace("'", "").strip()
+    source = os.path.join(source_files_path, "main_template.yaml")
+    destination = os.path.join(workflows_path, "main.yaml")
+    app_name = (
+        rel_package.replace("app_package", "").replace("=", "").replace("'", "").strip()
+    )
     template_data = {
-        'subject': "Tethys App Store: Build complete for " + app_name,
-        'email': email,
-        'buildMsg': """
+        "subject": "Tethys App Store: Build complete for " + app_name,
+        "email": email,
+        "buildMsg": """
         Your Tethys App has been successfully built and is now available on the Tethys App Store.
         This is an auto-generated email and this email is not monitored for replies.
         Please send any queries to gromero@aquaveo.com
-        """
+        """,
     }
     apply_template(source, template_data, destination)
 
@@ -441,7 +478,10 @@ def get_head_and_tag_names(tethysapp_remote):
     Returns:
         list: list of tags, heads, and remote references for the repository
     """
-    return [ref.ref for ref in tethysapp_remote.get_git_refs()]
+    try:
+        return [ref.ref for ref in tethysapp_remote.get_git_refs()]
+    except GithubException:
+        return []
 
 
 def create_current_tag_version(current_version, heads_names_list):
@@ -458,7 +498,9 @@ def create_current_tag_version(current_version, heads_names_list):
     valid_tag = False
     dev_attempt = 0
     while not valid_tag:
-        current_tag_name = "v" + str(current_version) + "_" + str(dev_attempt) + "_" + today
+        current_tag_name = (
+            "v" + str(current_version) + "_" + str(dev_attempt) + "_" + today
+        )
 
         if [head for head in heads_names_list if current_tag_name in head]:
             dev_attempt += 1
@@ -489,7 +531,9 @@ def check_if_organization_in_remote(repo, github_organization, remote_url):
     return tethysapp_remote
 
 
-def push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_name, files_changed):
+def push_to_warehouse_release_remote_branch(
+    repo, tethysapp_remote, current_tag_name, files_changed
+):
     """Perform an add and commit on the local repo if files change
 
     Args:
@@ -500,11 +544,13 @@ def push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_
     """
     if files_changed:
         repo.git.add(A=True)
-        repo.git.commit(m=f'tag version {current_tag_name}')
-        tethysapp_remote.push('tethysapp_warehouse_release', force=True)
+        repo.git.commit(m=f"tag version {current_tag_name}")
+        tethysapp_remote.push("tethysapp_warehouse_release", force=True)
 
 
-def create_head_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote):
+def create_head_current_version(
+    repo, current_tag_name, heads_names_list, tethysapp_remote
+):
     """Push the current code to the remote repo
 
     Args:
@@ -522,7 +568,9 @@ def create_head_current_version(repo, current_tag_name, heads_names_list, tethys
     tethysapp_remote.push(release_branch)
 
 
-def create_tags_for_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote):
+def create_tags_for_current_version(
+    repo, current_tag_name, heads_names_list, tethysapp_remote
+):
     """Create/Replace tags for the release
 
     Args:
@@ -533,13 +581,13 @@ def create_tags_for_current_version(repo, current_tag_name, heads_names_list, te
     """
     tag_name = current_tag_name + "_release"
     if tag_name in heads_names_list:
-        repo.git.tag('-d', tag_name)  # remove locally
-        tethysapp_remote.push(refspec=(f':{tag_name}'))  # remove from remote
+        repo.git.tag("-d", tag_name)  # remove locally
+        tethysapp_remote.push(refspec=(f":{tag_name}"))  # remove from remote
 
     new_tag = repo.create_tag(
         tag_name,
         ref=repo.heads["tethysapp_warehouse_release"],
-        message=f'This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}',  # noqa: E501
+        message=f"This is a tag-object pointing to tethysapp_warehouse_release branch with release version {current_tag_name}",  # noqa: E501
     )
     tethysapp_remote.push(new_tag)
 
@@ -567,7 +615,11 @@ def get_workflow_job_url(repo, tethysapp_repo, current_tag_name):
         elapsed_time += 4
 
         workflow_runs = tethysapp_repo.get_workflow_runs()
-        workflow = [workflow for workflow in workflow_runs if current_tag_name in workflow.display_title]
+        workflow = [
+            workflow
+            for workflow in workflow_runs
+            if current_tag_name in workflow.display_title
+        ]
         if workflow:
             workflow = workflow[0]
             logger.info("Obtained Workflow for Submission. Getting Job URL")
@@ -598,11 +650,13 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     package_app_name = f"proxyapp_{app_name}"
     conda_labels = install_data["conda_labels"]
     conda_channel = install_data["conda_channel"]
-    input_user_email = install_data['email']
+    input_user_email = install_data["email"]
     app_version = "1.0"
     labels_string = generate_label_strings(conda_labels)
     files_changed = False
-    app_github_dir = get_gitsubmission_app_dir(app_workspace, package_app_name, conda_channel)
+    app_github_dir = get_gitsubmission_app_dir(
+        app_workspace, package_app_name, conda_channel
+    )
     reset_folder(app_github_dir)
     repo = git.Repo.init(app_github_dir)
     app_config_dir = os.path.join(app_github_dir, "config")
@@ -617,10 +671,14 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
 
     # 3. Validate git inputs
     g = validate_git_credentials(github_token, conda_channel, channel_layer)
-    organization = validate_git_organization(g, github_organization, conda_channel, channel_layer)
+    organization = validate_git_organization(
+        g, github_organization, conda_channel, channel_layer
+    )
 
     # 4. Add files to local repo
-    source_files_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'application_files')
+    source_files_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "application_files"
+    )
     proxyapp_template = os.path.join(source_files_path, "proxyapp_template.yaml")
     additional_tags = f",conda_channel_{conda_channel},conda_labels_{'_'.join(conda_labels)},app_version_{app_version}"
     proxy_tags = proxy_app.tags + additional_tags
@@ -631,47 +689,55 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
         "logo_url": proxy_app.logo_url,
         "tags": proxy_tags,
         "enabled": proxy_app.enabled,
-        "show_in_apps_library": proxy_app.show_in_apps_library
+        "show_in_apps_library": proxy_app.show_in_apps_library,
     }
-    destination = os.path.join(app_config_dir, 'proxyapp.yaml')
+    destination = os.path.join(app_config_dir, "proxyapp.yaml")
     apply_template(proxyapp_template, proxyapp_data, destination)
     repo.index.add([destination])
     repo.index.commit("Adding proxyapp.yaml to repo")
 
     # 5. create head tethysapp_warehouse_release and checkout the head
-    create_tethysapp_warehouse_release(repo, 'tethysapp_warehouse_release')
-    repo.git.checkout('tethysapp_warehouse_release')
+    create_tethysapp_warehouse_release(repo, "tethysapp_warehouse_release")
+    repo.git.checkout("tethysapp_warehouse_release")
 
     # 6. Delete workflow directory if exits in the repo folder, and create the directory workflow.
     # Add the required files if they don't exist.
-    workflows_path = os.path.join(app_github_dir, '.github', 'workflows')
-    source_files_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'application_files')
+    workflows_path = os.path.join(app_github_dir, ".github", "workflows")
+    source_files_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "application_files"
+    )
     reset_folder(workflows_path)
 
     # 7. Delete conda.recipes directory if exits in the repo folder, and create the directory conda.recipes.
-    recipe_path = os.path.join(app_github_dir, 'conda.recipes')
+    recipe_path = os.path.join(app_github_dir, "conda.recipes")
     reset_folder(recipe_path)
 
     # 8. copy the getChannels.py from the source to the destination
     # if does not exits Channels purpose is to have conda build -c conda-forge -c x -c x2 -c x3 --output-folder . .
-    source = os.path.join(source_files_path, 'getChannels.py')
-    destination = os.path.join(recipe_path, 'getChannels.py')
+    source = os.path.join(source_files_path, "getChannels.py")
+    destination = os.path.join(recipe_path, "getChannels.py")
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
     # 9. Create the label string to upload to multiple labels a conda package
     create_upload_command(labels_string, source_files_path, recipe_path)
 
     # 10 get the data from the install.yml and create a metadata dict
-    source = os.path.join(source_files_path, 'meta_template.yaml')
-    destination = os.path.join(recipe_path, 'meta.yaml')
-    template_data = create_template_data_for_install(app_github_dir, "", {}, app_name=package_app_name,
-                                                     proxyapp=True, app_version=app_version,
-                                                     source_files_path=source_files_path)
+    source = os.path.join(source_files_path, "meta_template.yaml")
+    destination = os.path.join(recipe_path, "meta.yaml")
+    template_data = create_template_data_for_install(
+        app_github_dir,
+        "",
+        {},
+        app_name=package_app_name,
+        proxyapp=True,
+        app_version=app_version,
+        source_files_path=source_files_path,
+    )
     apply_template(source, template_data, destination)
 
     # 11 get the data from the install.yml and create a metadata dict
-    source = os.path.join(source_files_path, 'proxyapp_setup_template.py')
-    destination = os.path.join(app_github_dir, 'setup.py')
+    source = os.path.join(source_files_path, "proxyapp_setup_template.py")
+    destination = os.path.join(app_github_dir, "setup.py")
     template_data = {"app_name": package_app_name, "app_version": app_version}
     apply_template(source, template_data, destination)
 
@@ -679,17 +745,25 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     update_anaconda_dependencies(app_github_dir, recipe_path, source_files_path)
 
     # 11. apply data to the main.yml for the github action
-    apply_main_yml_template(source_files_path, workflows_path, package_app_name, input_user_email)
+    apply_main_yml_template(
+        source_files_path, workflows_path, package_app_name, input_user_email
+    )
 
     # 12. Check if this repo already exists on our remote:
-    repo_name = app_github_dir.split('/')[-1]
+    repo_name = app_github_dir.split("/")[-1]
     remote_repo = get_github_repo(repo_name, organization)
-    remote_url = remote_repo.git_url.replace("git://", "https://" + github_token + ":x-oauth-basic@")
-    tethysapp_remote = check_if_organization_in_remote(repo, github_organization, remote_url)
+    remote_url = remote_repo.git_url.replace(
+        "git://", "https://" + github_token + ":x-oauth-basic@"
+    )
+    tethysapp_remote = check_if_organization_in_remote(
+        repo, github_organization, remote_url
+    )
 
     # 13. add, commit, and push to the tethysapp_warehouse_release remote branch
     current_tag_name = "proxyapp_submit"
-    push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_name, files_changed)
+    push_to_warehouse_release_remote_branch(
+        repo, tethysapp_remote, current_tag_name, files_changed
+    )
 
     # 14 create/ push current tag branch to remote
     create_head_current_version(repo, current_tag_name, [], tethysapp_remote)
@@ -704,10 +778,10 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
         "data": {
             "githubURL": remote_repo.git_url.replace("git:", "https:"),
             "job_url": job_url,
-            "conda_channel": conda_channel
+            "conda_channel": conda_channel,
         },
         "jsHelperFunction": "proxyAppSubmitComplete",
-        "helper": "addModalHelper"
+        "helper": "addModalHelper",
     }
     send_notification(get_data_json, channel_layer)
 
@@ -724,9 +798,9 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
     app_name = install_data["app_name"]
     conda_labels = install_data["conda_labels"]
     conda_channel = install_data["conda_channel"]
-    dev_url = install_data['dev_url']
-    input_user_email = install_data['email']
-    branch = install_data['branch']
+    dev_url = install_data["dev_url"]
+    input_user_email = install_data["email"]
+    branch = install_data["branch"]
     labels_string = generate_label_strings(conda_labels)
     files_changed = False
     app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
@@ -739,10 +813,12 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
 
     # 3. Validate git inputs
     g = validate_git_credentials(github_token, conda_channel, channel_layer)
-    organization = validate_git_organization(g, github_organization, conda_channel, channel_layer)
+    organization = validate_git_organization(
+        g, github_organization, conda_channel, channel_layer
+    )
 
     # 4. From the origin remote checkout the selected branch and pull
-    origin = repo.remote(name='origin')
+    origin = repo.remote(name="origin")
     repo.git.checkout(branch)
     origin.pull()
     setup_path = get_setup_path(app_github_dir)
@@ -751,22 +827,24 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
 
     # 5. create head tethysapp_warehouse_release and checkout the head
     create_tethysapp_warehouse_release(repo, branch)
-    repo.git.checkout('tethysapp_warehouse_release')
+    repo.git.checkout("tethysapp_warehouse_release")
 
     # 6. Delete workflow directory if exits in the repo folder, and create the directory workflow.
     # Add the required files if they don't exist.
-    workflows_path = os.path.join(app_github_dir, '.github', 'workflows')
-    source_files_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'application_files')
+    workflows_path = os.path.join(app_github_dir, ".github", "workflows")
+    source_files_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "application_files"
+    )
     reset_folder(workflows_path)
 
     # 7. Delete conda.recipes directory if exits in the repo folder, and create the directory conda.recipes.
-    recipe_path = os.path.join(app_github_dir, 'conda.recipes')
+    recipe_path = os.path.join(app_github_dir, "conda.recipes")
     reset_folder(recipe_path)
 
     # 8. copy the getChannels.py from the source to the destination
     # if does not exits Channels purpose is to have conda build -c conda-forge -c x -c x2 -c x3 --output-folder . .
-    source = os.path.join(source_files_path, 'getChannels.py')
-    destination = os.path.join(recipe_path, 'getChannels.py')
+    source = os.path.join(source_files_path, "getChannels.py")
+    destination = os.path.join(recipe_path, "getChannels.py")
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
     # 9. Create the label string to upload to multiple labels a conda package
@@ -776,15 +854,17 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
     keywords, email = get_keywords_and_email(setup_path_data)
 
     # 11 get the data from the install.yml and create a metadata dict
-    source = os.path.join(source_files_path, 'meta_template.yaml')
-    destination = os.path.join(recipe_path, 'meta.yaml')
-    template_data = create_template_data_for_install(app_github_dir, dev_url, setup_path_data)
+    source = os.path.join(source_files_path, "meta_template.yaml")
+    destination = os.path.join(recipe_path, "meta.yaml")
+    template_data = create_template_data_for_install(
+        app_github_dir, dev_url, setup_path_data
+    )
     apply_template(source, template_data, destination)
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
     # 12. Copy the setup_helper.py
-    source = os.path.join(source_files_path, 'setup_helper.py')
-    destination = os.path.join(app_github_dir, 'setup_helper.py')
+    source = os.path.join(source_files_path, "setup_helper.py")
+    destination = os.path.join(app_github_dir, "setup_helper.py")
     files_changed = copy_files_for_recipe(source, destination, files_changed)
 
     # 13. Fix setup.py file to remove dependency on tethys
@@ -793,31 +873,45 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
 
     # 14. Update the dependencies of the package
     update_pip_dependencies(app_github_dir)
-    update_anaconda_dependencies(app_github_dir, recipe_path, source_files_path, keywords, email)
+    update_anaconda_dependencies(
+        app_github_dir, recipe_path, source_files_path, keywords, email
+    )
 
     # 15. apply data to the main.yml for the github action
-    apply_main_yml_template(source_files_path, workflows_path, rel_package, input_user_email)
+    apply_main_yml_template(
+        source_files_path, workflows_path, rel_package, input_user_email
+    )
 
     # 16. remove __init__.py file if present at top level
     remove_init_file(app_github_dir)
 
     # 17. Check if this repo already exists on our remote:
-    repo_name = app_github_dir.split('/')[-1]
+    repo_name = app_github_dir.split("/")[-1]
     tethysapp_repo = get_github_repo(repo_name, organization)
 
     heads_names_list = get_head_and_tag_names(tethysapp_repo)
     current_tag_name = create_current_tag_version(current_version, heads_names_list)
-    remote_url = tethysapp_repo.git_url.replace("git://", "https://" + github_token + ":x-oauth-basic@")
-    tethysapp_remote = check_if_organization_in_remote(repo, github_organization, remote_url)
+    remote_url = tethysapp_repo.git_url.replace(
+        "git://", "https://" + github_token + ":x-oauth-basic@"
+    )
+    tethysapp_remote = check_if_organization_in_remote(
+        repo, github_organization, remote_url
+    )
 
     # 18. add, commit, and push to the tethysapp_warehouse_release remote branch
-    push_to_warehouse_release_remote_branch(repo, tethysapp_remote, current_tag_name, files_changed)
+    push_to_warehouse_release_remote_branch(
+        repo, tethysapp_remote, current_tag_name, files_changed
+    )
 
     # 19 create/ push current tag branch to remote
-    create_head_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote)
+    create_head_current_version(
+        repo, current_tag_name, heads_names_list, tethysapp_remote
+    )
 
     # 20. create/push tag for current tag version in remote
-    create_tags_for_current_version(repo, current_tag_name, heads_names_list, tethysapp_remote)
+    create_tags_for_current_version(
+        repo, current_tag_name, heads_names_list, tethysapp_remote
+    )
 
     # 21. return workflow job url
     job_url = get_workflow_job_url(repo, tethysapp_repo, current_tag_name)
@@ -826,12 +920,14 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
         "data": {
             "githubURL": tethysapp_repo.git_url.replace("git:", "https:"),
             "job_url": job_url,
-            "conda_channel": conda_channel
+            "conda_channel": conda_channel,
         },
         "jsHelperFunction": "tethysAppSubmitComplete",
-        "helper": "addModalHelper"
+        "helper": "addModalHelper",
     }
     send_notification(get_data_json, channel_layer)
+
+    shutil.rmtree(app_github_dir)
 
 
 def validate_git_credentials(github_token, conda_channel, channel_layer):
@@ -852,22 +948,24 @@ def validate_git_credentials(github_token, conda_channel, channel_layer):
         return github.Github(github_token)
     except BadCredentialsException:
         json_response = {}
-        json_response['next_move'] = False
-        mssge_string = 'Invalid git credentials. Could not connect to github. Check store settings.'
+        json_response["next_move"] = False
+        mssge_string = "Invalid git credentials. Could not connect to github. Check store settings."
         get_data_json = {
             "data": {
                 "mssge_string": mssge_string,
                 "metadata": json_response,
-                "conda_channel": conda_channel
+                "conda_channel": conda_channel,
             },
             "jsHelperFunction": "validationResults",
-            "helper": "addModalHelper"
+            "helper": "addModalHelper",
         }
         send_notification(get_data_json, channel_layer)
         raise Exception(mssge_string)
 
 
-def validate_git_organization(github_account, github_organization, conda_channel, channel_layer):
+def validate_git_organization(
+    github_account, github_organization, conda_channel, channel_layer
+):
     """Validates the github organization to make sure it is accessible by the github user
 
     Args:
@@ -886,19 +984,20 @@ def validate_git_organization(github_account, github_organization, conda_channel
         return github_account.get_organization(github_organization)
     except BadCredentialsException:
         json_response = {}
-        json_response['next_move'] = False
-        mssge_string = 'Could not connect to organization. Check store settings.'
+        json_response["next_move"] = False
+        mssge_string = "Could not connect to organization. Check store settings."
         get_data_json = {
             "data": {
                 "mssge_string": mssge_string,
                 "metadata": json_response,
-                "conda_channel": conda_channel
+                "conda_channel": conda_channel,
             },
             "jsHelperFunction": "validationResults",
-            "helper": "addModalHelper"
+            "helper": "addModalHelper",
         }
         send_notification(get_data_json, channel_layer)
         raise Exception(mssge_string)
+
 
 # The functions below are not being used but may want to be implemented in the future
 

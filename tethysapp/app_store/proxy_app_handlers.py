@@ -12,18 +12,20 @@ def create_proxy_app(install_data, channel_layer):
     from tethys_apps.models import ProxyApp
 
     app_created = False
-    app_name = install_data['app_name']
-    proxy_endpoint = install_data['endpoint']
-    proxy_description = install_data['description']
-    proxy_logo = install_data['logo_url']
-    proxy_tags = install_data['tags']
+    app_name = install_data["app_name"]
+    proxy_endpoint = install_data["endpoint"]
+    proxy_description = install_data["description"]
+    proxy_logo = install_data["logo_url"]
+    proxy_tags = install_data["tags"]
     proxy_tags = ",".join(proxy_tags) if isinstance(proxy_tags, list) else proxy_tags
-    proxy_enabled = install_data['enabled']
-    proxy_shown = install_data['show_in_apps_library']
+    proxy_enabled = install_data["enabled"]
+    proxy_shown = install_data["show_in_apps_library"]
     try:
         logger.info(f"Checking to see if the {app_name} proxy app exists")
         proxy_app = ProxyApp.objects.get(name=app_name)
-        send_notification(f"There is already a proxy app with that name: {app_name}", channel_layer)
+        send_notification(
+            f"There is already a proxy app with that name: {app_name}", channel_layer
+        )
 
     except ProxyApp.DoesNotExist:
         logger.info(f"Creating the {app_name} proxy app")
@@ -49,22 +51,23 @@ def create_proxy_app(install_data, channel_layer):
 
 
 def list_proxy_apps():
-    """Retrieves all the installed proxy apps
-    """
+    """Retrieves all the installed proxy apps"""
     from tethys_apps.models import ProxyApp
 
     proxy_apps = ProxyApp.objects.all()
     proxy_app_list = []
     for proxy_app in proxy_apps:
-        proxy_app_list.append({
-            "name": proxy_app.name,
-            "description": proxy_app.description,
-            "endpoint": proxy_app.endpoint,
-            "logo": proxy_app.logo_url,
-            "tags": proxy_app.tags,
-            "enabled": proxy_app.enabled,
-            "show_in_apps_library": proxy_app.show_in_apps_library
-        })
+        proxy_app_list.append(
+            {
+                "name": proxy_app.name,
+                "description": proxy_app.description,
+                "endpoint": proxy_app.endpoint,
+                "logo": proxy_app.logo_url,
+                "tags": proxy_app.tags,
+                "enabled": proxy_app.enabled,
+                "show_in_apps_library": proxy_app.show_in_apps_library,
+            }
+        )
     return proxy_app_list
 
 
@@ -77,7 +80,7 @@ def delete_proxy_app(install_data, channel_layer):
     """
     from tethys_apps.models import ProxyApp
 
-    app_name = install_data['app_name']
+    app_name = install_data["app_name"]
     proxy_app = ProxyApp.objects.get(name=app_name)
     proxy_app.delete()
 
@@ -95,7 +98,7 @@ def update_proxy_app(install_data, channel_layer):
     """
     from tethys_apps.models import ProxyApp
 
-    app_name = install_data.pop('app_name')
+    app_name = install_data.pop("app_name")
     try:
         proxy_app = ProxyApp.objects.get(name=app_name)
     except ProxyApp.DoesNotExist:
@@ -108,7 +111,13 @@ def update_proxy_app(install_data, channel_layer):
 
         if app_key == "tags":
             existing_tags = proxy_app.tags.split(",")
-            metadata_tags = [tag for tag in existing_tags if "conda_channel_" in tag or "conda_labels_" in tag or "app_version_" in tag]  # noqa: E501
+            metadata_tags = [
+                tag
+                for tag in existing_tags
+                if "conda_channel_" in tag
+                or "conda_labels_" in tag
+                or "app_version_" in tag
+            ]  # noqa: E501
             app_value.extend(metadata_tags)
             app_value = ",".join(app_value)
         setattr(proxy_app, app_key, app_value)
@@ -125,13 +134,13 @@ def update_proxy_app(install_data, channel_layer):
 def submit_proxy_app(install_data, channel_layer, app_workspace):
     from tethys_apps.models import ProxyApp
 
-    app_name = install_data['app_name']
-    active_stores = install_data['active_stores']
+    app_name = install_data["app_name"]
+    active_stores = install_data["active_stores"]
     proxy_app = ProxyApp.objects.get(name=app_name)
 
     for active_store in active_stores:
         submit_data = active_store
-        submit_data['email'] = install_data['notification_email']
+        submit_data["email"] = install_data["notification_email"]
         submit_proxyapp_to_store(proxy_app, submit_data, channel_layer, app_workspace)
 
     return

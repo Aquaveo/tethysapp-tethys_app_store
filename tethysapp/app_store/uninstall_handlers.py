@@ -20,12 +20,12 @@ def uninstall_app(data, channel_layer, app_workspace):
         app_workspace (TethysWorkspace): workspace object bound to the app workspace.
     """
     manage_path = get_manage_path({})
-    app_name = data['name']
+    app_name = data["name"]
 
-    send_uninstall_messages('Starting Uninstall. Please wait...', channel_layer)
-    if data['app_type'] == "proxyapp":
-        data['app_name'] = data['name'].replace("proxyapp_", "")
-        send_uninstall_messages('Uninstalling Proxy App', channel_layer)
+    send_uninstall_messages("Starting Uninstall. Please wait...", channel_layer)
+    if data["app_type"] == "proxyapp":
+        data["app_name"] = data["name"].replace("proxyapp_", "")
+        send_uninstall_messages("Uninstalling Proxy App", channel_layer)
         delete_proxy_app(data, channel_layer)
     else:
         try:
@@ -38,7 +38,10 @@ def uninstall_app(data, channel_layer, app_workspace):
                     # If there is a db for this PS, drop it
                     try:
                         if setting.persistent_store_database_exists():
-                            logger.info("Dropping Database for persistent store setting: " + str(setting))
+                            logger.info(
+                                "Dropping Database for persistent store setting: "
+                                + str(setting)
+                            )
                             setting.drop_persistent_store_database()
                     except TethysAppSettingNotAssigned:
                         pass
@@ -48,21 +51,24 @@ def uninstall_app(data, channel_layer, app_workspace):
         except IndexError:
             # Couldn't find the target application
             logger.info(
-                "Couldn't find the target application for removal of databases. Continuing clean up")
+                "Couldn't find the target application for removal of databases. Continuing clean up"
+            )
         except Exception as e:
             # Something wrong with the persistent store setting
             # Could not connect to the database
             logger.info(e)
             logger.info("Couldn't connect to database for removal. Continuing clean up")
 
-        process = ['python', manage_path, 'tethys_app_uninstall', app_name, '-f']
+        process = ["python", manage_path, "tethys_app_uninstall", app_name, "-f"]
 
         try:
             subprocess.call(process)
         except KeyboardInterrupt:
             pass
 
-        send_uninstall_messages('Tethys App Uninstalled. Running Conda/GitHub Cleanup...', channel_layer)
+        send_uninstall_messages(
+            "Tethys App Uninstalled. Running Conda/GitHub Cleanup...", channel_layer
+        )
 
     try:
         mamba_uninstall(app_name, channel_layer)
@@ -70,10 +76,10 @@ def uninstall_app(data, channel_layer, app_workspace):
         # This was installed using GitHub. Try to clean out
         github_installed = get_github_install_metadata(app_workspace)
         for app in github_installed:
-            if app['name'] == app_name:
+            if app["name"] == app_name:
                 # remove App Directory
-                shutil.rmtree(app['path'])
+                shutil.rmtree(app["path"])
 
         clear_github_cache_list()
 
-    send_uninstall_messages('Uninstall completed. Restarting server...', channel_layer)
+    send_uninstall_messages("Uninstall completed. Restarting server...", channel_layer)

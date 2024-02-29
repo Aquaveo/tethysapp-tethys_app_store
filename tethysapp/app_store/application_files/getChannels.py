@@ -1,8 +1,9 @@
 import yaml
+
 try:
     with open("install.yml") as f:
         install_yml = yaml.safe_load(f)
-        channels = install_yml.get('requirements').get('conda').get('channels')
+        channels = install_yml.get("requirements").get("conda").get("channels")
         channelString = ""
         if "conda-forge" not in channels:
             channels.insert(0, "conda-forge")

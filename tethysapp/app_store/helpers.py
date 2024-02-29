@@ -16,13 +16,24 @@ from tethys_cli.cli_helpers import get_manage_path
 from .utilities import decrypt
 from .app import AppStore as app
 
-logger = logging.getLogger('tethys.apps.app_store')
+logger = logging.getLogger("tethys.apps.app_store")
 logger.setLevel(logging.INFO)
-logger_formatter = logging.Formatter('%(asctime)s : %(message)s')
+logger_formatter = logging.Formatter("%(asctime)s : %(message)s")
 
 CACHE_KEY = "warehouse_github_app_resources"
 
-html_label_styles = ["blue", "indigo", "pink", "red", "teal", "cyan", "purple", "white", "gray", "gray-dark"]
+html_label_styles = [
+    "blue",
+    "indigo",
+    "pink",
+    "red",
+    "teal",
+    "cyan",
+    "purple",
+    "white",
+    "gray",
+    "gray-dark",
+]
 
 
 def get_override_key():
@@ -77,10 +88,7 @@ def send_notification(msg, channel_layer):
     """
     if channel_layer:
         async_to_sync(channel_layer.group_send)(
-            "notifications", {
-                "type": "install_notifications",
-                "message": msg
-            }
+            "notifications", {"type": "install_notifications", "message": msg}
         )
 
 
@@ -111,17 +119,18 @@ def parse_setup_file(file_location):
     """
     if file_location.endswith("setup.py"):
         import setuptools
+
         setuptools.setup = lambda *a, **k: 0
 
         params = {}
         found_setup = False
         with open(file_location, "r") as f:
             for line in f.readlines():
-                if ("setup(" in line):
+                if "setup(" in line:
                     found_setup = True
                     continue
                 if found_setup:
-                    if (")" in line):
+                    if ")" in line:
                         found_setup = False
                         break
                     else:
@@ -129,11 +138,11 @@ def parse_setup_file(file_location):
                         if len(parts) < 2:
                             continue
                         value = parts[1].strip()
-                        if (value[-1] == ","):
+                        if value[-1] == ",":
                             value = value[:-1]
-                        if (value[0] == "'" or value[0] == '"'):
+                        if value[0] == "'" or value[0] == '"':
                             value = value[1:]
-                        if (value[-1] == "'" or value[-1] == '"'):
+                        if value[-1] == "'" or value[-1] == '"':
                             value = value[:-1]
                         params[parts[0].strip()] = value
 
@@ -142,17 +151,20 @@ def parse_setup_file(file_location):
 
         setup_helper_import = re.findall("(from .* import find_all_resource_files)", c)
         if setup_helper_import:
-            c = c.replace(setup_helper_import[0], "from tethys_apps.app_installation import find_all_resource_files")
+            c = c.replace(
+                setup_helper_import[0],
+                "from tethys_apps.app_installation import find_all_resource_files",
+            )
 
         ns = {}
-        exec(compile(c, '__string__', 'exec'), {}, ns)
+        exec(compile(c, "__string__", "exec"), {}, ns)
         for key, value in params.items():
             if value in ns:
                 params[key] = ns[value]
     elif file_location.endswith(".toml"):
-        with open(file_location, 'r') as f:
+        with open(file_location, "r") as f:
             config = toml.load(f)
-        params = config['project']
+        params = config["project"]
     else:
         raise Exception("A setup.py or .toml file must be provided")
 
@@ -174,34 +186,31 @@ def get_github_install_metadata(app_workspace):
 
     logger.info("GitHub Apps list cache miss")
     workspace_directory = app_workspace.path
-    workspace_apps_path = os.path.join(
-        workspace_directory, 'apps', 'installed')
-    if (not os.path.exists(workspace_apps_path)):
+    workspace_apps_path = os.path.join(workspace_directory, "apps", "installed")
+    if not os.path.exists(workspace_apps_path):
         cache.set(CACHE_KEY, [])
         return []
 
-    possible_apps = [f.path for f in os.scandir(
-        workspace_apps_path) if f.is_dir()]
+    possible_apps = [f.path for f in os.scandir(workspace_apps_path) if f.is_dir()]
     github_installed_apps_list = []
     for possible_app in possible_apps:
         installed_app = {
-            'name': '',
-            'installed': True,
-            'metadata':
-            {
-                'channel': 'tethysapp',
-                'license': 'BSD 3-Clause License',
+            "name": "",
+            "installed": True,
+            "metadata": {
+                "channel": "tethysapp",
+                "license": "BSD 3-Clause License",
             },
-            'installedVersion': '',
-            'path': possible_app
+            "installedVersion": "",
+            "path": possible_app,
         }
         setup_path = get_setup_path(possible_app)
         setup_path_data = parse_setup_file(setup_path)
-        installed_app["name"] = setup_path_data.get('name')
-        installed_app["installedVersion"] = setup_path_data.get('version')
-        installed_app["metadata"]["description"] = setup_path_data.get('description')
-        installed_app["author"] = setup_path_data.get('author')
-        installed_app["dev_url"] = setup_path_data.get('url')
+        installed_app["name"] = setup_path_data.get("name")
+        installed_app["installedVersion"] = setup_path_data.get("version")
+        installed_app["metadata"]["description"] = setup_path_data.get("description")
+        installed_app["author"] = setup_path_data.get("author")
+        installed_app["dev_url"] = setup_path_data.get("url")
 
         github_installed_apps_list.append(installed_app)
     cache.set(CACHE_KEY, github_installed_apps_list)
@@ -221,7 +230,7 @@ def get_setup_path(app_location):
     Returns:
         str: Path to the project setup file, either a setup.py or a toml file
     """
-    setup_path = os.path.join(app_location, 'setup.py')
+    setup_path = os.path.join(app_location, "setup.py")
     if os.path.exists(setup_path):
         return setup_path
 
@@ -243,26 +252,30 @@ def get_conda_stores(active_only=False, conda_channels="all", sensitive_info=Fal
     Returns:
         list: List of stores to use for retrieving resources
     """
-    available_stores = app.get_custom_setting("stores_settings")['stores']
+    available_stores = app.get_custom_setting("stores_settings")["stores"]
     encryption_key = app.get_custom_setting("encryption_key")
 
     if active_only:
-        available_stores = [store for store in available_stores if store['active']]
+        available_stores = [store for store in available_stores if store["active"]]
 
     if conda_channels != "all":
         if isinstance(conda_channels, str):
             conda_channels = conda_channels.split(",")
-        available_stores = [store for store in available_stores if store['conda_channel'] in conda_channels]
+        available_stores = [
+            store
+            for store in available_stores
+            if store["conda_channel"] in conda_channels
+        ]
 
     for store in available_stores:
-        if isinstance(store['conda_labels'], str):
-            store['conda_labels'] = store['conda_labels'].split(",")
+        if isinstance(store["conda_labels"], str):
+            store["conda_labels"] = store["conda_labels"].split(",")
 
         if not sensitive_info:
-            del store['github_token']
-            del store['github_organization']
+            del store["github_token"]
+            del store["github_organization"]
         else:
-            store['github_token'] = decrypt(store['github_token'], encryption_key)
+            store["github_token"] = decrypt(store["github_token"], encryption_key)
 
     return available_stores
 
@@ -281,24 +294,32 @@ def get_color_label_dict(stores):
     color_store_dict = {}
     index_style = 0
     for store in stores:
-        store['conda_labels'] = sorted(list(set(store['conda_labels'])))  # remove duplicates
-        conda_channel = store['conda_channel']
-        store['conda_labels'] = [{"label_name": label} for label in store['conda_labels']]
-        conda_labels = store['conda_labels']
-        color_store_dict[conda_channel] = {'channel_style': '', 'label_styles': {}}
+        store["conda_labels"] = sorted(
+            list(set(store["conda_labels"]))
+        )  # remove duplicates
+        conda_channel = store["conda_channel"]
+        store["conda_labels"] = [
+            {"label_name": label} for label in store["conda_labels"]
+        ]
+        conda_labels = store["conda_labels"]
+        color_store_dict[conda_channel] = {"channel_style": "", "label_styles": {}}
 
-        color_store_dict[conda_channel]['channel_style'] = html_label_styles[index_style]
-        store['channel_style'] = html_label_styles[index_style]
+        color_store_dict[conda_channel]["channel_style"] = html_label_styles[
+            index_style
+        ]
+        store["channel_style"] = html_label_styles[index_style]
         index_style += 1
 
         for label in conda_labels:
-            label_name = label['label_name']
-            color_store_dict[conda_channel]['label_styles'][label_name] = html_label_styles[index_style]
-            label['label_style'] = html_label_styles[index_style]
-            if label_name in ['main', 'master']:
-                label['active'] = True
+            label_name = label["label_name"]
+            color_store_dict[conda_channel]["label_styles"][label_name] = (
+                html_label_styles[index_style]
+            )
+            label["label_style"] = html_label_styles[index_style]
+            if label_name in ["main", "master"]:
+                label["active"] = True
             else:
-                label['active'] = False
+                label["active"] = False
 
             index_style += 1
 
@@ -306,8 +327,7 @@ def get_color_label_dict(stores):
 
 
 def clear_github_cache_list():
-    """Clears out the stored cache of GitHub installed apps.
-    """
+    """Clears out the stored cache of GitHub installed apps."""
     cache.delete(CACHE_KEY)
 
 
@@ -323,52 +343,73 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
     """
     # Check if Install Running file is present and delete it
     workspace_directory = app_workspace.path
-    install_running_path = os.path.join(workspace_directory, 'install_status', 'installRunning')
+    install_running_path = os.path.join(
+        workspace_directory, "install_status", "installRunning"
+    )
     if os.path.exists(install_running_path):
         os.remove(install_running_path)
 
     # Check if Scaffold Running file is present and delete it
-    scaffold_running_path = os.path.join(workspace_directory, 'install_status', 'scaffoldRunning')
+    scaffold_running_path = os.path.join(
+        workspace_directory, "install_status", "scaffoldRunning"
+    )
     if os.path.exists(scaffold_running_path):
         os.remove(scaffold_running_path)
 
     manage_path = get_manage_path({})
-    if data["restart_type"] in ["install", "update", "github_install", "scaffold_install"]:
+    if data["restart_type"] in [
+        "install",
+        "update",
+        "github_install",
+        "scaffold_install",
+    ]:
         # Run SyncStores
         logger.info("Running Syncstores for app: " + data["name"])
         send_notification("Running Syncstores for app: " + data["name"], channel_layer)
-        intermediate_process = ['python', manage_path, 'syncstores', data["name"], '-f']
+        intermediate_process = ["python", manage_path, "syncstores", data["name"], "-f"]
         run_process(intermediate_process)
 
-    if 'runserver' in sys.argv:
+    if "runserver" in sys.argv:
 
         logger.info("Dev Mode. Attempting to restart by changing file")
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, 'model.py')
+        file_path = os.path.join(dir_path, "model.py")
         with open(file_path, "w") as f:
             f.write(f'print("{data["name"]} installed in dev mode")')
             f.write("\n")
     else:
-        if run_collect_all and data["restart_type"] in ["install", "update", "github_install", "scaffold_install"]:
+        if run_collect_all and data["restart_type"] in [
+            "install",
+            "update",
+            "github_install",
+            "scaffold_install",
+        ]:
 
             logger.info("Running Tethys Collectall")
-            send_notification("Running Tethys Collectall for app: " + data["name"], channel_layer)
-            intermediate_process = ['python', manage_path, 'pre_collectstatic']
+            send_notification(
+                "Running Tethys Collectall for app: " + data["name"], channel_layer
+            )
+            intermediate_process = ["python", manage_path, "pre_collectstatic"]
             run_process(intermediate_process)
             # Setup for main collectstatic
-            intermediate_process = ['python', manage_path, 'collectstatic', '--noinput']
+            intermediate_process = ["python", manage_path, "collectstatic", "--noinput"]
             run_process(intermediate_process)
             # Run collectworkspaces command
-            intermediate_process = ['python', manage_path, 'collectworkspaces', '--force']
+            intermediate_process = [
+                "python",
+                manage_path,
+                "collectworkspaces",
+                "--force",
+            ]
             run_process(intermediate_process)
 
         try:
             send_notification("Server Restarting . . .", channel_layer)
-            command = 'supervisorctl restart all'
-            subprocess.run(['sudo', '-h'], check=True)
-            sudoPassword = app.get_custom_setting('sudo_server_pass')
+            command = "supervisorctl restart all"
+            subprocess.run(["sudo", "-h"], check=True)
+            sudoPassword = app.get_custom_setting("sudo_server_pass")
 
-            os.system('echo %s|sudo -S %s' % (sudoPassword, command))
+            os.system("echo %s|sudo -S %s" % (sudoPassword, command))
         except Exception as e:
             logger.error(e)
             logger.info("No SUDO. Docker container implied. Restarting without SUDO")
@@ -378,6 +419,6 @@ def restart_server(data, channel_layer, app_workspace, run_collect_all=True):
 
             if os.path.isdir(RESTART_FILE_PATH):
                 logger.info("Restart Directory found. Creating restart file.")
-                Path(os.path.join(RESTART_FILE_PATH, 'restart')).touch()
+                Path(os.path.join(RESTART_FILE_PATH, "restart")).touch()
             else:
                 os.system(command)

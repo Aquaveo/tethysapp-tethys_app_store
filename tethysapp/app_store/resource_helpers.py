@@ -17,6 +17,7 @@ import yaml
 from .helpers import logger, get_conda_stores
 from .proxy_app_handlers import list_proxy_apps
 from conda.cli.python_api import run_command as conda_run, Commands
+from conda.exceptions import PackagesNotFoundError
 
 
 def clear_conda_channel_cache(data, channel_layer):
@@ -28,13 +29,15 @@ def clear_conda_channel_cache(data, channel_layer):
     """
     available_stores_data_dict = get_conda_stores()
     for store in available_stores_data_dict:
-        store_name = store['conda_channel']
-        for conda_label in store['conda_labels']:
-            cache_key = f'{store_name}_{conda_label}_app_resources'
+        store_name = store["conda_channel"]
+        for conda_label in store["conda_labels"]:
+            cache_key = f"{store_name}_{conda_label}_app_resources"
             cache.delete(cache_key)
 
 
-def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_channels='all'):
+def create_pre_multiple_stores_labels_obj(
+    app_workspace, refresh=False, conda_channels="all"
+):
     """Creates a dictionary of resources based on conda channels and conda labels
 
     Args:
@@ -63,13 +66,13 @@ def create_pre_multiple_stores_labels_obj(app_workspace, refresh=False, conda_ch
     available_stores_data_dict = get_conda_stores(conda_channels=conda_channels)
     object_stores = {}
     for store in available_stores_data_dict:
-        conda_channel = store['conda_channel']
+        conda_channel = store["conda_channel"]
         object_stores[conda_channel] = {}
-        for conda_label in store['conda_labels']:
-            cache_key = f'{conda_channel}_{conda_label}_app_resources'
-            object_stores[conda_channel][conda_label] = get_resources_single_store(app_workspace, refresh,
-                                                                                   conda_channel, conda_label,
-                                                                                   cache_key=cache_key)
+        for conda_label in store["conda_labels"]:
+            cache_key = f"{conda_channel}_{conda_label}_app_resources"
+            object_stores[conda_channel][conda_label] = get_resources_single_store(
+                app_workspace, refresh, conda_channel, conda_label, cache_key=cache_key
+            )
 
     return object_stores
 
@@ -103,14 +106,17 @@ def get_new_stores_reformated_by_labels(object_stores):
         list_labels_store = list(object_stores[conda_channel].keys())
         list_type_apps = list(object_stores[conda_channel][list_labels_store[0]].keys())
         for type_app in list_type_apps:
-            if type_app != 'tethysVersion':
-                new_store_reformatted[conda_channel][type_app] = merge_labels_single_store(
-                    object_stores[conda_channel], conda_channel, type_app)
+            if type_app != "tethysVersion":
+                new_store_reformatted[conda_channel][type_app] = (
+                    merge_labels_single_store(
+                        object_stores[conda_channel], conda_channel, type_app
+                    )
+                )
 
     return new_store_reformatted
 
 
-def get_stores_reformatted(app_workspace, refresh=False, conda_channels='all'):
+def get_stores_reformatted(app_workspace, refresh=False, conda_channels="all"):
     """Retrieve a dictionary of app resources and metadata from the conda channels. Reformat the dictionary to
         provide a list of available apps, installed apps, and incompatible apps
 
@@ -122,14 +128,35 @@ def get_stores_reformatted(app_workspace, refresh=False, conda_channels='all'):
     Returns:
         dict: list of available apps, installed apps, and incompatible apps across all specified channels
     """
-    object_stores_raw = create_pre_multiple_stores_labels_obj(app_workspace, refresh, conda_channels)
-    object_stores_formatted_by_label = get_new_stores_reformated_by_labels(object_stores_raw)
-    object_stores_formatted_by_channel = get_stores_reformated_by_channel(object_stores_formatted_by_label)
+    object_stores_raw = create_pre_multiple_stores_labels_obj(
+        app_workspace, refresh, conda_channels
+    )
+    object_stores_formatted_by_label = get_new_stores_reformated_by_labels(
+        object_stores_raw
+    )
+    object_stores_formatted_by_channel = get_stores_reformated_by_channel(
+        object_stores_formatted_by_label
+    )
 
     list_stores_formatted_by_channel = {
-        'availableApps': [metadata for _, metadata in object_stores_formatted_by_channel['availableApps'].items()],
-        'installedApps': [metadata for _, metadata in object_stores_formatted_by_channel['installedApps'].items()],
-        'incompatibleApps': [metadata for _, metadata in object_stores_formatted_by_channel['incompatibleApps'].items()]
+        "availableApps": [
+            metadata
+            for _, metadata in object_stores_formatted_by_channel[
+                "availableApps"
+            ].items()
+        ],
+        "installedApps": [
+            metadata
+            for _, metadata in object_stores_formatted_by_channel[
+                "installedApps"
+            ].items()
+        ],
+        "incompatibleApps": [
+            metadata
+            for _, metadata in object_stores_formatted_by_channel[
+                "incompatibleApps"
+            ].items()
+        ],
     }
     return list_stores_formatted_by_channel
 
@@ -208,13 +235,19 @@ def merge_channels_of_apps(app_channel_obj, stores):
                 if app not in app_channel_obj[type_app]:
                     continue
                 for key in stores[channel][type_app][app]:
-                    if key not in ['name', 'app_type']:
+                    if key not in ["name", "app_type"]:
                         if key not in merged_channels_app[type_app][app]:
                             merged_channels_app[type_app][app][key] = {}
                         if channel in app_channel_obj[type_app][app]:
-                            merged_channels_app[type_app][app][key][channel] = stores[channel][type_app][app][key][channel]  # noqa: E501
+                            merged_channels_app[type_app][app][key][channel] = stores[
+                                channel
+                            ][type_app][app][key][
+                                channel
+                            ]  # noqa: E501
                     else:
-                        merged_channels_app[type_app][app][key] = stores[channel][type_app][app][key]
+                        merged_channels_app[type_app][app][key] = stores[channel][
+                            type_app
+                        ][app][key]
 
     return merged_channels_app
 
@@ -299,13 +332,15 @@ def merge_labels_for_app_in_store(apps_label, store, conda_channel, type_apps):
             if label not in apps_label[app]:
                 continue
             for key in store[label][type_apps].get(app, []):
-                if key not in ['name', 'app_type']:
+                if key not in ["name", "app_type"]:
                     if key not in new_store_label_obj[app]:
-                        new_store_label_obj[app][key] = {
-                            conda_channel: {}
-                        }
+                        new_store_label_obj[app][key] = {conda_channel: {}}
                     for label_app in store[label][type_apps][app][key][conda_channel]:
-                        new_store_label_obj[app][key][conda_channel][label_app] = store[label][type_apps][app][key][conda_channel][label_app]  # noqa: E501
+                        new_store_label_obj[app][key][conda_channel][label_app] = store[
+                            label
+                        ][type_apps][app][key][conda_channel][
+                            label_app
+                        ]  # noqa: E501
                 else:
                     new_store_label_obj[app][key] = store[label][type_apps][app][key]
 
@@ -324,12 +359,16 @@ def merge_labels_single_store(store, channel, type_apps):
         dict: Merged resource dictionary for all apps within conda channel
     """
     apps_labels = get_app_label_obj_for_store(store, type_apps)
-    merged_label_store = merge_labels_for_app_in_store(apps_labels, store, channel, type_apps)
+    merged_label_store = merge_labels_for_app_in_store(
+        apps_labels, store, channel, type_apps
+    )
 
     return merged_label_store
 
 
-def get_resources_single_store(app_workspace, require_refresh, conda_channel, conda_label, cache_key):
+def get_resources_single_store(
+    app_workspace, require_refresh, conda_channel, conda_label, cache_key
+):
     """Get all the resources for a specific conda channel and conda label. Once resources have been retreived, check
     each resource if it is installed. Once that is checked loop through each version in the metadata. For each version
     we are checking the compatibility map to see if the compatible tethys version will work with this portal setup.
@@ -348,41 +387,52 @@ def get_resources_single_store(app_workspace, require_refresh, conda_channel, co
     installed_apps = {}
     available_apps = {}
     incompatible_apps = {}
-    all_resources = fetch_resources(app_workspace, conda_channel, conda_label=conda_label, cache_key=cache_key,
-                                    refresh=require_refresh)
-    tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
+    all_resources = fetch_resources(
+        app_workspace,
+        conda_channel,
+        conda_label=conda_label,
+        cache_key=cache_key,
+        refresh=require_refresh,
+    )
+    tethys_version_regex = re.search(r"([\d.]+[\d])", tethys_version).group(1)
     for resource in all_resources:
-        resource['name'] = resource['name'].replace("proxyapp_", "")
+        resource["name"] = resource["name"].replace("proxyapp_", "")
         if resource["installed"][conda_channel][conda_label]:
-            installed_apps[resource['name']] = resource
+            installed_apps[resource["name"]] = resource
 
         add_compatible = False
         add_incompatible = False
         new_compatible_app = copy.deepcopy(resource)
-        new_compatible_app['versions'][conda_channel][conda_label] = []
+        new_compatible_app["versions"][conda_channel][conda_label] = []
         new_incompatible_app = copy.deepcopy(new_compatible_app)
-        for version in resource['versions'][conda_channel][conda_label]:
+        for version in resource["versions"][conda_channel][conda_label]:
             # Assume if not found, that it is compatible with Tethys Platform 3.4.4
             compatible_tethys_version = "<=3.4.4"
-            if version in resource['compatibility'][conda_channel][conda_label]:
-                compatible_tethys_version = resource['compatibility'][conda_channel][conda_label][version]
+            if version in resource["compatibility"][conda_channel][conda_label]:
+                compatible_tethys_version = resource["compatibility"][conda_channel][
+                    conda_label
+                ][version]
             if semver.match(tethys_version_regex, compatible_tethys_version):
                 add_compatible = True
-                new_compatible_app['versions'][conda_channel][conda_label].append(version)
+                new_compatible_app["versions"][conda_channel][conda_label].append(
+                    version
+                )
             else:
                 add_incompatible = True
-                new_incompatible_app['versions'][conda_channel][conda_label].append(version)
+                new_incompatible_app["versions"][conda_channel][conda_label].append(
+                    version
+                )
 
         if add_compatible:
-            available_apps[resource['name']] = new_compatible_app
+            available_apps[resource["name"]] = new_compatible_app
         if add_incompatible:
-            incompatible_apps[resource['name']] = new_incompatible_app
+            incompatible_apps[resource["name"]] = new_incompatible_app
 
     return_object = {
-        'availableApps': available_apps,
-        'installedApps': installed_apps,
-        'incompatibleApps': incompatible_apps,
-        'tethysVersion': tethys_version_regex,
+        "availableApps": available_apps,
+        "installedApps": installed_apps,
+        "incompatibleApps": incompatible_apps,
+        "tethysVersion": tethys_version_regex,
     }
 
     return return_object
@@ -397,11 +447,11 @@ def check_if_tethysapp_installed(app_name):
     Returns:
         dict: Dictionary containing additional information about the application
     """
-    return_obj = {'isInstalled': False}
+    return_obj = {"isInstalled": False}
     try:
         [resp, err, code] = conda_run(Commands.LIST, ["-f", "--json", app_name])
     except Exception as e:
-        if 'Path not found' in e.args[0]:
+        if "Path not found" in e.args[0]:
             package_path = e.args[0].replace("Path not found: ", "")
             shutil.rmtree(os.path.dirname(package_path))
         [resp, err, code] = conda_run(Commands.LIST, ["-f", "--json", app_name])
@@ -409,13 +459,14 @@ def check_if_tethysapp_installed(app_name):
     if code != 0:
         # In here maybe we just try re running the install
         logger.error(
-            "ERROR: Couldn't get list of installed apps to verify if the conda install was successful")
+            "ERROR: Couldn't get list of installed apps to verify if the conda install was successful"
+        )
     else:
         conda_search_result = json.loads(resp)
         if len(conda_search_result) > 0:
-            return_obj['isInstalled'] = True
-            return_obj['channel'] = conda_search_result[0]["channel"]
-            return_obj['version'] = conda_search_result[0]["version"]
+            return_obj["isInstalled"] = True
+            return_obj["channel"] = conda_search_result[0]["channel"]
+            return_obj["version"] = conda_search_result[0]["version"]
             return return_obj
 
     return return_obj
@@ -430,24 +481,26 @@ def check_if_proxyapp_installed(app_name):
     Returns:
         dict: Dictionary containing additional information about the application
     """
-    return_obj = {'isInstalled': False}
+    return_obj = {"isInstalled": False}
     proxy_apps = list_proxy_apps()
-    installed_app = [app for app in proxy_apps if app['name'] == app_name.replace("proxyapp_", "")]
+    installed_app = [
+        app for app in proxy_apps if app["name"] == app_name.replace("proxyapp_", "")
+    ]
     if installed_app:
         installed_app = installed_app[0]
         conda_channel = None
         app_version = None
 
-        app_tags = installed_app['tags'].split(",")
+        app_tags = installed_app["tags"].split(",")
         for tag in app_tags:
             if "conda_channel_" in tag:
                 conda_channel = tag.replace("conda_channel_", "")
             if "app_version_" in tag:
                 app_version = tag.replace("app_version_", "")
 
-        return_obj['isInstalled'] = True
-        return_obj['channel'] = conda_channel
-        return_obj['version'] = app_version
+        return_obj["isInstalled"] = True
+        return_obj["channel"] = conda_channel
+        return_obj["version"] = app_version
 
     return return_obj
 
@@ -474,7 +527,9 @@ def check_if_app_installed(app_name, app_type=None):
     return return_obj
 
 
-def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=None, refresh=False):
+def fetch_resources(
+    app_workspace, conda_channel, conda_label="main", cache_key=None, refresh=False
+):
     """Perform a conda search with the given channel and label to get all the available resources for potential
     installation
 
@@ -491,12 +546,13 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
     Returns:
         dict: Dictionary representing all the conda channel applications and metadata
     """
+    resource_metadata = []
     if not cache_key:
         cache_key = conda_channel
 
     conda_search_channel = conda_channel
-    if conda_label != 'main':
-        conda_search_channel = f'{conda_channel}/label/{conda_label}'
+    if conda_label != "main":
+        conda_search_channel = f"{conda_channel}/label/{conda_label}"
 
     cached_resources = cache.get(cache_key)
 
@@ -504,93 +560,97 @@ def fetch_resources(app_workspace, conda_channel, conda_label="main", cache_key=
 
         # Look for packages:
         logger.info("Refreshing list of apps cache")
-        [resp, err, code] = conda_run(Commands.SEARCH,
-                                      ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
+        try:
+            [resp, err, code] = conda_run(
+                Commands.SEARCH,
+                ["-c", conda_search_channel, "--override-channels", "-i", "--json"],
+            )
+        except PackagesNotFoundError:
+            return resource_metadata
 
         if code != 0:
             # In here maybe we just try re running the install
-            raise Exception(f"ERROR: Couldn't search packages in the {conda_search_channel} channel")
+            raise Exception(
+                f"ERROR: Couldn't search packages in the {conda_search_channel} channel"
+            )
 
         conda_search_result = json.loads(resp)
-
-        resource_metadata = []
         logger.info("Total Apps Found:" + str(len(conda_search_result)))
-        if 'The following packages are not available from current channels' in conda_search_result.get('error', ""):
-            logger.info(f'no packages found with the label {conda_label} in channel {conda_channel}')
+        if (
+            "The following packages are not available from current channels"
+            in conda_search_result.get("error", "")
+        ):
+            logger.info(
+                f"no packages found with the label {conda_label} in channel {conda_channel}"
+            )
             return resource_metadata
 
         for app_package in conda_search_result:
             newPackage = {
-                'name': app_package,
-                'app_type': "tethysapp",
-                'installed': {
-                    conda_channel: {
-                        conda_label: False
-                    }
-                },
-                'versions': {
-                    conda_channel: {
-                        conda_label: []
-                    }
-                },
-                'versionURLs': {
-                    conda_channel: {
-                        conda_label: []
-                    }
-                },
-                'channels_and_labels': {
-                    conda_channel: {
-                        conda_label: []
-                    }
-                },
-                'timestamp': {
+                "name": app_package,
+                "app_type": "tethysapp",
+                "installed": {conda_channel: {conda_label: False}},
+                "versions": {conda_channel: {conda_label: []}},
+                "versionURLs": {conda_channel: {conda_label: []}},
+                "channels_and_labels": {conda_channel: {conda_label: []}},
+                "timestamp": {
                     conda_channel: {
                         conda_label: conda_search_result[app_package][-1]["timestamp"]
                     }
                 },
-                'compatibility': {
-                    conda_channel: {
-                        conda_label: {}
-                    }
-                },
-                'license': {
-                    conda_channel: {
-                        conda_label: ""
-                    }
-                },
-                'licenses': {
-                    conda_channel: {
-                        conda_label: []
-                    }
-                }
+                "compatibility": {conda_channel: {conda_label: {}}},
+                "license": {conda_channel: {conda_label: ""}},
+                "licenses": {conda_channel: {conda_label: []}},
             }
 
             if "license" in conda_search_result[app_package][-1]:
-                newPackage["license"][conda_channel][conda_label] = conda_search_result[app_package][-1]["license"]
+                newPackage["license"][conda_channel][conda_label] = conda_search_result[
+                    app_package
+                ][-1]["license"]
 
             for conda_version in conda_search_result[app_package]:
-                newPackage["versions"][conda_channel][conda_label].append(conda_version.get('version'))
-                newPackage["versionURLs"][conda_channel][conda_label].append(conda_version.get('url'))
-                newPackage["licenses"][conda_channel][conda_label].append(conda_version.get('license'))
+                newPackage["versions"][conda_channel][conda_label].append(
+                    conda_version.get("version")
+                )
+                newPackage["versionURLs"][conda_channel][conda_label].append(
+                    conda_version.get("url")
+                )
+                newPackage["licenses"][conda_channel][conda_label].append(
+                    conda_version.get("license")
+                )
                 if "license" in conda_version:
                     try:
-                        license_json = json.loads(conda_version['license'].replace("\'", "\""))
-                        newPackage["app_type"] = license_json.get('app_type', 'tethysapp')
-                        if 'tethys_version' in license_json:
-                            newPackage["compatibility"][conda_channel][conda_label][conda_version['version']] = license_json.get('tethys_version')  # noqa: E501
+                        license_json = json.loads(
+                            conda_version["license"].replace("'", '"')
+                        )
+                        newPackage["app_type"] = license_json.get(
+                            "app_type", "tethysapp"
+                        )
+                        if "tethys_version" in license_json:
+                            newPackage["compatibility"][conda_channel][conda_label][
+                                conda_version["version"]
+                            ] = license_json.get(
+                                "tethys_version"
+                            )  # noqa: E501
                     except (ValueError, TypeError):
                         pass
 
-            installed_version = check_if_app_installed(app_package, app_type=newPackage["app_type"])
-            if installed_version['isInstalled']:
-                if conda_channel == installed_version.get('channel'):
+            installed_version = check_if_app_installed(
+                app_package, app_type=newPackage["app_type"]
+            )
+            if installed_version["isInstalled"]:
+                if conda_channel == installed_version.get("channel"):
                     newPackage["installed"][conda_channel][conda_label] = True
                     newPackage["installedVersion"] = {conda_channel: {}}
-                    newPackage["installedVersion"][conda_channel][conda_label] = installed_version['version']
+                    newPackage["installedVersion"][conda_channel][conda_label] = (
+                        installed_version["version"]
+                    )
 
             resource_metadata.append(newPackage)
 
-        resource_metadata = process_resources(resource_metadata, app_workspace, conda_channel, conda_label)
+        resource_metadata = process_resources(
+            resource_metadata, app_workspace, conda_channel, conda_label
+        )
 
         cache.set(cache_key, resource_metadata)
         return resource_metadata
@@ -614,37 +674,41 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
         (list): List of updated resources
     """
     for app in resources:
-        workspace_folder = os.path.join(app_workspace.path, 'apps')
+        workspace_folder = os.path.join(app_workspace.path, "apps")
         if not os.path.exists(workspace_folder):
             os.makedirs(workspace_folder)
 
-        tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
+        tethys_version_regex = re.search(r"([\d.]+[\d])", tethys_version).group(1)
         app["latestVersion"] = {conda_channel: {}}
 
-        app["latestVersion"][conda_channel][conda_label] = app["versions"][conda_channel][conda_label][-1]
+        app["latestVersion"][conda_channel][conda_label] = app["versions"][
+            conda_channel
+        ][conda_label][-1]
         license = app["license"][conda_channel][conda_label]
 
         license_metadata = None
         compatible = None
         try:
             if license:
-                license.replace("\'", "\"")
+                license.replace("'", '"')
             license_metadata = json.loads(license)
         except Exception:
             pass
 
-        if license_metadata and 'tethys_version' in license_metadata:
-            compatible = license_metadata['tethys_version']
+        if license_metadata and "tethys_version" in license_metadata:
+            compatible = license_metadata["tethys_version"]
 
         if compatible is None:
             compatible = "<=3.4.4"
 
         if not semver.match(tethys_version_regex, compatible):
-            app["latestVersion"][conda_channel][conda_label] = app["latestVersion"][conda_channel][conda_label] + "*"
+            app["latestVersion"][conda_channel][conda_label] = (
+                app["latestVersion"][conda_channel][conda_label] + "*"
+            )
 
-        if app['installed'][conda_channel][conda_label]:
+        if app["installed"][conda_channel][conda_label]:
             app["updateAvailable"] = {conda_channel: {conda_label: False}}
-            if 'installedVersion' in app:
+            if "installedVersion" in app:
                 latestVersion = app["latestVersion"][conda_channel][conda_label]
                 installedVersion = app["installedVersion"][conda_channel][conda_label]
                 if "*" not in latestVersion:
@@ -652,7 +716,7 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
                         app["updateAvailable"] = {conda_channel: {conda_label: True}}
 
         latest_version_url = app.get("versionURLs")[conda_channel][conda_label][-1]
-        file_name = latest_version_url.split('/')
+        file_name = latest_version_url.split("/")
         folder_name = app.get("name")
 
         # Check for metadata in the Search Description
@@ -662,23 +726,38 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
                 raise ValueError
 
             # create new one
-            app = add_keys_to_app_metadata(license_metadata, app, [
-                'author', 'description', 'license', 'author_email', 'keywords'], conda_channel, conda_label)
+            app = add_keys_to_app_metadata(
+                license_metadata,
+                app,
+                ["author", "description", "license", "author_email", "keywords"],
+                conda_channel,
+                conda_label,
+            )
 
             if "url" in license_metadata:
-                app['dev_url'] = {conda_channel: {conda_label: license_metadata["url"]}}
+                app["dev_url"] = {conda_channel: {conda_label: license_metadata["url"]}}
             else:
-                app['dev_url'] = {conda_channel: {conda_label: ''}}
+                app["dev_url"] = {conda_channel: {conda_label: ""}}
 
         except (ValueError, TypeError):
             # There wasn't json found in license. Get Metadata from downloading the file
-            download_path = os.path.join(workspace_folder, conda_channel, conda_label, file_name[-1])
-            output_path = os.path.join(workspace_folder, conda_channel, conda_label, folder_name)
+            download_path = os.path.join(
+                workspace_folder, conda_channel, conda_label, file_name[-1]
+            )
+            output_path = os.path.join(
+                workspace_folder, conda_channel, conda_label, folder_name
+            )
             if not os.path.exists(download_path):
-                if not os.path.exists(os.path.join(workspace_folder, conda_channel, conda_label)):
-                    os.makedirs(os.path.join(workspace_folder, conda_channel, conda_label))
+                if not os.path.exists(
+                    os.path.join(workspace_folder, conda_channel, conda_label)
+                ):
+                    os.makedirs(
+                        os.path.join(workspace_folder, conda_channel, conda_label)
+                    )
 
-                logger.info("License field metadata not found. Downloading: " + file_name[-1])
+                logger.info(
+                    "License field metadata not found. Downloading: " + file_name[-1]
+                )
                 urllib.request.urlretrieve(latest_version_url, download_path)
 
                 if os.path.exists(output_path):
@@ -691,22 +770,34 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
 
             # Get Meta.Yaml for this file
             try:
-                meta_yaml_path = os.path.join(output_path, 'info', 'recipe', 'meta.yaml')
+                meta_yaml_path = os.path.join(
+                    output_path, "info", "recipe", "meta.yaml"
+                )
                 if os.path.exists(meta_yaml_path):
                     with open(meta_yaml_path) as f:
                         meta_yaml = yaml.safe_load(f)
                         # Add metadata to the resources object.
 
-                        attr_about = ['author', 'description', 'license']
-                        attr_extra = ['author_email', 'keywords']
+                        attr_about = ["author", "description", "license"]
+                        attr_extra = ["author_email", "keywords"]
 
-                        app = add_keys_to_app_metadata(meta_yaml.get('about'), app, attr_about, conda_channel,
-                                                       conda_label)
-                        app = add_keys_to_app_metadata(meta_yaml.get('extra'), app, attr_extra, conda_channel,
-                                                       conda_label)
+                        app = add_keys_to_app_metadata(
+                            meta_yaml.get("about"),
+                            app,
+                            attr_about,
+                            conda_channel,
+                            conda_label,
+                        )
+                        app = add_keys_to_app_metadata(
+                            meta_yaml.get("extra"),
+                            app,
+                            attr_extra,
+                            conda_channel,
+                            conda_label,
+                        )
 
-                        if 'dev_url' not in app:
-                            app['dev_url'] = {conda_channel: {conda_label: ''}}
+                        if "dev_url" not in app:
+                            app["dev_url"] = {conda_channel: {conda_label: ""}}
                 else:
                     logger.info("No yaml file available to retrieve metadata")
             except Exception as e:
@@ -728,9 +819,11 @@ def get_resource(resource_name, conda_channel, conda_label, app_workspace):
     Returns:
         dict: Dictionary representing the desired resource and metadata
     """
-    all_resources = fetch_resources(app_workspace, conda_channel, conda_label=conda_label)
+    all_resources = fetch_resources(
+        app_workspace, conda_channel, conda_label=conda_label
+    )
 
-    resource = [x for x in all_resources if x['name'] == resource_name]
+    resource = [x for x in all_resources if x["name"] == resource_name]
 
     if len(resource) > 0:
         return resource[0]
@@ -738,7 +831,9 @@ def get_resource(resource_name, conda_channel, conda_label, app_workspace):
         return None
 
 
-def add_keys_to_app_metadata(additional_metadata, app_metadata, keys_to_add, conda_channel, conda_label):
+def add_keys_to_app_metadata(
+    additional_metadata, app_metadata, keys_to_add, conda_channel, conda_label
+):
     """Update an apps metadata (based on conda channels and labels) from a dictionary of additional metadata and a list
     of keys to add
 
@@ -759,8 +854,13 @@ def add_keys_to_app_metadata(additional_metadata, app_metadata, keys_to_add, con
             app_metadata[key] = {}
             if conda_channel not in app_metadata[key]:
                 app_metadata[key][conda_channel] = {}
-                if conda_label not in app_metadata[key][conda_channel] and key in additional_metadata:
-                    app_metadata[key][conda_channel][conda_label] = additional_metadata[key]
+                if (
+                    conda_label not in app_metadata[key][conda_channel]
+                    and key in additional_metadata
+                ):
+                    app_metadata[key][conda_channel][conda_label] = additional_metadata[
+                        key
+                    ]
 
     return app_metadata
 
@@ -777,7 +877,7 @@ def get_app_instance_from_path(paths):
     app_instance = None
     for _, modname, ispkg in pkgutil.iter_modules(paths):
         if ispkg:
-            app_module = __import__(f'tethysapp.{modname}.app', fromlist=[''])
+            app_module = __import__(f"tethysapp.{modname}.app", fromlist=[""])
             for name, obj in inspect.getmembers(app_module):
                 # Retrieve the members of the app_module and iterate through
                 # them to find the the class that inherits from AppBase.
