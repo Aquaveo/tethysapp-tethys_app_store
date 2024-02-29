@@ -9,9 +9,9 @@ from rest_framework.test import APIClient
 
 
 class TestApp(TethysAppBase):
-    name = 'Test App'
+    name = "Test App"
     init_ran = False
-    package = 'test_app'
+    package = "test_app"
 
     def __init__(self):
         self.init_ran = True
@@ -83,13 +83,13 @@ def test_files_dir():
 @pytest.fixture()
 def proxy_app_install_data():
     return {
-        'app_name': 'test proxy app',
-        'endpoint': 'https://google.com',
-        'description': 'This is a test proxy app',
-        'logo_url': 'logo_url.png',
-        'tags': ['tag1', 'tag2', 'tag3'],
-        'enabled': True,
-        'show_in_apps_library': True
+        "app_name": "test proxy app",
+        "endpoint": "https://google.com",
+        "description": "This is a test proxy app",
+        "logo_url": "logo_url.png",
+        "tags": ["tag1", "tag2", "tag3"],
+        "enabled": True,
+        "show_in_apps_library": True,
     }
 
 
@@ -97,16 +97,17 @@ def proxy_app_install_data():
 def store():
     def _store(id, default=True, active=True, conda_labels=None):
         if not conda_labels:
-            conda_labels = ['main']
+            conda_labels = ["main"]
 
         return {
-            'default': default,
-            'conda_labels': conda_labels,
-            'github_token': f'fake_token_{id}',
-            'conda_channel': f'conda_channel_{id}',
-            'github_organization': f'org_{id}',
-            'active': active
+            "default": default,
+            "conda_labels": conda_labels,
+            "github_token": f"fake_token_{id}",
+            "conda_channel": f"conda_channel_{id}",
+            "github_organization": f"org_{id}",
+            "active": active,
         }
+
     return _store
 
 
@@ -114,7 +115,7 @@ def store():
 def all_active_stores(store):
     return {
         "active_default": store("active_default"),
-        "active_not_default": store("active_not_default", default=False)
+        "active_not_default": store("active_not_default", default=False),
     }
 
 
@@ -125,17 +126,18 @@ def fresh_resource():
             app_type = "tethysapp"
 
         return {
-            'name': app_name,
-            'app_type': app_type,
-            'installed': {conda_channel: {conda_label: False}},
-            'versions': {conda_channel: {conda_label: ["1.0"]}},
-            'versionURLs': {conda_channel: {conda_label: ["versionURL"]}},
-            'channels_and_labels': {conda_channel: {conda_label: []}},
-            'timestamp': {conda_channel: {conda_label: "timestamp"}},
-            'compatibility': {conda_channel: {conda_label: {}}},
-            'license': {conda_channel: {conda_label: None}},
-            'licenses': {conda_channel: {conda_label: []}}
+            "name": app_name,
+            "app_type": app_type,
+            "installed": {conda_channel: {conda_label: False}},
+            "versions": {conda_channel: {conda_label: ["1.0"]}},
+            "versionURLs": {conda_channel: {conda_label: ["versionURL"]}},
+            "channels_and_labels": {conda_channel: {conda_label: []}},
+            "timestamp": {conda_channel: {conda_label: "timestamp"}},
+            "compatibility": {conda_channel: {conda_label: {}}},
+            "license": {conda_channel: {conda_label: None}},
+            "licenses": {conda_channel: {conda_label: []}},
         }
+
     return _fresh_resource
 
 
@@ -146,32 +148,40 @@ def resource():
             app_type = "tethysapp"
 
         return {
-            'name': app_name,
-            'app_type': app_type,
-            'installed': {conda_channel: {conda_label: False}},
-            'installedVersion': {conda_channel: {conda_label: "1.0"}},
-            'latestVersion': {conda_channel: {conda_label: "1.0"}},
-            'versions': {conda_channel: {conda_label: ["1.0"]}},
-            'versionURLs': {conda_channel: {conda_label: ["versionURL"]}},
-            'channels_and_labels': {conda_channel: {conda_label: []}},
-            'timestamp': {conda_channel: {conda_label: "timestamp"}},
-            'compatibility': {conda_channel: {conda_label: {}}},
-            'license': {conda_channel: {conda_label: None}},
-            'licenses': {conda_channel: {conda_label: []}},
-            'author': {conda_channel: {conda_label: 'author'}},
-            'description': {conda_channel: {conda_label: 'description'}},
-            'author_email': {conda_channel: {conda_label: 'author_email'}},
-            'keywords': {conda_channel: {conda_label: 'keywords'}},
-            'dev_url': {conda_channel: {conda_label: 'url'}}
+            "name": app_name,
+            "app_type": app_type,
+            "installed": {conda_channel: {conda_label: False}},
+            "installedVersion": {conda_channel: {conda_label: "1.0"}},
+            "latestVersion": {conda_channel: {conda_label: "1.0"}},
+            "versions": {conda_channel: {conda_label: ["1.0"]}},
+            "versionURLs": {conda_channel: {conda_label: ["versionURL"]}},
+            "channels_and_labels": {conda_channel: {conda_label: []}},
+            "timestamp": {conda_channel: {conda_label: "timestamp"}},
+            "compatibility": {conda_channel: {conda_label: {}}},
+            "license": {conda_channel: {conda_label: None}},
+            "licenses": {conda_channel: {conda_label: []}},
+            "author": {conda_channel: {conda_label: "author"}},
+            "description": {conda_channel: {conda_label: "description"}},
+            "author_email": {conda_channel: {conda_label: "author_email"}},
+            "keywords": {conda_channel: {conda_label: "keywords"}},
+            "dev_url": {conda_channel: {conda_label: "url"}},
         }
+
     return _resource
 
 
 @pytest.fixture()
 def store_with_resources(resource, store):
-    def _store_with_resources(store_name, conda_labels, available_apps_label=None, available_apps_name="",
-                              installed_apps_label=None, installed_apps_name="", incompatible_apps_label=None,
-                              incompatible_apps_name=""):
+    def _store_with_resources(
+        store_name,
+        conda_labels,
+        available_apps_label=None,
+        available_apps_name="",
+        installed_apps_label=None,
+        installed_apps_name="",
+        incompatible_apps_label=None,
+        incompatible_apps_name="",
+    ):
         active_store = store(store_name, conda_labels=conda_labels)
         available_app = {}
         installed_app = {}
@@ -182,26 +192,38 @@ def store_with_resources(resource, store):
                 app_name = available_apps_name
             else:
                 app_name = f"{store_name}_available_app_{available_apps_label}"
-            available_app = {app_name: resource(app_name, active_store['conda_channel'], available_apps_label)}
+            available_app = {
+                app_name: resource(
+                    app_name, active_store["conda_channel"], available_apps_label
+                )
+            }
 
         if installed_apps_label:
             if installed_apps_name:
                 app_name = installed_apps_name
             else:
                 app_name = f"{store_name}_installed_app_{installed_apps_label}"
-            installed_app = {app_name: resource(app_name, active_store['conda_channel'], installed_apps_label)}
+            installed_app = {
+                app_name: resource(
+                    app_name, active_store["conda_channel"], installed_apps_label
+                )
+            }
 
         if incompatible_apps_label:
             if incompatible_apps_name:
                 app_name = incompatible_apps_name
             else:
                 app_name = f"{store_name}_incompatible_app_{incompatible_apps_label}"
-            incompatible_app = {app_name: resource(app_name, active_store['conda_channel'], incompatible_apps_label)}
+            incompatible_app = {
+                app_name: resource(
+                    app_name, active_store["conda_channel"], incompatible_apps_label
+                )
+            }
 
         resources = {
-            'availableApps': available_app,
-            'installedApps': installed_app,
-            'incompatibleApps': incompatible_app
+            "availableApps": available_app,
+            "installedApps": installed_app,
+            "incompatibleApps": incompatible_app,
         }
 
         return (active_store, resources)
@@ -221,7 +243,9 @@ def tethysapp_base(tmp_path):
 
 
 @pytest.fixture()
-def tethysapp_base_with_application_files(tethysapp_base, app_files_dir, test_files_dir):
+def tethysapp_base_with_application_files(
+    tethysapp_base, app_files_dir, test_files_dir
+):
 
     conda_recipes_dir = tethysapp_base / "conda.recipes"
     conda_recipes_dir.mkdir()
@@ -316,7 +340,7 @@ def mock_admin_api_get_request(admin_user, get_or_create_token):
 
         if auth_header:
             token = get_or_create_token(user=admin_user)
-            client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+            client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
         else:
             client.credentials()
 
@@ -333,11 +357,11 @@ def mock_admin_api_post_request(admin_user, get_or_create_token):
 
         if auth_header:
             token = get_or_create_token(user=admin_user)
-            client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+            client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
         else:
             client.credentials()
 
-        response = client.post(url, data, format='json')
+        response = client.post(url, data, format="json")
         return response
 
     return _mock_admin_api_post_request
@@ -348,7 +372,9 @@ def mock_no_permission_get_request(rf, django_user_model):
     def _mock_no_permission_get_request(url, data=None):
         data = data if data else {}
         request = rf.get(url, data)
-        new_user = django_user_model.objects.create(username="someone", password="something")
+        new_user = django_user_model.objects.create(
+            username="someone", password="something"
+        )
         request.user = new_user
         return request
 
@@ -381,25 +407,25 @@ def app_store_workspace(tmp_path, complex_tethysapp):
 
     workspace_logs = workspace / "logs" / "github_install"
     workspace_logs.mkdir(parents=True)
-    install_status_dir = workspace / 'install_status' / 'github'
+    install_status_dir = workspace / "install_status" / "github"
     install_status_dir.mkdir(parents=True)
     statusfile_data = {
-        'installID': "abc123",
-        'githubURL': 'githubURL',
-        'workspacePath': str(test_app_git),
-        'installComplete': False,
-        'status': {
+        "installID": "abc123",
+        "githubURL": "githubURL",
+        "workspacePath": str(test_app_git),
+        "installComplete": False,
+        "status": {
             "installStarted": True,
             "conda": "Pending",
             "pip": "Pending",
             "setupPy": "Pending",
             "dbSync": "Pending",
-            "post": "Pending"
+            "post": "Pending",
         },
-        'installStartTime': '2024-01-01T00:00:00.0000'
+        "installStartTime": "2024-01-01T00:00:00.0000",
     }
     statusfile_json = install_status_dir / "abc123.json"
-    with open(statusfile_json, 'w') as outfile:
+    with open(statusfile_json, "w") as outfile:
         json.dump(statusfile_data, outfile)
     statusfile_log = workspace_logs / "abc123.log"
     statusfile_log.touch()
