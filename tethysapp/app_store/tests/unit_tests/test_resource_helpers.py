@@ -3,6 +3,7 @@ import json
 import pytest
 import shutil
 import sys
+from conda.exceptions import PackagesNotFoundError
 from tethysapp.app_store.resource_helpers import (
     create_pre_multiple_stores_labels_obj,
     get_resources_single_store,
@@ -970,6 +971,23 @@ def test_fetch_resources_no_resources(tmp_path, mocker, caplog):
     assert (
         "no packages found with the label dev in channel test_channel"
         in caplog.messages
+    )
+    assert fetched_resource == []
+
+
+def test_fetch_resources_packages_not_found(tmp_path, mocker):
+    mock_conda = mocker.patch(
+        "tethysapp.app_store.resource_helpers.conda_run",
+        side_effect=[PackagesNotFoundError("No packages found.")],
+    )
+    mock_cache = mocker.patch("tethysapp.app_store.resource_helpers.cache")
+    mock_cache.get.side_effect = [None]
+
+    fetched_resource = fetch_resources(tmp_path, "test_channel", conda_label="dev")
+
+    mock_conda.assert_called_with(
+        "search",
+        ["-c", "test_channel/label/dev", "--override-channels", "-i", "--json"],
     )
     assert fetched_resource == []
 

@@ -394,39 +394,37 @@ def fix_setup(setup_py):
     rel_package = ""
     with fileinput.FileInput(setup_py, inplace=True) as f:
         for line in f:
-            # logger.info(line)
-
             if (
                 "import find_all_resource_files" in line
                 or "import find_resource_files" in line
             ):
                 print("from setup_helper import find_all_resource_files", end="\n")
 
-            elif "TethysAppBase.package_namespace" in line:
-                new_replace_line = line.replace(
-                    "TethysAppBase.package_namespace", "namespace"
-                )
-                print(new_replace_line, end="")
-
             elif "setup(" in line:
                 print(line, end="")
 
-            elif "app_package = " in line:
+            elif "app_package=" in line.replace(" ", ""):
                 rel_package = re.findall("app_package = ['\"](.*)['\"]", line)[0]
-                print("namespace = 'tethysapp'")
+                print('namespace = "tethysapp"')
                 print(line, end="")
 
             elif "from tethys_apps.base.app_base import TethysAppBase" in line:
                 print("", end="")
 
-            elif "resource_files = find_resource_files" in line:
+            elif "resource_files=find_resource_files" in line.replace(" ", ""):
                 print(
                     "resource_files = find_all_resource_files(app_package, namespace)",
                     end="\n",
                 )
 
-            elif "resource_files += find_resource_files" in line:
+            elif "resource_files+=find_resource_files" in line.replace(" ", ""):
                 print("", end="")
+
+            elif "TethysAppBase.package_namespace" in line:
+                new_replace_line = line.replace(
+                    "TethysAppBase.package_namespace", "namespace"
+                )
+                print(new_replace_line, end="")
 
             else:
                 print(line, end="")

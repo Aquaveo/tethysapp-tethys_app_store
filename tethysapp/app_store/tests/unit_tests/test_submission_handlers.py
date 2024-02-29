@@ -4,7 +4,11 @@ import os
 import filecmp
 from unittest.mock import call, MagicMock
 from pytest_lazy_fixtures import lf
-from github.GithubException import UnknownObjectException, BadCredentialsException
+from github.GithubException import (
+    UnknownObjectException,
+    BadCredentialsException,
+    GithubException,
+)
 from tethysapp.app_store.submission_handlers import (
     update_anaconda_dependencies,
     get_github_repo,
@@ -398,6 +402,15 @@ def test_get_head_and_tag_names():
     heads = get_head_and_tag_names(mock_repo)
 
     assert heads == ["tag1", "tag2"]
+
+
+def test_get_head_and_tag_names_exception():
+    mock_repo = MagicMock()
+    mock_repo.get_git_refs.side_effect = [GithubException("No head available")]
+
+    heads = get_head_and_tag_names(mock_repo)
+
+    assert heads == []
 
 
 def test_create_current_tag_version(mocker):
