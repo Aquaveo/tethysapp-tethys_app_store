@@ -835,6 +835,8 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
         "helper": "addModalHelper"
     }
     send_notification(get_data_json, channel_layer)
+    
+    shutil.rmtree(app_github_dir)
 
 
 def validate_git_credentials(github_token, conda_channel, channel_layer):
