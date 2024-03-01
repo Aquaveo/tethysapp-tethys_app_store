@@ -722,10 +722,9 @@ def test_validate_git_credentials_bad_token(mocker):
     expected_get_data_json = {
         "data": {
             "mssge_string": "Invalid git credentials. Could not connect to github. Check store settings.",
-            "metadata": {"next_move": False},
             "conda_channel": conda_channel,
         },
-        "jsHelperFunction": "validationResults",
+        "jsHelperFunction": "githubValidationError",
         "helper": "addModalHelper",
     }
     mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)
@@ -767,11 +766,10 @@ def test_validate_git_organization_bad_token(mocker):
 
     expected_get_data_json = {
         "data": {
-            "mssge_string": "Could not connect to organization. Check store settings.",
-            "metadata": {"next_move": False},
+            "mssge_string": "Could not connect to organization. Check store settings.",\
             "conda_channel": conda_channel,
         },
-        "jsHelperFunction": "validationResults",
+        "jsHelperFunction": "githubValidationError",
         "helper": "addModalHelper",
     }
     mock_send_notification.assert_called_with(expected_get_data_json, mock_channel)

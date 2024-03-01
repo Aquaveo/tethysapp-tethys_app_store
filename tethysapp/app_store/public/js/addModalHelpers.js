@@ -1,32 +1,23 @@
 const addModalHelper = {
-  validationResults: (validationData, content, completeMessage, ws ) =>{
-    if(!validationData.metadata['next_move']){
-      // $("#failMessage").html(validationData.mssge_string)
-      // $("#failMessage").show()
+  githubValidationError: (errorData, content, completeMessage, ws ) =>{
 
+    $(`#tethysapp_${errorData.conda_channel}_failMessage`).html(errorData.mssge_string)
+    $(`#tethysapp_${errorData.conda_channel}_failMessage`).show()
+    $(`#tethysapp_${errorData.conda_channel}-spinner`).hide();
+    $("#submitTethysAppLoaderEllipsis").hide()
+    $("#submitTethysAppLoaderText").text("")
+    $("#fetchRepoButton").prop("disabled", false)
+  },
+  existingAppWarning: (warningData, content, completeMessage, ws ) =>{
 
-      $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
-      $(`#tethysapp_${validationData.conda_channel}-spinner`).hide();
-      $("#submitTethysAppLoaderEllipsis").hide()
-      $("#submitTethysAppLoaderText").text("")
-      $("#fetchRepoButton").prop("disabled", false)
-    }
-    else{
-      // $("#failMessage").html(validationData.mssge_string)
-      // $("#failMessage").show()
-      $(`#tethysapp_${validationData.conda_channel}_failMessage`).html(validationData.mssge_string)
-      $(`#tethysapp_${validationData.conda_channel}_failMessage`).show()
-      notification_ws.send(
-          JSON.stringify({
-              data: {
-                  url: validationData.metadata['submission_github_url']
-              },
-              type: `pull_git_repo`
-          })
-      )
-    }
-
+    $("#tethysapp_github_app_name_warningMessage").html(warningData.mssge_string)
+    $("#tethysapp_github_app_name_warningMessage").show()
+    $("#tethysapp_appName").val(warningData.app_name)
+    $("#tethysapp_appName_div").show()
+    $(`#tethysapp_${warningData.conda_channel}-spinner`).hide();
+    $("#submitTethysAppLoaderEllipsis").hide()
+    $("#submitTethysAppLoaderText").text("")
+    $("#fetchRepoButton").prop("disabled", false)
   },
   showBranches: (branchesData, content, completeMessage, ws) => {
     // Clear loader and button:
@@ -34,6 +25,10 @@ const addModalHelper = {
     $("#submitTethysAppLoaderEllipsis").hide()
     $("#fetchRepoButton").hide()
     $("#submitTethysAppLoaderText").text("")
+    disable_options = {
+      disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true
+    }
+    disableSubmitAppModalInput("tethysapp", {disable_app_name:true})
 
     if (!("branches" in branchesData)) {
       sendNotification(
@@ -158,6 +153,7 @@ const addModalHelper = {
 const getTethysSubmitModalInput = (modal_type) => {
   let githubURL = $(`#${modal_type}_githubURL`).val()
   let notifEmail = $(`#${modal_type}_notifEmail`).val()
+  let submittedAppName = $(`#${modal_type}_appName`).val()
 
   let active_stores = []
   availableStores = $(`#${modal_type}_availableStores`).children(".row_store_submission")
@@ -182,7 +178,7 @@ const getTethysSubmitModalInput = (modal_type) => {
     active_stores.push(input_store)
   }
 
-  return [githubURL, notifEmail, active_stores]
+  return [githubURL, notifEmail, submittedAppName, active_stores]
 }
 
 const disableSubmitAppModalInput = (modal_type, disable_options) => {
@@ -195,6 +191,11 @@ const disableSubmitAppModalInput = (modal_type, disable_options) => {
   if (disable_options['disable_gihuburl']) {
     SubmitAppModal.find(".githubURL").prop("disabled", true)
     SubmitAppModal.find(".githubURL").css('opacity', '.5');
+  }
+
+  if (disable_options['disable_app_name']) {
+    SubmitAppModal.find(".appName").prop("disabled", true)
+    SubmitAppModal.find(".appName").css('opacity', '.5');
   }
   
   if (disable_options['disable_channels']) {
@@ -314,7 +315,8 @@ const createProxyApp = () => {
 const getRepoForAdd = () => {
   $(".label_failMessage").hide()
   $(".tethysapp_failMessage").hide()
-  let [githubURL, notifEmail, active_stores] = getTethysSubmitModalInput("tethysapp")
+  $(".tethysapp_warningMessage").hide()
+  let [githubURL, notifEmail, submittedAppName, active_stores] = getTethysSubmitModalInput("tethysapp")
 
   let errors = false
   if (!githubURL) {
@@ -347,14 +349,15 @@ const getRepoForAdd = () => {
   $("#fetchRepoButton").prop("disabled", true)
   $("#submitTethysAppLoaderText").text("Please wait. Fetching GitHub Repo")
   disable_options = {
-    disable_email: true, disable_gihuburl: true, disable_channels: true, disable_labels: true, disable_branches: false
+    disable_email: true, disable_gihuburl: true, disable_channels: true, disable_labels: true
   }
   disableSubmitAppModalInput("tethysapp", disable_options)
   notification_ws.send(
       JSON.stringify({
           data: {
               url: githubURL,
-              stores: active_stores
+              stores: active_stores,
+              submitted_app_name: submittedAppName
           },
           type: `initialize_local_repo_for_active_stores`
       })
@@ -554,7 +557,7 @@ $(document).on('click', '#submitProxyApp', function(event) {
   }
 
   disable_options = {
-    disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true, disable_branches: false
+    disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true
   }
   disableSubmitAppModalInput("proxyapp", disable_options)
   $("#submitProxyAppLoaderEllipsis").show()
