@@ -12,8 +12,7 @@ const addModalHelper = {
 
     $("#tethysapp_github_app_name_warningMessage").html(warningData.mssge_string)
     $("#tethysapp_github_app_name_warningMessage").show()
-    $("#tethysapp_appName").val(warningData.app_name)
-    $("#tethysapp_appName_div").show()
+    $("#tethysapp_overwriteApp").prop("checked", true)
     $(`#tethysapp_${warningData.conda_channel}-spinner`).hide();
     $("#submitTethysAppLoaderEllipsis").hide()
     $("#submitTethysAppLoaderText").text("")
@@ -28,7 +27,7 @@ const addModalHelper = {
     disable_options = {
       disable_email: true, disable_gihuburl: false, disable_channels: true, disable_labels: true
     }
-    disableSubmitAppModalInput("tethysapp", {disable_app_name:true})
+    disableSubmitAppModalInput("tethysapp", disable_options)
 
     if (!("branches" in branchesData)) {
       sendNotification(
@@ -68,6 +67,7 @@ const addModalHelper = {
           type: `submit_tethysapp_to_store`
         })
       )
+      disableSubmitAppModalInput("tethysapp", {disable_branches: true})
       return
     }
 
@@ -98,6 +98,7 @@ const addModalHelper = {
           type: `submit_tethysapp_to_store`
         })
       )
+      disableSubmitAppModalInput("tethysapp", {disable_branches: true})
     })
     $("#processBranchButton").show()
     // $("#failMessage").hide()
@@ -153,7 +154,7 @@ const addModalHelper = {
 const getTethysSubmitModalInput = (modal_type) => {
   let githubURL = $(`#${modal_type}_githubURL`).val()
   let notifEmail = $(`#${modal_type}_notifEmail`).val()
-  let submittedAppName = $(`#${modal_type}_appName`).val()
+  let overwriteApp = $(`#${modal_type}_overwriteApp`).prop("checked")
 
   let active_stores = []
   availableStores = $(`#${modal_type}_availableStores`).children(".row_store_submission")
@@ -178,7 +179,7 @@ const getTethysSubmitModalInput = (modal_type) => {
     active_stores.push(input_store)
   }
 
-  return [githubURL, notifEmail, submittedAppName, active_stores]
+  return [githubURL, notifEmail, overwriteApp, active_stores]
 }
 
 const disableSubmitAppModalInput = (modal_type, disable_options) => {
@@ -191,11 +192,6 @@ const disableSubmitAppModalInput = (modal_type, disable_options) => {
   if (disable_options['disable_gihuburl']) {
     SubmitAppModal.find(".githubURL").prop("disabled", true)
     SubmitAppModal.find(".githubURL").css('opacity', '.5');
-  }
-
-  if (disable_options['disable_app_name']) {
-    SubmitAppModal.find(".appName").prop("disabled", true)
-    SubmitAppModal.find(".appName").css('opacity', '.5');
   }
   
   if (disable_options['disable_channels']) {
@@ -316,7 +312,7 @@ const getRepoForAdd = () => {
   $(".label_failMessage").hide()
   $(".tethysapp_failMessage").hide()
   $(".tethysapp_warningMessage").hide()
-  let [githubURL, notifEmail, submittedAppName, active_stores] = getTethysSubmitModalInput("tethysapp")
+  let [githubURL, notifEmail, overwriteApp, active_stores] = getTethysSubmitModalInput("tethysapp")
 
   let errors = false
   if (!githubURL) {
@@ -357,7 +353,7 @@ const getRepoForAdd = () => {
           data: {
               url: githubURL,
               stores: active_stores,
-              submitted_app_name: submittedAppName
+              overwrite: overwriteApp
           },
           type: `initialize_local_repo_for_active_stores`
       })

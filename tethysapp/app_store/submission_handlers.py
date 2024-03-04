@@ -150,9 +150,9 @@ def initialize_local_repo_for_active_stores(install_data, channel_layer, app_wor
     """
     github_url = install_data.get("url")
     stores = install_data.get("stores")
-    submitted_app_name = install_data.get("submitted_app_name")
+    overwrite = install_data.get("overwrite")
     for store in stores:
-        initialize_local_repo(github_url, store, submitted_app_name, channel_layer, app_workspace)
+        initialize_local_repo(github_url, store, overwrite, channel_layer, app_workspace)
 
 
 def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
@@ -178,7 +178,7 @@ def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
     return app_github_dir
 
 
-def initialize_local_repo(github_url, active_store, submitted_app_name, channel_layer, app_workspace):
+def initialize_local_repo(github_url, active_store, overwrite, channel_layer, app_workspace):
     """Create and initialize a local github repo with a path for a specific conda channel. Once a repo is initialized,
     get a list of branches and send back the information to the application submission modal.
 
@@ -193,9 +193,9 @@ def initialize_local_repo(github_url, active_store, submitted_app_name, channel_
     conda_channel = active_store["conda_channel"]
     conda_labels = active_store["conda_labels"]
     
-    if check_if_remote_app_exists(app_name, conda_channel, channel_layer) and not submitted_app_name:
+    if check_if_remote_app_exists(app_name, conda_channel, channel_layer) and not overwrite:
         # Send notification back to websocket if remote app already exists
-        mssge_string = f"{app_name} already exists in the app store github repo. Submit again with a different name or use the same name to overwrite."
+        mssge_string = f"{app_name} already exists in the app store github repo. Continue to overwrite or submit a new application."
         get_data_json = {
             "data": {
                 "mssge_string": mssge_string,
