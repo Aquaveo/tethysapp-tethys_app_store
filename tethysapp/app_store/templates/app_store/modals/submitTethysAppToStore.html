@@ -1,12 +1,12 @@
 {% load static %}
 <div class="modal" id="submit-tethysapp-to-store-modal" style="z-index:2000;" tabindex="-1" role="dialog" aria-labelledby="submit-tethysapp-to-store-modal-label">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered" style="height:90%;" role="document">
+        <div class="modal-content" style="height:100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="submit-tethysapp-to-store-modal-label">Submit your application to the Tethys App Store</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="add-app-container">
+            <div class="modal-body" style="max-height:calc(100vh - 150px);" id="add-app-container">
                 <div>
                     <p>
                         Click <a href="//tethys-app-store.readthedocs.io/en/latest/appsubmit.html" target="_blank">Here</a> to get instructions on how to prepare your app for submission to the app store.</p>
@@ -23,7 +23,9 @@
                     <input type="text" class="form-control githubURL" id="tethysapp_githubURL" placeholder="GitHub Repository URL">
                 </div>
                 <div id="tethysapp_githubURL_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysapp_failMessage">A github url must be provided</div>
+                <div id="tethysapp_github_app_name_warningMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-warning text-white tethysapp_warningMessage"></div>
                 <br>
+                <input type="checkbox" style="display:none" id="tethysapp_overwriteApp">
                 <div id="tethysapp_availableStores">
                     <p class="title-class">Available Stores</p>
                     
@@ -74,8 +76,6 @@
                     {% endfor %}
                 </div> 
                 <div id="tethysapp_{{ store.conda_channel }}_failMessage" style="display:none;margin-top:10px;" class="p-3 mb-2 bg-info text-white tethysapp_failMessage"></div>
-                <button class="btn btn-primary pull-right mt-3" id="fetchRepoButton" onClick="getRepoForAdd()"> Fetch Repository </button>
-                <button class="btn btn-primary pull-right" style="display:none;" id="processBranchButton"> Submit </button>
             </div>
             <div class="modal-footer">
                 <div id="submitTethysAppLoaderText" class="loaderText"></div>
@@ -85,7 +85,9 @@
                     <div></div>
                     <div></div>
                 </div>
-                <button class="btn btn-danger pull-left" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitCancel"> Cancel </button>
+                <button class="btn btn-primary pull-left" style="margin-top:10px" id="fetchRepoButton" onClick="getRepoForAdd()"> Fetch Repository </button>
+                <button class="btn btn-primary pull-left" style="margin-top:10px;display:none;" id="processBranchButton"> Submit </button>
+                <button class="btn btn-danger pull-right" style="margin-top:10px;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitCancel"> Cancel </button>
                 <button class="btn btn-success pull-right" style="margin-top:10px;display:none;" data-bs-dismiss="modal" aria-hidden="true" id="tethysappSubmitDone"> Done </button>
             </div>
         </div>

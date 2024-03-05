@@ -154,11 +154,13 @@ def test_submit_proxy_app(mocker, store, proxyapp):
     )
     app = proxyapp()
     store = store("test_store")
+    overwrite = True
     mock_proxy.objects.get.return_value = app
     install_data = {
         "app_name": "test_app",
         "notification_email": "test_email",
         "active_stores": [store],
+        "overwrite": overwrite,
     }
     mock_channel = MagicMock()
     mock_workspace = MagicMock()
@@ -167,4 +169,6 @@ def test_submit_proxy_app(mocker, store, proxyapp):
 
     submit_data = store
     submit_data["email"] = install_data["notification_email"]
-    mock_submit.assert_called_with(app, submit_data, mock_channel, mock_workspace)
+    mock_submit.assert_called_with(
+        app, submit_data, overwrite, mock_channel, mock_workspace
+    )

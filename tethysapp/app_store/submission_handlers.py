@@ -101,7 +101,7 @@ def update_anaconda_dependencies(
         yaml.safe_dump(meta_yaml_file, f, default_flow_style=False)
 
 
-def get_github_repo(repo_name, organization):
+def get_github_repo(repo_name, organization, create_if_not_exist=True):
     """Retrieve the github repository. If the repository exists, use the existing repository, otherwise create a new one
 
     Args:
@@ -114,24 +114,30 @@ def get_github_repo(repo_name, organization):
     """
     try:
         tethysapp_repo = organization.get_repo(repo_name)
-        logger.info(f"{organization.login}/{repo_name} Exists. Will have to delete")
+        logger.info(f"{organization.login}/{repo_name} Exists")
         return tethysapp_repo
 
     except UnknownObjectException as e:
         logger.info(
             f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}"
         )
-        logger.info(f"Creating a new repository at {organization.login}/{repo_name}")
-        tethysapp_repo = organization.create_repo(
-            repo_name,
-            allow_rebase_merge=True,
-            auto_init=False,
-            description="For Tethys App Store Purposes",
-            has_issues=False,
-            has_projects=False,
-            has_wiki=False,
-            private=False,
-        )
+        if create_if_not_exist:
+            logger.info(
+                f"Creating a new repository at {organization.login}/{repo_name}"
+            )
+            tethysapp_repo = organization.create_repo(
+                repo_name,
+                allow_rebase_merge=True,
+                auto_init=False,
+                description="For Tethys App Store Purposes",
+                has_issues=False,
+                has_projects=False,
+                has_wiki=False,
+                private=False,
+            )
+        else:
+            tethysapp_repo = None
+
         return tethysapp_repo
 
 
@@ -146,8 +152,11 @@ def initialize_local_repo_for_active_stores(install_data, channel_layer, app_wor
     """
     github_url = install_data.get("url")
     stores = install_data.get("stores")
+    overwrite = install_data.get("overwrite")
     for store in stores:
-        initialize_local_repo(github_url, store, channel_layer, app_workspace)
+        initialize_local_repo(
+            github_url, store, overwrite, channel_layer, app_workspace
+        )
 
 
 def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
@@ -173,7 +182,9 @@ def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
     return app_github_dir
 
 
-def initialize_local_repo(github_url, active_store, channel_layer, app_workspace):
+def initialize_local_repo(
+    github_url, active_store, overwrite, channel_layer, app_workspace
+):
     """Create and initialize a local github repo with a path for a specific conda channel. Once a repo is initialized,
     get a list of branches and send back the information to the application submission modal.
 
@@ -185,6 +196,31 @@ def initialize_local_repo(github_url, active_store, channel_layer, app_workspace
     """
     # Create/Refresh github directories within the app workspace for the given channel
     app_name = github_url.split("/")[-1].replace(".git", "")
+    conda_channel = active_store["conda_channel"]
+    conda_labels = active_store["conda_labels"]
+
+    if (
+        check_if_remote_app_exists(app_name, conda_channel, channel_layer)
+        and not overwrite
+    ):
+        # Send notification back to websocket if remote app already exists
+        mssge_string = (
+            f"{app_name} already exists in the app store github repo. Continue with the submission to "
+            "overwrite or submit a new application."
+        )
+        get_data_json = {
+            "data": {
+                "mssge_string": mssge_string,
+                "conda_channel": conda_channel,
+                "app_name": app_name,
+                "app_type": "tethysapp",
+            },
+            "jsHelperFunction": "existingAppWarning",
+            "helper": "addModalHelper",
+        }
+        send_notification(get_data_json, channel_layer)
+        return
+
     app_github_dir = get_gitsubmission_app_dir(
         app_workspace, app_name, active_store["conda_channel"]
     )
@@ -205,8 +241,8 @@ def initialize_local_repo(github_url, active_store, channel_layer, app_workspace
         "data": {
             "branches": branches,
             "app_name": app_name,
-            "conda_channel": active_store["conda_channel"],
-            "conda_labels": active_store["conda_labels"],
+            "conda_channel": conda_channel,
+            "conda_labels": conda_labels,
         },
         "jsHelperFunction": "showBranches",
         "helper": "addModalHelper",
@@ -637,7 +673,9 @@ def get_workflow_job_url(repo, tethysapp_repo, current_tag_name):
     return job_url
 
 
-def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspace):
+def submit_proxyapp_to_store(
+    proxy_app, install_data, overwrite_app, channel_layer, app_workspace
+):
     """Initiate, process, and submit a proxy application to the configured app store github repo.
 
     Args:
@@ -660,6 +698,7 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     reset_folder(app_github_dir)
     repo = git.Repo.init(app_github_dir)
     app_config_dir = os.path.join(app_github_dir, "config")
+    repo_name = app_github_dir.split("/")[-1]
     os.makedirs(app_config_dir)
     (Path(app_github_dir) / "__init__.py").touch()
     (Path(app_config_dir) / "__init__.py").touch()
@@ -674,6 +713,26 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     organization = validate_git_organization(
         g, github_organization, conda_channel, channel_layer
     )
+
+    remote_repo = get_github_repo(repo_name, organization, create_if_not_exist=False)
+    if remote_repo and not overwrite_app:
+        # Send notification back to websocket if remote app already exists
+        mssge_string = (
+            f"{app_name} already exists in the app store github repo. Continue with the submission to "
+            "overwrite or submit with a new name."
+        )
+        get_data_json = {
+            "data": {
+                "mssge_string": mssge_string,
+                "conda_channel": conda_channel,
+                "app_name": app_name,
+                "app_type": "proxyapp",
+            },
+            "jsHelperFunction": "existingAppWarning",
+            "helper": "addModalHelper",
+        }
+        send_notification(get_data_json, channel_layer)
+        return
 
     # 4. Add files to local repo
     source_files_path = os.path.join(
@@ -750,7 +809,6 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     )
 
     # 12. Check if this repo already exists on our remote:
-    repo_name = app_github_dir.split("/")[-1]
     remote_repo = get_github_repo(repo_name, organization)
     remote_url = remote_repo.git_url.replace(
         "git://", "https://" + github_token + ":x-oauth-basic@"
@@ -947,16 +1005,13 @@ def validate_git_credentials(github_token, conda_channel, channel_layer):
     try:
         return github.Github(github_token)
     except BadCredentialsException:
-        json_response = {}
-        json_response["next_move"] = False
         mssge_string = "Invalid git credentials. Could not connect to github. Check store settings."
         get_data_json = {
             "data": {
                 "mssge_string": mssge_string,
-                "metadata": json_response,
                 "conda_channel": conda_channel,
             },
-            "jsHelperFunction": "validationResults",
+            "jsHelperFunction": "githubValidationError",
             "helper": "addModalHelper",
         }
         send_notification(get_data_json, channel_layer)
@@ -983,20 +1038,36 @@ def validate_git_organization(
     try:
         return github_account.get_organization(github_organization)
     except BadCredentialsException:
-        json_response = {}
-        json_response["next_move"] = False
         mssge_string = "Could not connect to organization. Check store settings."
         get_data_json = {
             "data": {
                 "mssge_string": mssge_string,
-                "metadata": json_response,
                 "conda_channel": conda_channel,
             },
-            "jsHelperFunction": "validationResults",
+            "jsHelperFunction": "githubValidationError",
             "helper": "addModalHelper",
         }
         send_notification(get_data_json, channel_layer)
         raise Exception(mssge_string)
+
+
+def check_if_remote_app_exists(app_name, conda_channel, channel_layer):
+    # Get sensitive information for store
+    conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]
+    github_organization = conda_store["github_organization"]
+    github_token = conda_store["github_token"]
+
+    # Check to see if app exists in app store github
+    g = validate_git_credentials(github_token, conda_channel, channel_layer)
+    organization = validate_git_organization(
+        g, github_organization, conda_channel, channel_layer
+    )
+    tethysapp_repo = get_github_repo(app_name, organization, create_if_not_exist=False)
+
+    if tethysapp_repo is None:
+        return False
+    else:
+        return True
 
 
 # The functions below are not being used but may want to be implemented in the future
@@ -1162,39 +1233,6 @@ def validate_git_organization(
 #             "helper": "addModalHelper"
 #         }
 #         # send_notification(get_data_json, channel_layer)
-#     return get_data_json
-
-
-# def validation_is_new_app(github_url, app_package_name, json_response):
-#     get_data_json = {}
-#     if json_response["latest_github_url"] == github_url.replace(".git", ""):
-#         mssge_string = "<p>The submitted Github url is an update of an existing application, The app store will " \
-#                        "proceed to pull the repository</p>"
-#         json_response['next_move'] = True
-#         get_data_json = {
-#             "data": {
-#                 "mssge_string": mssge_string,
-#                 "metadata": json_response
-#             },
-#             "jsHelperFunction": "validationResults",
-#             "helper": "addModalHelper"
-#         }
-
-#     else:
-#         mssge_string = f'<p>The app_package name <b>{app_package_name}</b> of the submitted <a ' \
-#                        f'href="{github_url.replace(".git","")}">GitHub url</a> was found at an already submitted ' \
-#                        'application.</p> <ul><li>If the application is the same, please open a pull ' \
-#                        'request</li><li>If the application is not the same, please change the name of the ' \
-#                        'app_package found at the setup.py, app.py and other files</li></ul>'
-#         json_response['next_move'] = False
-#         get_data_json = {
-#             "data": {
-#                 "mssge_string": mssge_string,
-#                 "metadata": json_response
-#             },
-#             "jsHelperFunction": "validationResults",
-#             "helper": "addModalHelper"
-#         }
 #     return get_data_json
 
 
