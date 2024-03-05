@@ -10,13 +10,21 @@ const addModalHelper = {
   },
   existingAppWarning: (warningData, content, completeMessage, ws ) =>{
 
-    $("#tethysapp_github_app_name_warningMessage").html(warningData.mssge_string)
-    $("#tethysapp_github_app_name_warningMessage").show()
-    $("#tethysapp_overwriteApp").prop("checked", true)
-    $(`#tethysapp_${warningData.conda_channel}-spinner`).hide();
-    $("#submitTethysAppLoaderEllipsis").hide()
-    $("#submitTethysAppLoaderText").text("")
-    $("#fetchRepoButton").prop("disabled", false)
+    let app_type = warningData.app_type
+    $(`#${app_type}_github_app_name_warningMessage`).html(warningData.mssge_string)
+    $(`#${app_type}_github_app_name_warningMessage`).show()
+    $(`#${app_type}_overwriteApp`).prop("checked", true)
+    $(`#${app_type}_${warningData.conda_channel}-spinner`).hide();
+
+    if (app_type == "tethysapp") {
+      $("#fetchRepoButton").prop("disabled", false)
+      $("#submitTethysAppLoaderEllipsis").hide()
+      $("#submitTethysAppLoaderText").text("")
+    } else if (app_type == "proxyapp") {
+      $("#submitProxyApp").prop("disabled", false)
+      $("#submitProxyAppLoaderEllipsis").hide()
+      $("#submitProxyAppLoaderText").text("")
+    }
   },
   showBranches: (branchesData, content, completeMessage, ws) => {
     // Clear loader and button:
@@ -526,9 +534,10 @@ $(document).on('click', '.proxyAppUploadToStore', function(event) {
 $(document).on('click', '#submitProxyApp', function(event) {
   $(".label_failMessage").hide()
   $(".proxyapp_failMessage").hide()
+  $(".proxyapp_warningMessage").hide()
   let submitProxyAppModal = $('#submit-proxyapp-to-store-modal')
   let proxyAppName = submitProxyAppModal.find(".modal-header").find("#submitProxyAppName")[0].innerHTML
-  let [_, notifEmail, active_stores] = getTethysSubmitModalInput("proxyapp")
+  let [_, notifEmail, overwriteApp, active_stores] = getTethysSubmitModalInput("proxyapp")
 
   let errors = false
   if (!notifEmail) {
@@ -564,7 +573,8 @@ $(document).on('click', '#submitProxyApp', function(event) {
           data: {
               app_name: proxyAppName,
               active_stores: active_stores,
-              notification_email: notifEmail
+              notification_email: notifEmail,
+              overwrite: overwriteApp
           },
           type: `submit_proxy_app`
       })

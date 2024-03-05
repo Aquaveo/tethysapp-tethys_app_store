@@ -37,6 +37,7 @@ from tethysapp.app_store.submission_handlers import (
     validate_git_organization,
     get_gitsubmission_app_dir,
     submit_proxyapp_to_store,
+    check_if_remote_app_exists,
 )
 
 
@@ -87,7 +88,7 @@ def test_repo_exists(mocker, caplog):
     mock_organization.get_repo.assert_called_once()
     mock_organization.create_repo.assert_not_called()
 
-    logger_message = f"{organization_login}/{repo_name} Exists. Will have to delete"
+    logger_message = f"{organization_login}/{repo_name} Exists"
     assert logger_message in caplog.messages
 
 
@@ -121,6 +122,35 @@ def test_repo_does_not_exist(mocker, caplog):
     assert logger_message in caplog.messages
 
 
+def test_repo_does_not_exist_dont_create(mocker, caplog):
+    organization_login = "test_org"
+    repo_name = "test_app"
+    error_status = 404
+    error_message = "Not Found"
+
+    mock_organization = mocker.patch("github.Organization.Organization")
+    mock_organization.login = organization_login
+    mock_organization.get_repo.side_effect = UnknownObjectException(
+        error_status, message=error_message
+    )
+    mock_repository = MagicMock(full_name="github-org/test_app")
+    mock_organization.create_repo.return_value = mock_repository
+
+    tethysapp_repo = get_github_repo(
+        repo_name, mock_organization, create_if_not_exist=False
+    )
+    assert tethysapp_repo is None
+
+    mock_organization.get_repo.assert_called_once()
+    mock_organization.create_repo.assert_not_called()
+
+    logger_message = (
+        f"Received a {error_status} error when checking {organization_login}/{repo_name}. "
+        f"Error: {error_message}"
+    )
+    assert logger_message in caplog.messages
+
+
 @pytest.mark.parametrize("stores, expected_call_count", [(lf("all_active_stores"), 2)])
 def test_initialize_local_repo_for_active_stores(stores, expected_call_count, mocker):
     install_data = {"url": "https://github.com/notrealorg/fakeapp", "stores": stores}
@@ -141,6 +171,7 @@ def test_initialize_local_repo_fresh(store, tmp_path, mocker):
     active_store = store("active_default")
     channel_layer = MagicMock()
     app_workspace = MagicMock(path=tmp_path)
+    overwrite = True
 
     mock_repo = MagicMock()
     mock_branch1 = MagicMock()
@@ -148,10 +179,16 @@ def test_initialize_local_repo_fresh(store, tmp_path, mocker):
     mock_branch2 = MagicMock()
     mock_branch2.name = "origin/commit2"
     mocker.patch("git.Repo.init", side_effect=[mock_repo])
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.check_if_remote_app_exists",
+        return_value=True,
+    )
     mock_ws = mocker.patch("tethysapp.app_store.submission_handlers.send_notification")
 
     mock_repo.remote().refs = [mock_branch1, mock_branch2]
-    initialize_local_repo(github_url, active_store, channel_layer, app_workspace)
+    initialize_local_repo(
+        github_url, active_store, overwrite, channel_layer, app_workspace
+    )
 
     expected_github_dur = tmp_path / "gitsubmission" / active_store["conda_channel"]
     assert expected_github_dur.is_dir()
@@ -173,14 +210,12 @@ def test_initialize_local_repo_fresh(store, tmp_path, mocker):
     mock_ws.assert_called_with(expected_data_json, channel_layer)
 
 
-def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
+def test_initialize_local_repo_already_exists_dont_overwrite(store, tmp_path, mocker):
     github_url = "https://github.com/notrealorg/fakeapp"
     active_store = store("active_default")
     channel_layer = MagicMock()
     app_workspace = MagicMock(path=tmp_path)
-    expected_github_dur = tmp_path / "gitsubmission" / active_store["conda_channel"]
-    expected_app_github_dur = expected_github_dur / "fakeapp"
-    expected_app_github_dur.mkdir(parents=True)
+    overwrite = False
 
     mock_repo = MagicMock()
     mock_branch1 = MagicMock()
@@ -188,10 +223,63 @@ def test_initialize_local_repo_already_exists(store, tmp_path, mocker):
     mock_branch2 = MagicMock()
     mock_branch2.name = "origin/commit2"
     mocker.patch("git.Repo.init", side_effect=[mock_repo])
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.check_if_remote_app_exists",
+        return_value=True,
+    )
     mock_ws = mocker.patch("tethysapp.app_store.submission_handlers.send_notification")
 
     mock_repo.remote().refs = [mock_branch1, mock_branch2]
-    initialize_local_repo(github_url, active_store, channel_layer, app_workspace)
+    initialize_local_repo(
+        github_url, active_store, overwrite, channel_layer, app_workspace
+    )
+
+    mock_repo.create_remote().fetch.assert_not_called()
+
+    mssge_string = (
+        "fakeapp already exists in the app store github repo. Continue with the submission to "
+        "overwrite or submit a new application."
+    )
+    expected_data_json = {
+        "data": {
+            "mssge_string": mssge_string,
+            "app_name": "fakeapp",
+            "conda_channel": active_store["conda_channel"],
+            "app_type": "tethysapp",
+        },
+        "jsHelperFunction": "existingAppWarning",
+        "helper": "addModalHelper",
+    }
+
+    mock_ws.assert_called_with(expected_data_json, channel_layer)
+
+
+def test_initialize_local_repo_already_exists_overwrite(store, tmp_path, mocker):
+    github_url = "https://github.com/notrealorg/fakeapp"
+    active_store = store("active_default")
+    channel_layer = MagicMock()
+    app_workspace = MagicMock(path=tmp_path)
+    expected_github_dur = tmp_path / "gitsubmission" / active_store["conda_channel"]
+    expected_app_github_dur = expected_github_dur / "fakeapp"
+    expected_app_github_dur.mkdir(parents=True)
+    overwrite = True
+
+    mock_repo = MagicMock()
+    mock_branch1 = MagicMock()
+    mock_branch1.name = "origin/commit1"
+    mock_branch2 = MagicMock()
+    mock_branch2.name = "origin/commit2"
+    mocker.patch("git.Repo.init", side_effect=[mock_repo])
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.check_if_remote_app_exists",
+        return_value=True,
+    )
+    mock_ws = mocker.patch("tethysapp.app_store.submission_handlers.send_notification")
+
+    mock_repo.remote().refs = [mock_branch1, mock_branch2]
+    initialize_local_repo(
+        github_url, active_store, overwrite, channel_layer, app_workspace
+    )
 
     assert expected_github_dur.is_dir()
 
@@ -604,6 +692,7 @@ def test_submit_proxyapp_to_store(mocker, app_store_workspace, proxyapp):
         "conda_channel": "test_channel",
         "branch": "test_branch",
     }
+    overwrite_app = True
     mock_channel = MagicMock()
     mock_github = mocker.patch(
         "tethysapp.app_store.submission_handlers.get_conda_stores",
@@ -623,7 +712,9 @@ def test_submit_proxyapp_to_store(mocker, app_store_workspace, proxyapp):
     )
     app = proxyapp()
 
-    submit_proxyapp_to_store(app, install_data, mock_channel, mock_workspace)
+    submit_proxyapp_to_store(
+        app, install_data, overwrite_app, mock_channel, mock_workspace
+    )
 
     expected_data_json = {
         "data": {
@@ -632,6 +723,68 @@ def test_submit_proxyapp_to_store(mocker, app_store_workspace, proxyapp):
             "conda_channel": "test_channel",
         },
         "jsHelperFunction": "proxyAppSubmitComplete",
+        "helper": "addModalHelper",
+    }
+    mock_send_notification.assert_called_with(expected_data_json, mock_channel)
+
+
+def test_submit_proxyapp_to_store_already_exists_no_overwrite(
+    mocker, app_store_workspace, proxyapp
+):
+    dev_url = "https://github.com/notrealorg/fakeapp"
+    mock_workspace = MagicMock(path=str(app_store_workspace))
+    conda_stores = [
+        {
+            "github_organization": "fake_org",
+            "github_token": "fake_token",
+            "conda_labels": ["main", "dev"],
+            "conda_channel": "test_channel",
+        }
+    ]
+
+    install_data = {
+        "app_name": "test_app",
+        "dev_url": dev_url,
+        "email": "test@email.com",
+        "conda_labels": ["main", "dev"],
+        "conda_channel": "test_channel",
+        "branch": "test_branch",
+    }
+    overwrite_app = False
+    mock_channel = MagicMock()
+    mock_github = mocker.patch(
+        "tethysapp.app_store.submission_handlers.get_conda_stores",
+        return_value=conda_stores,
+    )
+    mock_github = mocker.patch("tethysapp.app_store.submission_handlers.github")
+    mock_github.Github().get_organization().get_repo().git_url.replace.return_value = (
+        dev_url
+    )
+    mocker.patch("tethysapp.app_store.submission_handlers.git")
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.get_github_repo",
+        return_value=True,
+    )
+    mock_send_notification = mocker.patch(
+        "tethysapp.app_store.submission_handlers.send_notification"
+    )
+    app = proxyapp()
+
+    submit_proxyapp_to_store(
+        app, install_data, overwrite_app, mock_channel, mock_workspace
+    )
+    mssge_string = (
+        "test_app already exists in the app store github repo. Continue with the submission to "
+        "overwrite or submit with a new name."
+    )
+    expected_data_json = {
+        "data": {
+            "mssge_string": mssge_string,
+            "conda_channel": "test_channel",
+            "app_name": "test_app",
+            "app_type": "proxyapp",
+        },
+        "jsHelperFunction": "existingAppWarning",
         "helper": "addModalHelper",
     }
     mock_send_notification.assert_called_with(expected_data_json, mock_channel)
@@ -766,7 +919,7 @@ def test_validate_git_organization_bad_token(mocker):
 
     expected_get_data_json = {
         "data": {
-            "mssge_string": "Could not connect to organization. Check store settings.",\
+            "mssge_string": "Could not connect to organization. Check store settings.",
             "conda_channel": conda_channel,
         },
         "jsHelperFunction": "githubValidationError",
@@ -785,3 +938,69 @@ def test_get_gitsubmission_app_dir(tmp_path):
 
     assert github_app_dir == str(tmp_path / "gitsubmission" / conda_channel / app_name)
     assert (tmp_path / "gitsubmission" / conda_channel).is_dir()
+
+
+def test_check_if_remote_app_exists_doesnt_exist(mocker):
+
+    conda_stores = [
+        {
+            "github_organization": "fake_org",
+            "github_token": "fake_token",
+            "conda_labels": ["main", "dev"],
+            "conda_channel": "test_channel",
+        }
+    ]
+    mock_channel = MagicMock()
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.get_conda_stores",
+        return_value=conda_stores,
+    )
+    mock_git = MagicMock()
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.validate_git_credentials",
+        return_value=mock_git,
+    )
+    mock_org = MagicMock()
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.validate_git_organization",
+        return_value=mock_org,
+    )
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.get_github_repo",
+        return_value=None,
+    )
+
+    assert check_if_remote_app_exists("test_app", "test_channel", mock_channel) is False
+
+
+def test_check_if_remote_app_exists(mocker):
+
+    conda_stores = [
+        {
+            "github_organization": "fake_org",
+            "github_token": "fake_token",
+            "conda_labels": ["main", "dev"],
+            "conda_channel": "test_channel",
+        }
+    ]
+    mock_channel = MagicMock()
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.get_conda_stores",
+        return_value=conda_stores,
+    )
+    mock_git = MagicMock()
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.validate_git_credentials",
+        return_value=mock_git,
+    )
+    mock_org = MagicMock()
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.validate_git_organization",
+        return_value=mock_org,
+    )
+    mocker.patch(
+        "tethysapp.app_store.submission_handlers.get_github_repo",
+        return_value=MagicMock(),
+    )
+
+    assert check_if_remote_app_exists("test_app", "test_channel", mock_channel) is True

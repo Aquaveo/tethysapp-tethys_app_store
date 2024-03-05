@@ -122,7 +122,9 @@ def get_github_repo(repo_name, organization, create_if_not_exist=True):
             f"Received a {e.status} error when checking {organization.login}/{repo_name}. Error: {e.message}"
         )
         if create_if_not_exist:
-            logger.info(f"Creating a new repository at {organization.login}/{repo_name}")
+            logger.info(
+                f"Creating a new repository at {organization.login}/{repo_name}"
+            )
             tethysapp_repo = organization.create_repo(
                 repo_name,
                 allow_rebase_merge=True,
@@ -152,7 +154,9 @@ def initialize_local_repo_for_active_stores(install_data, channel_layer, app_wor
     stores = install_data.get("stores")
     overwrite = install_data.get("overwrite")
     for store in stores:
-        initialize_local_repo(github_url, store, overwrite, channel_layer, app_workspace)
+        initialize_local_repo(
+            github_url, store, overwrite, channel_layer, app_workspace
+        )
 
 
 def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
@@ -178,7 +182,9 @@ def get_gitsubmission_app_dir(app_workspace, app_name, conda_channel):
     return app_github_dir
 
 
-def initialize_local_repo(github_url, active_store, overwrite, channel_layer, app_workspace):
+def initialize_local_repo(
+    github_url, active_store, overwrite, channel_layer, app_workspace
+):
     """Create and initialize a local github repo with a path for a specific conda channel. Once a repo is initialized,
     get a list of branches and send back the information to the application submission modal.
 
@@ -192,23 +198,29 @@ def initialize_local_repo(github_url, active_store, overwrite, channel_layer, ap
     app_name = github_url.split("/")[-1].replace(".git", "")
     conda_channel = active_store["conda_channel"]
     conda_labels = active_store["conda_labels"]
-    
-    if check_if_remote_app_exists(app_name, conda_channel, channel_layer) and not overwrite:
+
+    if (
+        check_if_remote_app_exists(app_name, conda_channel, channel_layer)
+        and not overwrite
+    ):
         # Send notification back to websocket if remote app already exists
-        mssge_string = f"{app_name} already exists in the app store github repo. Continue to overwrite or submit a new application."
+        mssge_string = (
+            f"{app_name} already exists in the app store github repo. Continue with the submission to "
+            "overwrite or submit a new application."
+        )
         get_data_json = {
             "data": {
                 "mssge_string": mssge_string,
                 "conda_channel": conda_channel,
-                "app_name": app_name
+                "app_name": app_name,
+                "app_type": "tethysapp",
             },
             "jsHelperFunction": "existingAppWarning",
             "helper": "addModalHelper",
         }
         send_notification(get_data_json, channel_layer)
         return
-        
-    
+
     app_github_dir = get_gitsubmission_app_dir(
         app_workspace, app_name, active_store["conda_channel"]
     )
@@ -661,7 +673,9 @@ def get_workflow_job_url(repo, tethysapp_repo, current_tag_name):
     return job_url
 
 
-def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspace):
+def submit_proxyapp_to_store(
+    proxy_app, install_data, overwrite_app, channel_layer, app_workspace
+):
     """Initiate, process, and submit a proxy application to the configured app store github repo.
 
     Args:
@@ -684,6 +698,7 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     reset_folder(app_github_dir)
     repo = git.Repo.init(app_github_dir)
     app_config_dir = os.path.join(app_github_dir, "config")
+    repo_name = app_github_dir.split("/")[-1]
     os.makedirs(app_config_dir)
     (Path(app_github_dir) / "__init__.py").touch()
     (Path(app_config_dir) / "__init__.py").touch()
@@ -698,6 +713,26 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     organization = validate_git_organization(
         g, github_organization, conda_channel, channel_layer
     )
+
+    remote_repo = get_github_repo(repo_name, organization, create_if_not_exist=False)
+    if remote_repo and not overwrite_app:
+        # Send notification back to websocket if remote app already exists
+        mssge_string = (
+            f"{app_name} already exists in the app store github repo. Continue with the submission to "
+            "overwrite or submit with a new name."
+        )
+        get_data_json = {
+            "data": {
+                "mssge_string": mssge_string,
+                "conda_channel": conda_channel,
+                "app_name": app_name,
+                "app_type": "proxyapp",
+            },
+            "jsHelperFunction": "existingAppWarning",
+            "helper": "addModalHelper",
+        }
+        send_notification(get_data_json, channel_layer)
+        return
 
     # 4. Add files to local repo
     source_files_path = os.path.join(
@@ -774,7 +809,6 @@ def submit_proxyapp_to_store(proxy_app, install_data, channel_layer, app_workspa
     )
 
     # 12. Check if this repo already exists on our remote:
-    repo_name = app_github_dir.split("/")[-1]
     remote_repo = get_github_repo(repo_name, organization)
     remote_url = remote_repo.git_url.replace(
         "git://", "https://" + github_token + ":x-oauth-basic@"
