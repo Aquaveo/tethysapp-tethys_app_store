@@ -72,9 +72,11 @@ class notificationsConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, _):
         """Disconnects from the websocket consumer and removes a notifications group from the channel"""
-        if "notifications" in self.channel_layer.groups:
+        try:
             await self.channel_layer.group_discard("notifications", self.channel_name)
             logger.info(f"Removed {self.channel_name} channel from notifications")
+        except Exception as e:
+            logger.warning(e)
 
     async def install_notifications(self, event):
         """Sends a notification to the notifications group channel
