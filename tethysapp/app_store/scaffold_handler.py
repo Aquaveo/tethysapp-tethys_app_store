@@ -8,7 +8,7 @@ from subprocess import Popen, PIPE, STDOUT
 from pathlib import Path
 
 from .git_install_handlers import write_logs
-from .helpers import logger, restart_server
+from .helpers import logger, get_override_key
 from tethys_cli.scaffold_commands import (
     APP_PATH,
     APP_PREFIX,
@@ -17,16 +17,15 @@ from tethys_cli.scaffold_commands import (
     TEMPLATE_SUFFIX,
 )
 
-from rest_framework.decorators import api_view, authentication_classes
-from tethys_sdk.permissions import has_permission
-from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from tethys_sdk.routing import controller
 
 
-def install_app(app_path, project_name, app_workspace):
-    """Run tethys install and other necessary tethys commands through the restart server command
+def install_app(app_path):
+    """Run tethys install
 
     Args:
         app_path (str): Path to the scaffolded application
@@ -40,9 +39,6 @@ def install_app(app_path, project_name, app_workspace):
     write_logs(logger, process.stdout, "Python Install SubProcess: ")
     exitcode = process.wait()
     logger.info("Python Application install exited with: " + str(exitcode))
-
-    restart_data = {"restart_type": "scaffold_install", "name": project_name}
-    restart_server(data=restart_data, channel_layer=None, app_workspace=app_workspace)
 
 
 def get_develop_dir(app_workspace):
@@ -101,7 +97,7 @@ def proper_name_validator(value, default):
     app_workspace=True,
 )
 @api_view(["POST"])
-@authentication_classes((TokenAuthentication,))
+@permission_classes((AllowAny,))
 def scaffold_command(request, app_workspace):
     """
     Create a new Tethys app projects in the workspace dir and install the app. After installing, the server will
@@ -125,8 +121,9 @@ def scaffold_command(request, app_workspace):
     }
 
     """
-    if not has_permission(request, "use_app_store"):
-        return JsonResponse({"message": "Missing required permissions"}, status=401)
+    override_key = get_override_key()
+    if (request.GET.get('custom_key') != override_key):
+        return HttpResponse('Unauthorized', status=401)
 
     # Get template dirs
     logger.debug("APP_PATH: {}".format(APP_PATH))
@@ -145,7 +142,7 @@ def scaffold_command(request, app_workspace):
             status=500,
         )
 
-    received_json_data = json.loads(request.body)
+    received_json_data = request.data
     project_name = received_json_data.get("name").lower()
 
     # Check for valid characters name
@@ -261,7 +258,7 @@ def scaffold_command(request, app_workspace):
                     pfp.write(template.render(context))
 
     try:
-        install_app(project_root, project_name, app_workspace)
+        install_app(project_root)
         return JsonResponse(
             {"status": "true", "message": "App scaffold Succeeded."}, status=200
         )
