@@ -745,7 +745,7 @@ def submit_proxyapp_to_store(
         "name": proxy_app.name,
         "description": proxy_app.description,
         "endpoint": proxy_app.endpoint,
-        "logo_url": proxy_app.logo_url,
+        "logo_url": proxy_app.icon,
         "tags": proxy_tags,
         "enabled": proxy_app.enabled,
         "show_in_apps_library": proxy_app.show_in_apps_library,
