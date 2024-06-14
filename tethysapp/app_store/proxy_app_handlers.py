@@ -62,7 +62,7 @@ def list_proxy_apps():
                 "name": proxy_app.name,
                 "description": proxy_app.description,
                 "endpoint": proxy_app.endpoint,
-                "logo": proxy_app.logo_url,
+                "logo": proxy_app.icon,
                 "tags": proxy_app.tags,
                 "enabled": proxy_app.enabled,
                 "show_in_apps_library": proxy_app.show_in_apps_library,
