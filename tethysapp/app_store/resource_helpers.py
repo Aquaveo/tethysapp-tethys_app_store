@@ -3,7 +3,7 @@ from django.core.cache import cache
 import re
 import semver
 from tethys_apps.base import TethysAppBase
-from tethys_portal import __version__ as tethys_version
+import tethys_portal
 import copy
 import pkgutil
 import inspect
@@ -387,14 +387,13 @@ def get_resources_single_store(
     installed_apps = {}
     available_apps = {}
     incompatible_apps = {}
-    all_resources = fetch_resources(
-        app_workspace,
-        conda_channel,
-        conda_label=conda_label,
-        cache_key=cache_key,
-        refresh=require_refresh,
-    )
-    tethys_version_regex = re.search(r"([\d.]+[\d])", tethys_version).group(1)
+    all_resources = fetch_resources(app_workspace, conda_channel, conda_label=conda_label, cache_key=cache_key,
+                                    refresh=require_refresh)
+    if not tethys_portal.__version__:
+        tethys_version = "4.0.0"
+    else:
+        tethys_version = tethys_portal.__version__
+    tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
     for resource in all_resources:
         resource["name"] = resource["name"].replace("proxyapp_", "")
         if resource["installed"][conda_channel][conda_label]:
@@ -561,12 +560,10 @@ def fetch_resources(
         # Look for packages:
         logger.info("Refreshing list of apps cache")
         try:
-            [resp, err, code] = conda_run(
-                Commands.SEARCH,
-                ["-c", conda_search_channel, "--override-channels", "-i", "--json"],
-            )
+            [resp, err, code] = conda_run(Commands.SEARCH,
+                                      ["-c", conda_search_channel, "--override-channels", "-i", "--json"])
         except PackagesNotFoundError:
-            return resource_metadata
+            return []
 
         if code != 0:
             # In here maybe we just try re running the install
@@ -673,6 +670,11 @@ def process_resources(resources, app_workspace, conda_channel, conda_label):
     Returns:
         (list): List of updated resources
     """
+    if not tethys_portal.__version__:
+        tethys_version = "4.0.0"
+    else:
+        tethys_version = tethys_portal.__version__
+
     for app in resources:
         workspace_folder = os.path.join(app_workspace.path, "apps")
         if not os.path.exists(workspace_folder):

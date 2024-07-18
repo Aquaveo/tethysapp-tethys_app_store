@@ -1,7 +1,7 @@
-import git
+import github
 import os
 import shutil
-import github
+from git import Repo
 import fileinput
 import yaml
 import stat
@@ -229,9 +229,7 @@ def initialize_local_repo(
         shutil.rmtree(app_github_dir)
 
     # Initialize the github repo and fetch
-    repo = git.Repo.init(app_github_dir)
-    origin = repo.create_remote("origin", github_url)
-    origin.fetch()
+    repo = Repo.clone_from(github_url, app_github_dir)
 
     # Get remote branches and get list of branch names
     branches = [refs.name.replace("origin/", "") for refs in repo.remote().refs]
@@ -581,7 +579,10 @@ def push_to_warehouse_release_remote_branch(
     if files_changed:
         repo.git.add(A=True)
         repo.git.commit(m=f"tag version {current_tag_name}")
-        tethysapp_remote.push("tethysapp_warehouse_release", force=True)
+        info = tethysapp_remote.push("tethysapp_warehouse_release", force=True)
+        
+        if "remote rejected" in info[0].summary:
+            raise Exception("tethysapp_warehouse_release branch failed to push to github.")
 
 
 def create_head_current_version(
@@ -696,7 +697,7 @@ def submit_proxyapp_to_store(
         app_workspace, package_app_name, conda_channel
     )
     reset_folder(app_github_dir)
-    repo = git.Repo.init(app_github_dir)
+    repo = Repo.init(app_github_dir)
     app_config_dir = os.path.join(app_github_dir, "config")
     repo_name = app_github_dir.split("/")[-1]
     os.makedirs(app_config_dir)
@@ -862,7 +863,7 @@ def submit_tethysapp_to_store(install_data, channel_layer, app_workspace):
     labels_string = generate_label_strings(conda_labels)
     files_changed = False
     app_github_dir = get_gitsubmission_app_dir(app_workspace, app_name, conda_channel)
-    repo = git.Repo(app_github_dir)
+    repo = Repo(app_github_dir)
 
     # 2. Get sensitive information for store
     conda_store = get_conda_stores(conda_channels=conda_channel, sensitive_info=True)[0]

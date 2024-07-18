@@ -1,5 +1,5 @@
 import re
-from tethys_portal import __version__ as tethys_version
+import tethys_portal
 from django.http import JsonResponse
 from django.shortcuts import render
 from tethys_sdk.routing import controller
@@ -30,12 +30,15 @@ def home(request, app_workspace):
     available_stores = get_conda_stores()
     labels_style_dict, available_stores = get_color_label_dict(available_stores)
 
-    object_stores_formatted_by_label_and_channel = get_stores_reformatted(
-        app_workspace, refresh=False, conda_channels="all"
-    )
-
-    tethys_version_regex = re.search(r"([\d.]+[\d])", tethys_version).group(1)
-    object_stores_formatted_by_label_and_channel["tethysVersion"] = tethys_version_regex
+    object_stores_formatted_by_label_and_channel = get_stores_reformatted(app_workspace, refresh=False,
+                                                                          conda_channels="all")
+    
+    if not tethys_portal.__version__:
+        tethys_version = "4.0.0"
+    else:
+        tethys_version = tethys_portal.__version__
+    tethys_version_regex = re.search(r'([\d.]+[\d])', tethys_version).group(1)
+    object_stores_formatted_by_label_and_channel['tethysVersion'] = tethys_version_regex
 
     availableApps = object_stores_formatted_by_label_and_channel["availableApps"]
     installedApps = object_stores_formatted_by_label_and_channel["installedApps"]
